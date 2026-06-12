@@ -167,7 +167,9 @@ function loop(now){
     }
     // animate player
     const t=now/1000;
-    playerGroup.group.position.set(playerPos.x,skating?2.2:0,playerPos.z);
+    let playerY=skating?2.2:0;
+    if(!moving&&!skating) playerY+=Math.sin(t*2.1)*0.34;
+    playerGroup.group.position.set(playerPos.x,playerY,playerPos.z);
     playerGroup.group.rotation.y=playerYaw;
     playerGroup.group.rotation.x=skating?0.06:0;
     playerParts.board.visible=skating;
@@ -218,7 +220,8 @@ function loop(now){
           else { n.tx=n.hx; n.tz=n.hz; }
         }
       }
-      pm.group.position.set(n.x,0,n.z);
+      const npcY=nmoving?0:Math.sin(t*2.0+n.hx*0.07+n.hz*0.05)*0.3;
+      pm.group.position.set(n.x,npcY,n.z);
       // key NPCs idle-face player when close
       if(n.key&&!nmoving){
         const dpx=playerPos.x-n.x,dpz=playerPos.z-n.z;

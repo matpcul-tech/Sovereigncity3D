@@ -1070,12 +1070,26 @@ export function paintFace(tex, skinHex) {
   drawSCFace(x);
   tex.needsUpdate = true;
 }
+let charShadowTex = null;
+function getCharShadowTexture() {
+  if (charShadowTex) return charShadowTex;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d');
+  const grad = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(0,0,0,0.9)');
+  grad.addColorStop(0.7, 'rgba(0,0,0,0.35)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = grad; x.fillRect(0, 0, 64, 64);
+  charShadowTex = new THREE.CanvasTexture(c);
+  return charShadowTex;
+}
 export function makePerson(skinHex, fitHex) {
   // Blocky R6-style avatar: box head + face decal, shirt torso, skin arms, dark pants
   const group = new THREE.Group();
-  const skin = new THREE.MeshLambertMaterial({ color: new THREE.Color(skinHex) });
-  const fit = new THREE.MeshLambertMaterial({ color: new THREE.Color(fitHex) });
-  const pants = new THREE.MeshLambertMaterial({ color: 0x2e3440 });
+  const skin = new THREE.MeshPhongMaterial({ color: new THREE.Color(skinHex), shininess: 16, specular: 0x5a4c3e });
+  const fit = new THREE.MeshPhongMaterial({ color: new THREE.Color(fitHex), shininess: 9, specular: 0x2c2620 });
+  const pants = new THREE.MeshPhongMaterial({ color: 0x2e3440, shininess: 5, specular: 0x18181c });
+  const shoeMat = new THREE.MeshPhongMaterial({ color: 0xF5EFE3, shininess: 34, specular: 0x999488 });
   // torso: 8 wide x 8 tall x 4 deep, top of legs at y=8
   const torso = new THREE.Mesh(new THREE.BoxGeometry(8, 8, 4), fit);
   torso.position.y = 12;
@@ -1086,18 +1100,23 @@ export function makePerson(skinHex, fitHex) {
   const head = new THREE.Mesh(new THREE.BoxGeometry(5.6, 5.6, 5.6), headMats);
   head.position.y = 19.2;
   // limbs swing from joints (pivot groups), Roblox-style
-  function limb(mat) {
+  function limb(mat, isLeg) {
     const pivot = new THREE.Group();
     const m = new THREE.Mesh(new THREE.BoxGeometry(3.4, 8, 3.4), mat);
     m.position.y = -4; pivot.add(m);
+    if (isLeg) {
+      const shoe = new THREE.Mesh(new THREE.BoxGeometry(3.9, 2.6, 5.4), shoeMat);
+      shoe.position.set(0, -8, 1);
+      pivot.add(shoe);
+    }
     return pivot;
   }
   const lArm = limb(skin); lArm.position.set(-5.7, 16, 0);
   const rArm = limb(skin); rArm.position.set(5.7, 16, 0);
-  const lLeg = limb(pants); lLeg.position.set(-2.1, 8, 0);
-  const rLeg = limb(pants); rLeg.position.set(2.1, 8, 0);
-  const shadow = new THREE.Mesh(new THREE.CircleGeometry(6, 12),
-    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.16 }));
+  const lLeg = limb(pants, true); lLeg.position.set(-2.1, 8, 0);
+  const rLeg = limb(pants, true); rLeg.position.set(2.1, 8, 0);
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(7.5, 16),
+    new THREE.MeshBasicMaterial({ map: getCharShadowTexture(), color: 0x000000, transparent: true, opacity: 0.55, depthWrite: false }));
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = 0.3;
   // skateboard (hidden until skating)
   const board = new THREE.Group();
