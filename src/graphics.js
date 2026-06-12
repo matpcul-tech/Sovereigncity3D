@@ -28,6 +28,9 @@ const PERSON_H = 16;
 
 export const clouds = [];
 let stars = null, sunDisc = null, moonDisc = null;
+let skyDome = null, skyCanvas = null, skyTex = null, fillLight = null, lastSkyKey = '';
+const flags = [], birds = [];
+let fountainWater = null;
 
 /* =========================================================
    MINIMAP — 2D canvas overlay
@@ -276,6 +279,7 @@ function applyLowPower() {
   scene.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false;
     if (o.material && o.material.needsUpdate !== undefined) o.material.needsUpdate = true; } });
   streetLights.forEach(l => { l.intensity = 0; l.visible = false; });
+  if (fillLight) fillLight.intensity = 0;
   toast('Performance mode on: smoother play on this device.', 'good');
 }
 export function perfSample(DT) {
@@ -365,6 +369,25 @@ export function initThree() {
   starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 3.2, transparent: true, opacity: 0, fog: false, sizeAttenuation: false }));
   scene.add(stars);
+  // gradient sky dome (replaces flat background as the visible sky)
+  skyCanvas = document.createElement('canvas'); skyCanvas.width = 2; skyCanvas.height = 256;
+  skyTex = new THREE.CanvasTexture(skyCanvas);
+  paintSkyGrad('#6fa3d8', '#cfe3ee');
+  skyDome = new THREE.Mesh(new THREE.SphereGeometry(2300, 24, 16),
+    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }));
+  skyDome.renderOrder = -10;
+  scene.add(skyDome);
+  // cool fill light opposite the sun: makes characters pop
+  fillLight = new THREE.DirectionalLight(0x9ab8ff, 0.22);
+  scene.add(fillLight); scene.add(fillLight.target);
+  // cinematic vignette overlay (pure CSS, zero GPU cost)
+  if (!document.getElementById('vignette')) {
+    const v = document.createElement('div');
+    v.id = 'vignette';
+    v.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:5;' +
+      'background:radial-gradient(ellipse at center,transparent 52%,rgba(10,8,5,0.34) 100%)';
+    document.body.appendChild(v);
+  }
   buildCity();
   buildStreetLights();
   initMinimap();
@@ -374,6 +397,24 @@ export function initThree() {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
   });
+}
+
+/* ---- sky gradient helpers ---- */
+function lerpHex(a, b, t) {
+  const pa = parseInt(a.slice(1), 16), pb = parseInt(b.slice(1), 16);
+  const r = Math.round(lerp((pa >> 16) & 255, (pb >> 16) & 255, t)),
+    g = Math.round(lerp((pa >> 8) & 255, (pb >> 8) & 255, t)),
+    bl = Math.round(lerp(pa & 255, pb & 255, t));
+  return '#' + ((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0');
+}
+function paintSkyGrad(top, horizon) {
+  if (!skyCanvas) return;
+  const x = skyCanvas.getContext('2d');
+  const g = x.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, top); g.addColorStop(0.62, horizon);
+  g.addColorStop(1, horizon);
+  x.fillStyle = g; x.fillRect(0, 0, 2, 256);
+  skyTex.needsUpdate = true;
 }
 
 /* ---- procedural surface textures ---- */
@@ -573,6 +614,19 @@ function buildCity() {
       new THREE.MeshBasicMaterial({ color: new THREE.Color(zo.accent) }));
     roof.position.set(b.x + b.w / 2, h + 2, b.y + b.d / 2);
     scene.add(roof);
+    // storefront door + colored awning for street-level zones
+    if (!b.small && !b.tower && (b.z === 1 || b.z === 2 || b.z === 4)) {
+      const door = new THREE.Mesh(new THREE.PlaneGeometry(16, 26),
+        new THREE.MeshLambertMaterial({ color: 0x1c1813 }));
+      door.position.set(b.x + b.w / 2, 13, b.y + b.d + 0.6);
+      scene.add(door);
+      const awnCols = [0xC96F4A, 0x3FB8AF, 0xE8C064, 0x5E7C99];
+      const awn = new THREE.Mesh(new THREE.BoxGeometry(Math.min(b.w * 0.7, 120), 3, 16),
+        new THREE.MeshLambertMaterial({ color: awnCols[(b.x + b.z) % 4] }));
+      awn.position.set(b.x + b.w / 2, 34, b.y + b.d + 8);
+      awn.rotation.x = 0.28; awn.castShadow = true;
+      scene.add(awn);
+    }
     // rooftop AC units (not on the small board or the tower)
     if (!b.small && !b.tower) {
       for (let u = 0; u < ri(1, 2); u++) {
@@ -646,6 +700,8 @@ function buildCity() {
   buildGoose();
   // founders commons plots
   buildPlots();
+  // street furniture, stalls, fountain, flags, birds
+  buildProps();
   // player + npcs
   playerGroup = makePerson(SKINS[2], FITS[0]); scene.add(playerGroup.group);
   playerParts = playerGroup;
@@ -811,13 +867,141 @@ function addLamp(x, z, poleMat) {
   streetLampMats.push(bulbMat); lampGlows.push(glow.material);
 }
 function addTree(x, z) {
-  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 3, 14, 6),
+  const s = rnd(0.8, 1.3);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(2.2 * s, 3 * s, 15 * s, 6),
     new THREE.MeshLambertMaterial({ color: 0x5a4630 }));
-  trunk.position.set(x, 7, z); trunk.castShadow = true;
-  const crown = new THREE.Mesh(new THREE.SphereGeometry(11, 8, 8),
-    new THREE.MeshLambertMaterial({ color: 0x4e6b3a }));
-  crown.position.set(x, 21, z); crown.castShadow = true;
-  scene.add(trunk, crown);
+  trunk.position.set(x, 7.5 * s, z); trunk.castShadow = true;
+  scene.add(trunk);
+  // clustered canopy: 3 spheres, slight hue variance per tree
+  const greens = [0x4e6b3a, 0x5a7a42, 0x46613a, 0x6b8248];
+  const base = greens[ri(0, greens.length - 1)];
+  [[0, 21, 0, 11], [6, 17, 3, 7.5], [-5, 18, -3, 8]].forEach(([ox, oy, oz, r]) => {
+    const c = new THREE.Mesh(new THREE.SphereGeometry(r * s, 7, 7),
+      new THREE.MeshLambertMaterial({ color: base }));
+    c.position.set(x + ox * s, oy * s, z + oz * s); c.castShadow = true;
+    scene.add(c);
+  });
+}
+function addBush(x, z) {
+  const b = new THREE.Mesh(new THREE.SphereGeometry(rnd(4, 7), 6, 6),
+    new THREE.MeshLambertMaterial({ color: 0x55703e }));
+  b.position.set(x, 3.5, z); b.scale.y = 0.7;
+  scene.add(b);
+}
+function buildProps() {
+  const wood = new THREE.MeshLambertMaterial({ color: 0x6a5436 });
+  const dark = new THREE.MeshLambertMaterial({ color: 0x2a2620 });
+  // benches along the main horizontal road sidewalks
+  [[300, 745], [640, 745], [1050, 745], [1380, 745], [300, 856], [980, 856], [1340, 856], [1900, 856]].forEach(([x, z]) => {
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(26, 2.5, 8), wood);
+    seat.position.set(x, 8, z); seat.castShadow = true;
+    const back = new THREE.Mesh(new THREE.BoxGeometry(26, 8, 2), wood);
+    back.position.set(x, 13, z + (z < 800 ? -3 : 3));
+    const l1 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 8, 7), dark); l1.position.set(x - 10, 4, z);
+    const l2 = new THREE.Mesh(new THREE.BoxGeometry(2.5, 8, 7), dark); l2.position.set(x + 10, 4, z);
+    scene.add(seat, back, l1, l2);
+  });
+  // fire hydrants — small, red, charming
+  const red = new THREE.MeshLambertMaterial({ color: 0xb33a2a });
+  [[150, 860], [700, 742], [1180, 860], [1700, 742], [2080, 860]].forEach(([x, z]) => {
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 3, 8, 8), red);
+    body.position.set(x, 4, z);
+    const cap = new THREE.Mesh(new THREE.SphereGeometry(2.7, 8, 6), red);
+    cap.position.set(x, 8.4, z);
+    scene.add(body, cap);
+  });
+  // trash cans
+  const can = new THREE.MeshLambertMaterial({ color: 0x3a4046 });
+  [[420, 742], [880, 858], [1480, 742], [1820, 858], [760, 1500], [1660, 300]].forEach(([x, z]) => {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(4, 3.4, 10, 8), can);
+    c.position.set(x, 5, z); scene.add(c);
+  });
+  // planters with greenery — Main Street + Capital Row polish
+  const stone = new THREE.MeshLambertMaterial({ color: 0x7a756a });
+  [[900, 920], [1200, 920], [1500, 920], [940, 250], [1180, 420], [1430, 250]].forEach(([x, z]) => {
+    const p = new THREE.Mesh(new THREE.BoxGeometry(16, 8, 16), stone);
+    p.position.set(x, 4, z);
+    const g = new THREE.Mesh(new THREE.SphereGeometry(7, 7, 6),
+      new THREE.MeshLambertMaterial({ color: 0x5a7a42 }));
+    g.position.set(x, 11, z); g.scale.y = 0.75;
+    scene.add(p, g);
+  });
+  // bushes scattered through The Grind, Sovereign District, Skyline
+  for (let i = 0; i < 8; i++) addBush(rnd(80, 720), rnd(880, 1540));
+  for (let i = 0; i < 8; i++) addBush(rnd(80, 720), rnd(80, 720));
+  for (let i = 0; i < 5; i++) addBush(rnd(1680, 2340), rnd(880, 1540));
+  // MARKET STALLS — striped canopies in front of City Market
+  const stripeCols = [[0xC96F4A, 0xF5EFE3], [0x3FB8AF, 0xF5EFE3], [0xE8C064, 0x14120F]];
+  [[960, 1150], [1050, 1150], [1140, 1150]].forEach(([x, z], i) => {
+    const post = new THREE.MeshLambertMaterial({ color: 0x5a4a32 });
+    [[-14, -10], [14, -10], [-14, 10], [14, 10]].forEach(([ox, oz]) => {
+      const p = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 18, 5), post);
+      p.position.set(x + ox, 9, z + oz); scene.add(p);
+    });
+    // striped canopy texture
+    const cc = document.createElement('canvas'); cc.width = 64; cc.height = 32;
+    const cx2 = cc.getContext('2d');
+    const [a, b2] = stripeCols[i];
+    for (let s2 = 0; s2 < 8; s2++) {
+      cx2.fillStyle = '#' + (s2 % 2 ? a : b2).toString(16).padStart(6, '0');
+      cx2.fillRect(s2 * 8, 0, 8, 32);
+    }
+    const canopy = new THREE.Mesh(new THREE.BoxGeometry(36, 2.5, 26),
+      new THREE.MeshLambertMaterial({ map: new THREE.CanvasTexture(cc) }));
+    canopy.position.set(x, 19, z); canopy.rotation.x = 0.08; canopy.castShadow = true;
+    scene.add(canopy);
+    // crates of goods
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(10, 7, 8),
+      new THREE.MeshLambertMaterial({ color: 0x8a6a3a }));
+    crate.position.set(x + rnd(-8, 8), 3.5, z + rnd(-4, 4)); scene.add(crate);
+  });
+  // FLAGS on the Council Hall and the Tower
+  [[255, 18, 140], [2000, 18, 1000]].forEach(([x, zoff, z], fi) => {
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 56, 6),
+      new THREE.MeshLambertMaterial({ color: 0x9a958a }));
+    pole.position.set(x, 28, z - 6);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(24, 14),
+      new THREE.MeshLambertMaterial({ color: fi === 0 ? 0x3FB8AF : 0xE8C064, side: THREE.DoubleSide }));
+    flag.position.set(x + 12, 48, z - 6);
+    scene.add(pole, flag);
+    flags.push({ m: flag, phase: rnd(0, 6) });
+  });
+  // FOUNTAIN PLAZA — Sovereign District centerpiece
+  const basin = new THREE.Mesh(new THREE.CylinderGeometry(30, 32, 8, 18),
+    new THREE.MeshLambertMaterial({ color: 0x8a8378 }));
+  basin.position.set(395, 4, 345); basin.castShadow = true;
+  // rippled water surface (rotating)
+  const wc = document.createElement('canvas'); wc.width = wc.height = 128;
+  const wx = wc.getContext('2d');
+  wx.fillStyle = '#2E8B84'; wx.fillRect(0, 0, 128, 128);
+  wx.strokeStyle = 'rgba(255,255,255,0.35)'; wx.lineWidth = 2;
+  for (let r2 = 12; r2 < 70; r2 += 14) { wx.beginPath(); wx.arc(64, 64, r2, 0, Math.PI * 2); wx.stroke(); }
+  fountainWater = new THREE.Mesh(new THREE.CircleGeometry(27, 20),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(wc), transparent: true, opacity: 0.85 }));
+  fountainWater.rotation.x = -Math.PI / 2; fountainWater.position.set(395, 8.4, 345);
+  const column = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 4.4, 16, 8),
+    new THREE.MeshLambertMaterial({ color: 0x9a958a }));
+  column.position.set(395, 16, 345);
+  const orb = new THREE.Mesh(new THREE.SphereGeometry(5, 10, 8),
+    new THREE.MeshLambertMaterial({ color: 0x3FB8AF, emissive: 0x1a4f4a, emissiveIntensity: 0.5 }));
+  orb.position.set(395, 27, 345);
+  scene.add(basin, fountainWater, column, orb);
+  // BIRDS — small flocks crossing the sky
+  for (let i = 0; i < 3; i++) {
+    const bc = document.createElement('canvas'); bc.width = 64; bc.height = 32;
+    const bx = bc.getContext('2d');
+    bx.strokeStyle = 'rgba(20,18,15,0.8)'; bx.lineWidth = 3; bx.lineCap = 'round';
+    [[16, 16], [34, 12], [50, 18]].forEach(([px, py]) => {
+      bx.beginPath(); bx.moveTo(px - 7, py); bx.quadraticCurveTo(px - 2, py - 6, px, py);
+      bx.quadraticCurveTo(px + 2, py - 6, px + 7, py); bx.stroke();
+    });
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: new THREE.CanvasTexture(bc), transparent: true, depthWrite: false }));
+    sp.scale.set(46, 23, 1);
+    sp.position.set(rnd(0, W), rnd(220, 330), rnd(0, H));
+    scene.add(sp);
+    birds.push({ sp, vx: rnd(14, 26) * (Math.random() < 0.5 ? 1 : -1), vz: rnd(-6, 6) });
+  }
 }
 export function addMurals() {
   if (muralsAdded) return; muralsAdded = true;
@@ -961,6 +1145,34 @@ export function trimParticles() {
     const old = particles.shift(); scene.remove(old.m);
   }
 }
+export function updateProps(DT) {
+  // flags flutter
+  flags.forEach(f => {
+    f.phase += DT * 5;
+    f.m.rotation.y = Math.sin(f.phase) * 0.22;
+    f.m.scale.x = 1 + Math.sin(f.phase * 1.7) * 0.08;
+  });
+  // fountain water spins, occasional sparkle drip
+  if (fountainWater) {
+    fountainWater.rotation.z += DT * 0.4;
+    if (Math.random() < DT * 1.6) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 1.2),
+        new THREE.MeshBasicMaterial({ color: 0x7FDBD4, transparent: true }));
+      m.position.set(395 + rnd(-4, 4), 28, 345 + rnd(-4, 4));
+      scene.add(m);
+      particles.push({ m, vx: rnd(-10, 10), vy: rnd(10, 26), vz: rnd(-10, 10), life: rnd(.5, .9) });
+      trimParticles();
+    }
+  }
+  // birds cross the sky
+  birds.forEach(b2 => {
+    b2.sp.position.x += b2.vx * DT; b2.sp.position.z += b2.vz * DT;
+    if (b2.sp.position.x > W + 120) b2.sp.position.x = -120;
+    if (b2.sp.position.x < -120) b2.sp.position.x = W + 120;
+    if (b2.sp.position.z > H + 120) b2.sp.position.z = -120;
+    if (b2.sp.position.z < -120) b2.sp.position.z = H + 120;
+  });
+}
 export function spawnBurst(x, y, z, colHex) {
   for (let i = 0; i < 16; i++) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(2.4, 2.4, 2.4),
@@ -1015,4 +1227,22 @@ export function updateSky() {
   streetLampMats.forEach(m => m.color.setHex(lampOn ? 0xFFD080 : 0x554a30));
   lampGlows.forEach(m => m.opacity = lampOn ? 0.85 : 0);
   streetLights.forEach(l => l.intensity = lampOn ? 1.4 : 0);
+  // gradient sky dome colors per phase
+  let topC, horC;
+  if (S && (S.won || goldenHour > 0)) { topC = '#8a5a16'; horC = '#e8c064'; }
+  else if (h >= 6 && h < 8) { const k = (h - 6) / 2; topC = lerpHex('#23306a', '#6fa3d8', k); horC = lerpHex('#e8956a', '#cfe3ee', k); }
+  else if (h >= 8 && h < 17) { topC = '#6fa3d8'; horC = '#cfe3ee'; }
+  else if (h >= 17 && h < 20) { const k = (h - 17) / 3; topC = lerpHex('#6fa3d8', '#3a2c52', k); horC = lerpHex('#cfe3ee', '#e2784a', k); }
+  else if (h >= 20 && h < 21) { const k = h - 20; topC = lerpHex('#3a2c52', '#0a0f24', k); horC = lerpHex('#e2784a', '#1c2742', k); }
+  else { topC = '#0a0f24'; horC = '#1c2742'; }
+  const skKey = topC + horC;
+  if (skKey !== lastSkyKey) { lastSkyKey = skKey; paintSkyGrad(topC, horC); }
+  if (skyDome) skyDome.position.set(playerPos.x, 0, playerPos.z);
+  scene.fog.color.set(horC); // horizon blends seamlessly into the dome
+  if (fillLight) {
+    fillLight.intensity = night ? 0.10 : 0.22;
+    fillLight.position.set(playerPos.x - sdx * 500, 320, playerPos.z - 320);
+    fillLight.target.position.set(playerPos.x, 0, playerPos.z);
+    fillLight.target.updateMatrixWorld();
+  }
 }

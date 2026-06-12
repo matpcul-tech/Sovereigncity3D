@@ -9,7 +9,7 @@ import {
   cars, clouds, goose, particles, goldenHour, setGoldenHour,
   spawnBurst, floatText, updateFloats, drawMinimap, drawTutorial, perfSample, updateSky,
   initThree, initMuteBtn, buildHQSign, setHQBuilt, setHQEmpty, addMurals, buildNPCMeshes,
-  paintFace, makeLabelSprite, updateLabelSprite, loadTown, stageBanner, trimParticles
+  paintFace, makeLabelSprite, updateLabelSprite, loadTown, stageBanner, trimParticles, updateProps
 } from './graphics.js';
 import { subscribeTown, sendPresenceUpdate, updateRemotePlayers } from './presence.js';
 
@@ -245,6 +245,8 @@ function loop(now){
       cl.position.x+=cl.userData.spd*DT;
       if(cl.position.x>W+200) cl.position.x=-200;
     });
+    // flags, fountain, birds
+    updateProps(DT);
     // the goose
     if(goose){
       if(goose.dash>0) goose.dash-=DT;
