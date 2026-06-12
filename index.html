@@ -16,6 +16,10 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);
   font-family:'Inter',system-ui,sans-serif;color:var(--paper);
   touch-action:none;user-select:none;-webkit-user-select:none;position:fixed}
 canvas{display:block}
+#game{filter:saturate(1.16) contrast(1.07) brightness(1.02)}
+#filmGrain{position:fixed;inset:-50%;width:200%;height:200%;pointer-events:none;z-index:4;
+  opacity:0.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 #game{position:absolute;inset:0;z-index:1}
 button{font-family:inherit;cursor:pointer;border:none}
 
@@ -122,8 +126,8 @@ button{font-family:inherit;cursor:pointer;border:none}
 #pTop h3{font-family:'Archivo';font-weight:900;font-size:17px}
 #pClose{background:#262119;color:#CFC6B4;width:34px;height:34px;border-radius:50%;font-size:16px}
 #pTabs{display:flex;border-bottom:1px solid #26221B}
-.pTab{flex:1;background:none;color:#7E7565;font-size:12px;font-weight:700;letter-spacing:.1em;
-  text-transform:uppercase;padding:12px 0;border-bottom:2px solid transparent}
+.pTab{flex:1;background:none;color:#7E7565;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding:12px 0 12px;border-bottom:2px solid transparent;white-space:nowrap}
 .pTab.sel{color:var(--amber);border-bottom-color:var(--amber)}
 #pContent{overflow-y:auto;padding:16px 18px calc(20px + env(safe-area-inset-bottom));
   display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
@@ -184,6 +188,10 @@ button{font-family:inherit;cursor:pointer;border:none}
 </div>
 
 <canvas id="game"></canvas>
+<div id="filmGrain"></div>
+<div id="warmGrade" style="position:fixed;inset:0;pointer-events:none;z-index:4;
+  background:radial-gradient(ellipse at 50% 60%,rgba(255,180,90,0.05) 0%,rgba(255,140,60,0.10) 100%);
+  mix-blend-mode:soft-light"></div>
 
 <div id="hud">
   <div id="stageChip">Stage 1 &middot; Ideator</div>
@@ -208,6 +216,7 @@ button{font-family:inherit;cursor:pointer;border:none}
   <div id="pTop"><h3>Founder Phone</h3><button id="pClose">&#10005;</button></div>
   <div id="pTabs">
     <button class="pTab sel" data-tab="biz">Business</button>
+    <button class="pTab" data-tab="insight">Insights</button>
     <button class="pTab" data-tab="feed">Feed</button>
     <button class="pTab" data-tab="cap">Cap Table</button>
     <button class="pTab" data-tab="learn">Learn</button>
@@ -367,7 +376,8 @@ function freshState(){
     comebackUsed:false,bankrupt:false,won:false,legacy:false,
     npcMem:{},npcRel:{},pitched:{},
     feed:[],learned:[],chikasha:0,
-    streak:0,daily:null,townPlot:null,talent:null,muted:false
+    streak:0,daily:null,townPlot:null,talent:null,muted:false,
+    insights:[],insightSeen:{}
   };
 }
 
@@ -734,6 +744,11 @@ function talkRedhawk(){
           addMurals();
           feed('You invested in the Sovereign District. New murals went up within a week.');
           toast('<b>+25% revenue bonus, permanent.</b> Zone 4 visibly improves. <i>Yakoke.</i>','gold');
+          insight('moat_active','You just built a moat',
+            'That $2,000 is gone from your cash, but it bought something a competitor can\u2019t copy '+
+            'by undercutting your price: loyalty. Every future day, your revenue runs '+
+            (S.biz&&S.biz.industry==='infra'?'35%':'25%')+' higher, permanently. The community protects '+
+            'what it has a stake in. This is the moat money alone can\u2019t buy.');
           checkProgression(); saveGame();}},
        {label:'Tell me about this district first',stay:true,fn:()=>{
           $('dText').innerHTML='This district was built on the idea that sovereignty isn\u2019t given, it\u2019s built. Our bank, our clinic, our language center. <i>Yakoke</i> means thank you. <i>Halito</i> means hello. <i>Chokma</i> means good. Now you carry three words of Chikashshanompa\u2019 with you.';
@@ -835,6 +850,12 @@ function talkPark(){
       learn('Cap Table','The list of everyone who owns a piece of your company. Check your phone.');
       feed('David Park wired '+fmt(amt)+' for 15%. A construction crane appeared by your HQ within a day.');
       toast('<b>FUNDED: '+fmt(amt)+'</b> for 15% equity. Capital unlocked.','gold');
+      insight('equity_sold','You just sold part of your company',
+        'That '+fmt(amt)+' is real, and so is the trade: David Park now owns 15% of '+S.biz.name+
+        ', forever. You still control '+(100-15)+'% and the decisions, but every dollar this business '+
+        'ever makes, 15 cents of it has his name on it now. Check your Cap Table tab. That number only '+
+        'moves one direction unless you buy it back, and most founders never do.',
+        {cta:{label:'View Cap Table',fn:()=>openPhoneTo('cap')}});
       spawnBurst(playerPos.x,25,playerPos.z,0xE8C064);
       S.hqLevel=2; setHQBuilt();
       checkProgression(); saveGame();
@@ -941,6 +962,10 @@ function openTechHub(){
        learn('Systems','Manual is cheaper today. Automated is cheaper forever.');
        feed('Automation live. The business no longer needs your hands for every dollar.');
        toast('<b>Automated.</b> Ops costs down 40%. Scale ceiling removed.','gold');
+       insight('automation_on','You bought yourself time',
+         'Tomorrow\u2019s overhead drops about 40%, and the customer ceiling that was about to cost you '+
+         'business is gone. This cost cash today to save cash every day after. That trade, '+
+         'spend now to spend less forever, is what separates a job from a business.');
        checkProgression(); saveGame();}},
      {label:'Not yet.'}]);
 }
@@ -1067,14 +1092,29 @@ function dailySettle(){
     const lost=Math.max(1,Math.round(S.customers*0.08));
     S.customers-=lost; feed(lost+' customers churned. Your price outran your reputation.');
     learn('Churn','Customers who leave. The silent business killer.');
+    insight('churn_price','Your price outran your trust',
+      'You charged '+fmt(S.biz.price)+', but your reputation only carries about '+fmt(ss)+
+      ' right now. '+lost+' customer'+(lost===1?'':'s')+' left overnight. '+
+      'Lower your price toward '+fmt(ss)+', or build reputation (community investment, referrals, demos) to justify charging more.',
+      {cta:{label:'Adjust Price',fn:()=>openPhoneTo('biz')}});
   }
   if(S.customers>20&&S.employees.length===0){
     const lost=Math.max(1,Math.round(S.customers*0.06));
     S.customers-=lost; feed(lost+' customers left over slow service. One founder can\u2019t serve a crowd alone.');
+    insight('churn_neglect','You outgrew yourself',
+      'At '+ (S.customers+lost)+' customers, one person can\u2019t deliver fast enough. '+lost+
+      ' customer'+(lost===1?'':'s')+' walked over slow service. Hiring isn\u2019t a cost, it\u2019s '+
+      'the fix for a ceiling your own two hands created. Visit your HQ to hire.',
+      {cta:{label:'Go to HQ',fn:()=>{}}});
   }
   if(S.customers>45&&!S.automated){
     const lost=Math.max(1,Math.round(S.customers*0.05));
     S.customers-=lost; feed('Manual systems buckled. '+lost+' customers walked.');
+    insight('churn_manual','Manual systems hit a wall',
+      'At '+(S.customers+lost)+' customers, doing everything by hand stops scaling. '+lost+
+      ' customer'+(lost===1?'':'s')+' fell through the cracks. Automation at the Tech Hub removes '+
+      'this ceiling entirely, this is the exact gap it closes.',
+      {cta:{label:'Tech Hub',fn:()=>{}}});
   }
   if(S.customers>0&&Math.random()<S.stats.reputation*0.008){
     const got=ri(1,3); S.customers+=got;
@@ -1106,10 +1146,40 @@ function dailySettle(){
   }
   S.cash+=profit;
   S.lastRevenue=revenue; S.lastExpenses=exp; S.lastProfit=profit;
-  if(profit>0){ S.profitStreak++; if(revenue>0){sCash();floatText(S.px,30,S.py,'+'+fmt(profit),'#5FA86B');} dailyProgress('profit'); } else { if(profit<0)floatText(S.px,28,S.py,fmt(profit),'#D4513B'); S.profitStreak=0; }
+  if(profit>0){
+    S.profitStreak++;
+    if(revenue>0){sCash();floatText(S.px,30,S.py,'+'+fmt(profit),'#5FA86B');}
+    dailyProgress('profit');
+    if(!S.insightSeen.first_profit){
+      insight('first_profit','First profitable day',
+        'Revenue '+fmt(revenue)+' minus expenses '+fmt(exp)+' leaves '+fmt(profit)+
+        ' in your pocket. That number, not revenue, is the real scoreboard. Everything from '+
+        'here is about growing that gap and making it survive bad days.');
+    }
+  } else {
+    if(profit<0){
+      floatText(S.px,28,S.py,fmt(profit),'#D4513B');
+      const gap=exp-revenue;
+      insight('loss_day','You lost money today',
+        'Revenue '+fmt(revenue)+' didn\u2019t cover expenses '+fmt(exp)+', a gap of '+fmt(gap)+
+        '. Either '+(S.customers<3?'you need more customers':'raise revenue (more customers, or a price closer to '+fmt(ss)+')')+
+        ', or cut overhead (fewer employees, or automate to drop costs 40%). One loss day is normal. '+
+        'A pattern of them is your runway counting down.',
+        {cta:{label:'Check Numbers',fn:()=>openPhoneTo('biz')}});
+    }
+    S.profitStreak=0;
+  }
   feed('Day '+S.day+' books: revenue '+fmt(revenue)+', expenses '+fmt(exp)+', profit '+fmt(profit)+'.');
   if(S.day===2)learn('Revenue vs Profit','Revenue is everything coming in. Profit is what\u2019s left after expenses. Profit is the real number.');
   if(profit<0&&S.cash<exp*5)learn('Runway','How many days your cash lasts at your current burn rate. Yours is getting short.');
+  if(profit<0&&exp>0&&S.cash<exp*3&&S.cash>0){
+    const days=Math.max(1,Math.floor(S.cash/exp));
+    insight('runway_critical','Runway warning',
+      'At today\u2019s burn rate of '+fmt(exp)+'/day, you have about '+days+' day'+(days===1?'':'s')+
+      ' of cash left before you hit zero. This is the moment founders either fix the business or run out '+
+      'of road. Raise revenue, cut a cost, or both, starting tomorrow.',
+      {cta:{label:'Check Numbers',fn:()=>openPhoneTo('biz')}});
+  }
   if(S.manager&&S.automated&&S.quest>=11&&!S.won){
     if(profit>0){ S.sovereignDays++;
       S.stats.sovereignty=clamp(S.stats.sovereignty+4,0,100);
@@ -1162,6 +1232,10 @@ function achieveSovereignty(){
   S.won=true; S.stage=5; S.quest=12;
   S.stats.sovereignty=100;
   stageBanner('SOVEREIGN','Build What You Own');
+  insight('sovereign_progress','You built something that doesn\u2019t need you',
+    S.biz.name+' made '+fmt(S.lastProfit)+' yesterday, and you didn\u2019t work it. That\u2019s the '+
+    'entire goal of this game and of a real business: not how much it makes, but whether it still '+
+    'works when you step away. Download your certificate. You earned it.');
   Music.setZone(6);
   const tb=BUILDINGS.find(b=>b.id==='tower');
   tb.label=S.biz.name+' Tower';
@@ -1182,10 +1256,12 @@ function victoryScene(){
    fmt(S.lastProfit)+'/day profit, hands off. You still own '+you.pct+'%.</p>'+
    '<p style="color:var(--turq)">The win condition was never wealth. It was sovereignty. <i>Yakoke</i> for building it the right way.</p>'+
    '<p style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#9A917F">Your name is on the Hall of Fame</p>'+
-   '<button class="btn" onclick="enterLegacy()">Enter Legacy Mode</button>';
+   '<button class="btn" onclick="downloadCertificate()" style="margin-bottom:8px">Download Certificate</button>'+
+   '<button class="btn ghost" onclick="enterLegacy()">Enter Legacy Mode</button>';
   $('bigModal').style.display='flex';
   sWin();
 }
+window.downloadCertificate=downloadCertificate;
 window.enterLegacy=function(){
   $('bigModal').style.display='none';
   S.legacy=true; S.quest=13;
@@ -1272,6 +1348,17 @@ function renderPhone(){
     sl.oninput=()=>{ S.biz.price=+sl.value; $('priceVal').textContent=fmt(S.biz.price); };
     sl.onchange=()=>{ saveGame(); learn('Pricing Power','You set the price. The market answers tomorrow morning.'); };
   }
+  if(pTab==='insight'){
+    c.innerHTML=S.insights.length?
+      '<div class="feedItem" style="border-left:3px solid var(--gold)">Every entry here is a real consequence '+
+      'of a real decision you made: the cause, the effect, and what it means next.</div>'+
+      S.insights.map(i=>
+        '<div class="glossEntry" style="border-left-color:'+i.color+'">'+
+        '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:'+i.color+';font-weight:700;margin-bottom:3px">'+
+        'DAY '+i.day+' \u00B7 '+i.icon+' '+i.label+'</div>'+
+        '<b>'+i.title+'</b><br>'+i.body+'</div>').join('')
+      :'<div class="feedItem">No insights yet. As your business hits real moments, profit, loss, your first investor, this tab fills in with what it meant and what to do next.</div>';
+  }
   if(pTab==='feed'){
     c.innerHTML=S.feed.length?S.feed.map(f=>'<div class="feedItem"><div class="t">DAY '+f.d+'</div>'+f.m+'</div>').join(''):'<div class="feedItem">Quiet so far. Make some noise.</div>';
   }
@@ -1317,7 +1404,9 @@ let goldenHour=0;
 const particles=[];
 const PERSON_H=16;
 
-let clouds=[],stars=null,sunDisc=null,moonDisc=null;
+let clouds=[],stars=null,sunDisc=null,moonDisc=null,sunGlow=null;
+let skyDome=null,skyCanvas=null,skyTex=null,fillLight=null,lastSkyKey='';
+const flags=[],birds=[];let fountainWater=null;
 
 /* =========================================================
    MINIMAP — 2D canvas overlay
@@ -1669,6 +1758,10 @@ function applyLowPower(){
   scene.traverse(o=>{ if(o.isMesh){o.castShadow=false;o.receiveShadow=false;
     if(o.material&&o.material.needsUpdate!==undefined)o.material.needsUpdate=true;} });
   streetLights.forEach(l=>{l.intensity=0;l.visible=false;});
+  if(fillLight)fillLight.intensity=0;
+  if(rainPoints){scene.remove(rainPoints);rainPoints=null;}
+  if(grainEl)grainEl.style.display='none';
+  if(sunGlow)sunGlow.forEach(sp=>sp.visible=false);
   toast('Performance mode on: smoother play on this device.','good');
 }
 function perfSample(DT){
@@ -1699,6 +1792,190 @@ function initMuteBtn(){
     sTap(); saveGame();
   };
   document.getElementById('hud').appendChild(b);
+}
+
+
+/* ---- sky gradient helpers ---- */
+function lerpHex(a,b,t){
+  const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);
+  const r=Math.round(lerp((pa>>16)&255,(pb>>16)&255,t)),
+        g=Math.round(lerp((pa>>8)&255,(pb>>8)&255,t)),
+        bl=Math.round(lerp(pa&255,pb&255,t));
+  return '#'+((r<<16)|(g<<8)|bl).toString(16).padStart(6,'0');
+}
+function paintSkyGrad(top,horizon){
+  if(!skyCanvas)return;
+  const x=skyCanvas.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,256);
+  g.addColorStop(0,top); g.addColorStop(0.62,horizon);
+  g.addColorStop(1,horizon);
+  x.fillStyle=g; x.fillRect(0,0,2,256);
+  skyTex.needsUpdate=true;
+}
+
+
+/* =========================================================
+   FOUNDER INSIGHTS — the "so what" feedback layer
+   Turns numbers the player already sees into a stated
+   cause -> effect -> next move. First occurrence of each
+   insight type gets a card; repeats go to the Insights tab
+   on the phone plus a toast.
+   ========================================================= */
+const INSIGHT_META={
+  loss_day:{icon:'\uD83D\uDCC9',color:'#D4513B',label:'Loss Day'},
+  churn_price:{icon:'\u2702\uFE0F',color:'#D4513B',label:'Price vs. Trust'},
+  churn_neglect:{icon:'\uD83D\uDC65',color:'#D4513B',label:'Service Gap'},
+  churn_manual:{icon:'\u2699\uFE0F',color:'#D4513B',label:'Capacity Ceiling'},
+  runway_critical:{icon:'\u23F3',color:'#D4513B',label:'Runway Warning'},
+  first_profit:{icon:'\uD83D\uDCC8',color:'#5FA86B',label:'First Profit'},
+  moat_active:{icon:'\uD83D\uDEE1\uFE0F',color:'#3FB8AF',label:'Community Moat'},
+  automation_on:{icon:'\u2699\uFE0F',color:'#52C7D9',label:'Systems Online'},
+  equity_sold:{icon:'\uD83E\uDD1D',color:'#E8C064',label:'Cap Table'},
+  sovereign_progress:{icon:'\uD83D\uDC51',color:'#E8C064',label:'Sovereignty'}
+};
+function insight(key,title,body,opts){
+  opts=opts||{};
+  const meta=INSIGHT_META[key]||{icon:'\uD83D\uDCA1',color:'#E8C064',label:'Insight'};
+  const entry={key,title,body,day:S.day,icon:meta.icon,color:meta.color,label:meta.label};
+  S.insights.unshift(entry); if(S.insights.length>30)S.insights.pop();
+  $('phoneDot').style.display='block';
+  const firstTime=!S.insightSeen[key];
+  if(firstTime){
+    S.insightSeen[key]=true;
+    showInsightCard(entry,opts.cta);
+  } else {
+    toast('<b style="color:'+meta.color+'">'+meta.icon+' '+title+'</b><br>'+body,
+      meta.color==='#5FA86B'?'good':(meta.color==='#D4513B'?'bad':'gold'));
+  }
+  saveGame();
+}
+function showInsightCard(entry,cta){
+  if(document.getElementById('insightCard'))return; // don't stack
+  const d=document.createElement('div');
+  d.id='insightCard';
+  d.style.cssText='position:fixed;left:50%;top:18%;transform:translate(-50%,-12px);'+
+    'z-index:36;width:min(360px,88vw);background:#1C1813;border:1px solid '+entry.color+';'+
+    'border-left:5px solid '+entry.color+';border-radius:14px;padding:16px 18px;'+
+    'box-shadow:0 10px 40px rgba(0,0,0,0.5);pointer-events:auto;'+
+    'font-family:Inter,sans-serif;color:#F5EFE3;opacity:0;'+
+    'transition:opacity .35s,transform .35s';
+  d.innerHTML=
+    '<div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:'+entry.color+';font-weight:700;margin-bottom:6px">'+
+      entry.icon+' '+entry.label+'</div>'+
+    '<div style="font-family:Archivo,sans-serif;font-weight:900;font-size:17px;margin-bottom:6px">'+entry.title+'</div>'+
+    '<div style="font-size:13px;line-height:1.55;color:#CFC6B4;margin-bottom:12px">'+entry.body+'</div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<button id="insightDismiss" style="flex:1;background:#262119;border:1px solid #3F392E;color:#F5EFE3;'+
+        'font-weight:700;font-size:12.5px;border-radius:9px;padding:10px;font-family:inherit">Got it</button>'+
+      (cta?'<button id="insightCTA" style="flex:1;background:'+entry.color+';border:none;color:#14120F;'+
+        'font-weight:700;font-size:12.5px;border-radius:9px;padding:10px;font-family:inherit">'+cta.label+'</button>':'')+
+    '</div>';
+  document.body.appendChild(d);
+  requestAnimationFrame(()=>{d.style.opacity='1';d.style.transform='translate(-50%,0)';});
+  const close=()=>{ d.style.opacity='0'; d.style.transform='translate(-50%,-12px)'; setTimeout(()=>d.remove(),350); };
+  document.getElementById('insightDismiss').onclick=()=>{sTap();close();};
+  if(cta){
+    document.getElementById('insightCTA').onclick=()=>{
+      sTap(); close();
+      if(cta.fn)cta.fn();
+    };
+  }
+  setTimeout(close,9000);
+}
+function openPhoneTo(tab){
+  $('phone').style.display='flex'; $('phoneDot').style.display='none';
+  document.querySelectorAll('.pTab').forEach(x=>x.classList.remove('sel'));
+  const t=document.querySelector('.pTab[data-tab="'+tab+'"]');
+  if(t)t.classList.add('sel');
+  pTab=tab; renderPhone();
+}
+
+
+/* =========================================================
+   CERTIFICATE OF SOVEREIGNTY — downloadable record
+   ========================================================= */
+function buildCertificate(){
+  const c=document.createElement('canvas');
+  c.width=1200; c.height=850;
+  const x=c.getContext('2d');
+  // background
+  const g=x.createLinearGradient(0,0,0,850);
+  g.addColorStop(0,'#1c1813'); g.addColorStop(1,'#0e0c09');
+  x.fillStyle=g; x.fillRect(0,0,1200,850);
+  // gold border
+  x.strokeStyle='#E8C064'; x.lineWidth=10;
+  x.strokeRect(28,28,1144,794);
+  x.strokeStyle='rgba(232,192,100,0.4)'; x.lineWidth=2;
+  x.strokeRect(50,50,1100,750);
+  // header
+  x.textAlign='center';
+  x.fillStyle='#E8C064';
+  x.font='700 22px Arial'; x.textBaseline='alphabetic';
+  x.fillText('S O V E R E I G N   C I T Y',600,118);
+  x.font='900 64px Arial';
+  x.fillStyle='#F5EFE3';
+  x.fillText('CERTIFICATE OF SOVEREIGNTY',600,200);
+  // divider
+  x.strokeStyle='#E8C064'; x.lineWidth=2;
+  x.beginPath();x.moveTo(360,232);x.lineTo(840,232);x.stroke();
+  // body
+  x.font='400 22px Arial'; x.fillStyle='#CFC6B4';
+  x.fillText('This certifies that',600,300);
+  x.font='900 56px Arial'; x.fillStyle='#E8C064';
+  x.fillText(S.founder.name,600,370);
+  x.font='400 22px Arial'; x.fillStyle='#CFC6B4';
+  x.fillText('founded and built',600,420);
+  x.font='900 48px Arial'; x.fillStyle='#F5EFE3';
+  x.fillText(S.biz.name,600,485);
+  const ind=INDUSTRIES.find(i=>i.id===S.biz.industry)||INDUSTRIES[INDUSTRIES.length-1];
+  x.font='600 20px Arial'; x.fillStyle='#9A917F';
+  x.fillText(ind.name.toUpperCase(),600,518);
+  x.font='400 22px Arial'; x.fillStyle='#CFC6B4';
+  x.fillText('into a business that runs without them',600,565);
+  x.font='700 26px Arial'; x.fillStyle='#3FB8AF';
+  x.fillText('BUILD WHAT YOU OWN',600,610);
+  // stats row
+  const you=S.equity.find(e=>e.who==='You');
+  const stats=[
+    ['DAY ACHIEVED',String(S.day)],
+    ['CUSTOMERS',String(S.customers)],
+    ['DAILY PROFIT',fmt(S.lastProfit)],
+    ['OWNERSHIP',you.pct+'%']
+  ];
+  const sw=1100/stats.length;
+  stats.forEach((s,i)=>{
+    const cx=70+sw*i+sw/2;
+    x.font='900 34px Arial'; x.fillStyle='#E8C064';
+    x.fillText(s[1],cx,690);
+    x.font='600 14px Arial'; x.fillStyle='#9A917F';
+    x.fillText(s[0],cx,716);
+  });
+  // footer
+  x.font='400 16px Arial'; x.fillStyle='#6B6354';
+  x.fillText('Sovereign Shield Technologies LLC  \u00B7  Ada, Oklahoma  \u00B7  Halito, Chokma, Yakoke',600,790);
+  return c;
+}
+function downloadCertificate(){
+  const c=buildCertificate();
+  const a=document.createElement('a');
+  a.download=(S.biz.name.replace(/[^a-z0-9]+/gi,'_')||'sovereign_city')+'_certificate.png';
+  a.href=c.toDataURL('image/png');
+  a.click();
+  sCash();
+  toast('Certificate downloaded. That\u2019s yours, forever.','gold');
+}
+
+
+/* ---- animated film grain (throttled to ~12fps for cheapness) ---- */
+let grainEl=null,grainTimer=0;
+function updateGrain(DT){
+  if(!grainEl)grainEl=document.getElementById('filmGrain');
+  if(!grainEl)return;
+  grainTimer+=DT;
+  if(grainTimer>0.08){
+    grainTimer=0;
+    grainEl.style.transform='translate('+rnd(-2,2)+'%,'+rnd(-2,2)+'%)';
+  }
 }
 
 function initThree(){
@@ -1733,6 +2010,23 @@ function initThree(){
   moonDisc=new THREE.Mesh(new THREE.CircleGeometry(30,24),
     new THREE.MeshBasicMaterial({color:0xdfe8ff,fog:false,transparent:true,opacity:0.9}));
   scene.add(moonDisc);
+  // sun bloom: stacked additive glow sprites for a cinematic halo
+  const glowCanvas=document.createElement('canvas'); glowCanvas.width=glowCanvas.height=128;
+  const gctx=glowCanvas.getContext('2d');
+  const grad=gctx.createRadialGradient(64,64,0,64,64,64);
+  grad.addColorStop(0,'rgba(255,244,210,0.9)');
+  grad.addColorStop(0.4,'rgba(255,220,160,0.35)');
+  grad.addColorStop(1,'rgba(255,200,120,0)');
+  gctx.fillStyle=grad; gctx.fillRect(0,0,128,128);
+  const glowTex=new THREE.CanvasTexture(glowCanvas);
+  sunGlow=[];
+  [[260,0.9],[520,0.5],[900,0.28]].forEach(([scale,op])=>{
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({
+      map:glowTex,blending:THREE.AdditiveBlending,transparent:true,
+      depthWrite:false,depthTest:false,fog:false,opacity:op}));
+    sp.scale.set(scale,scale,1); sp.renderOrder=-5;
+    scene.add(sp); sunGlow.push(sp);
+  });
   // drifting clouds
   const cloudMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.5,fog:false,depthWrite:false});
   for(let i=0;i<7;i++){
@@ -1758,6 +2052,25 @@ function initThree(){
   starGeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
   stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xffffff,size:3.2,transparent:true,opacity:0,fog:false,sizeAttenuation:false}));
   scene.add(stars);
+  // gradient sky dome (replaces flat background as the visible sky)
+  skyCanvas=document.createElement('canvas'); skyCanvas.width=2; skyCanvas.height=256;
+  skyTex=new THREE.CanvasTexture(skyCanvas);
+  paintSkyGrad('#6fa3d8','#cfe3ee');
+  skyDome=new THREE.Mesh(new THREE.SphereGeometry(2300,24,16),
+    new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide,fog:false,depthWrite:false}));
+  skyDome.renderOrder=-10;
+  scene.add(skyDome);
+  // cool fill light opposite the sun: makes characters pop
+  fillLight=new THREE.DirectionalLight(0x9ab8ff,0.22);
+  scene.add(fillLight); scene.add(fillLight.target);
+  // cinematic vignette overlay (pure CSS, zero GPU cost)
+  if(!document.getElementById('vignette')){
+    const v=document.createElement('div');
+    v.id='vignette';
+    v.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:5;'+
+      'background:radial-gradient(ellipse at center,transparent 52%,rgba(10,8,5,0.34) 100%)';
+    document.body.appendChild(v);
+  }
   buildCity();
   buildStreetLights();
   initMinimap();
@@ -1871,6 +2184,117 @@ function updateLabelSprite(sp,text,color){
   sp.material.map.needsUpdate=true;
 }
 
+
+/* ---- ground-contact AO decals (cheap "grounded" realism) ---- */
+let aoTex=null;
+function getAOTexture(){
+  if(aoTex)return aoTex;
+  const c=document.createElement('canvas'); c.width=c.height=128;
+  const x=c.getContext('2d');
+  const g=x.createRadialGradient(64,64,8,64,64,64);
+  g.addColorStop(0,'rgba(0,0,0,0.50)');
+  g.addColorStop(0.65,'rgba(0,0,0,0.20)');
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=g; x.fillRect(0,0,128,128);
+  aoTex=new THREE.CanvasTexture(c);
+  return aoTex;
+}
+function addAO(x,z,w,d){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),
+    new THREE.MeshBasicMaterial({map:getAOTexture(),transparent:true,depthWrite:false}));
+  m.rotation.x=-Math.PI/2; m.position.set(x,0.72,z);
+  scene.add(m);
+}
+
+
+/* ---- curbs: raised edge between road and sidewalk, gapped at intersections ---- */
+function buildCurbs(){
+  const curbMat=new THREE.MeshPhongMaterial({color:0x9a958a,shininess:10,specular:0x333028});
+  function seg(x,y,z,w,h,d){
+    const c=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),curbMat);
+    c.position.set(x,y,z); c.castShadow=true; c.receiveShadow=true;
+    scene.add(c);
+  }
+  // horizontal road (z=800): curb runs along x, gaps at the two intersections
+  [765,835].forEach(zc=>{
+    [[0,760],[840,1560],[1640,2400]].forEach(([a,b])=>{
+      seg((a+b)/2,1.2,zc,b-a,2.4,2.2);
+    });
+  });
+  // vertical roads (x=800,1600): curb runs along z, gap at z=760..840
+  [800,1600].forEach(rx=>{
+    [-35,35].forEach(off=>{
+      [[0,760],[840,1600]].forEach(([a,b])=>{
+        seg(rx+off,1.2,(a+b)/2,2.2,2.4,b-a);
+      });
+    });
+  });
+}
+
+
+/* ---- power lines: sagging cable between two points ---- */
+function addPowerLine(x1,y1,z1,x2,y2,z2){
+  const mid=new THREE.Vector3((x1+x2)/2,Math.min(y1,y2)-7,(z1+z2)/2);
+  const curve=new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(x1,y1,z1),mid,new THREE.Vector3(x2,y2,z2));
+  const geo=new THREE.BufferGeometry().setFromPoints(curve.getPoints(10));
+  scene.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x1c1a16})));
+}
+
+
+/* ---- neon storefront signage (lit at night) ---- */
+const neonSigns=[];
+function addNeonSign(x,y,z,text,color){
+  const c=document.createElement('canvas'); c.width=256; c.height=96;
+  const cx=c.getContext('2d');
+  cx.font='900 50px Arial'; cx.textAlign='center'; cx.textBaseline='middle';
+  cx.shadowColor=color; cx.shadowBlur=26;
+  cx.fillStyle=color;
+  cx.fillText(text,128,50); cx.fillText(text,128,50);
+  const mat=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,opacity:0});
+  const sp=new THREE.Sprite(mat); sp.scale.set(40,15,1); sp.position.set(x,y,z);
+  scene.add(sp); neonSigns.push(sp);
+}
+
+
+/* ---- rain weather: particles + sky darkening during the 'rain' event ---- */
+let rainPoints=null,rainOpacity=0;
+const RAIN_N=420,RAIN_SPAN=180,RAIN_H=140;
+function buildRain(){
+  const g=new THREE.BufferGeometry();
+  const pos=new Float32Array(RAIN_N*3);
+  for(let i=0;i<RAIN_N;i++){
+    pos[i*3]=rnd(-RAIN_SPAN,RAIN_SPAN);
+    pos[i*3+1]=rnd(0,RAIN_H);
+    pos[i*3+2]=rnd(-RAIN_SPAN,RAIN_SPAN);
+  }
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  rainPoints=new THREE.Points(g,new THREE.PointsMaterial({
+    color:0xbcd4e8,size:1.8,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true}));
+  rainPoints.renderOrder=5;
+  scene.add(rainPoints);
+}
+function updateRain(DT){
+  if(!rainPoints)return;
+  const active=S&&S.event==='rain';
+  rainOpacity=lerp(rainOpacity,active?0.5:0,DT*2);
+  rainPoints.material.opacity=rainOpacity;
+  if(rainOpacity<0.01){ rainPoints.visible=false; return; }
+  rainPoints.visible=true;
+  rainPoints.position.set(playerPos.x,0,playerPos.z);
+  const pos=rainPoints.geometry.attributes.position.array;
+  const fall=220*DT;
+  for(let i=0;i<RAIN_N;i++){
+    pos[i*3+1]-=fall;
+    if(pos[i*3+1]<0){
+      pos[i*3+1]=RAIN_H;
+      pos[i*3]=rnd(-RAIN_SPAN,RAIN_SPAN);
+      pos[i*3+2]=rnd(-RAIN_SPAN,RAIN_SPAN);
+    }
+  }
+  rainPoints.geometry.attributes.position.needsUpdate=true;
+}
+
 function buildCity(){
   // ground per zone (textured, receives shadows)
   ZONES.forEach(zo=>{
@@ -1878,7 +2302,7 @@ function buildCity(){
     const tex=groundTexture(zo.ground,kind);
     tex.repeat.set(10,10);
     const g=new THREE.Mesh(new THREE.PlaneGeometry(ZW,ZH),
-      new THREE.MeshLambertMaterial({map:tex}));
+      new THREE.MeshPhongMaterial({map:tex,shininess:kind==='plaza'?20:6,specular:0x222018}));
     g.rotation.x=-Math.PI/2;
     g.position.set(zo.x+ZW/2,0,zo.y+ZH/2);
     g.receiveShadow=true;
@@ -1899,12 +2323,12 @@ function buildCity(){
   // roads (textured asphalt) + sidewalks + crosswalks
   const asphalt=groundTexture(0x232019,'asphalt'); asphalt.repeat.set(24,1);
   const asphaltV=groundTexture(0x232019,'asphalt'); asphaltV.repeat.set(1,16);
-  const roadMatH=new THREE.MeshLambertMaterial({map:asphalt});
-  const roadMatV=new THREE.MeshLambertMaterial({map:asphaltV});
+  const roadMatH=new THREE.MeshPhongMaterial({map:asphalt,shininess:34,specular:0x3a4048});
+  const roadMatV=new THREE.MeshPhongMaterial({map:asphaltV,shininess:34,specular:0x3a4048});
   const walkTex=groundTexture(0x6e6a60,'plaza'); walkTex.repeat.set(40,1);
   const walkTexV=groundTexture(0x6e6a60,'plaza'); walkTexV.repeat.set(1,28);
-  const walkMatH=new THREE.MeshLambertMaterial({map:walkTex});
-  const walkMatV=new THREE.MeshLambertMaterial({map:walkTexV});
+  const walkMatH=new THREE.MeshPhongMaterial({map:walkTex,shininess:14,specular:0x2a2824});
+  const walkMatV=new THREE.MeshPhongMaterial({map:walkTexV,shininess:14,specular:0x2a2824});
   const r1=new THREE.Mesh(new THREE.PlaneGeometry(W,70),roadMatH);
   r1.rotation.x=-Math.PI/2; r1.position.set(W/2,0.4,800); r1.receiveShadow=true; scene.add(r1);
   [765,835].forEach(sz=>{
@@ -1921,6 +2345,8 @@ function buildCity(){
       sw.receiveShadow=true; scene.add(sw);
     });
   });
+  buildCurbs();
+  buildRain();
   // crosswalk stripes at the two intersections
   const cwMat=new THREE.MeshBasicMaterial({color:0xd8d2c4});
   [800,1600].forEach(ix=>{
@@ -1955,8 +2381,9 @@ function buildCity(){
     else if(b.id==='tower') h=520;
     else h=rnd(zo.bh[0],zo.bh[1]);
     b.h3=h;
+    addAO(b.x+b.w/2,b.y+b.d/2,b.w*1.4,b.d*1.4);
     const tex=makeFacadeTexture(b.c,0.35);
-    const mat=new THREE.MeshLambertMaterial({map:tex,emissiveMap:tex,emissive:new THREE.Color(0xffc878),emissiveIntensity:0});
+    const mat=new THREE.MeshPhongMaterial({map:tex,emissiveMap:tex,emissive:new THREE.Color(0xffc878),emissiveIntensity:0,shininess:16,specular:0x44403a});
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.w,h,b.d),mat);
     mesh.position.set(b.x+b.w/2,h/2,b.y+b.d/2);
     mesh.castShadow=true; mesh.receiveShadow=true;
@@ -1966,6 +2393,19 @@ function buildCity(){
       new THREE.MeshBasicMaterial({color:new THREE.Color(zo.accent)}));
     roof.position.set(b.x+b.w/2,h+2,b.y+b.d/2);
     scene.add(roof);
+    // storefront door + colored awning for street-level zones
+    if(!b.small&&!b.tower&&(b.z===1||b.z===2||b.z===4)){
+      const door=new THREE.Mesh(new THREE.PlaneGeometry(16,26),
+        new THREE.MeshLambertMaterial({color:0x1c1813}));
+      door.position.set(b.x+b.w/2,13,b.y+b.d+0.6);
+      scene.add(door);
+      const awnCols=[0xC96F4A,0x3FB8AF,0xE8C064,0x5E7C99];
+      const awn=new THREE.Mesh(new THREE.BoxGeometry(Math.min(b.w*0.7,120),3,16),
+        new THREE.MeshLambertMaterial({color:awnCols[(b.x+b.z)%4]}));
+      awn.position.set(b.x+b.w/2,34,b.y+b.d+8);
+      awn.rotation.x=0.28; awn.castShadow=true;
+      scene.add(awn);
+    }
     // rooftop AC units (not on the small board or the tower)
     if(!b.small&&!b.tower){
       for(let u=0;u<ri(1,2);u++){
@@ -1992,6 +2432,12 @@ function buildCity(){
     b.mesh=mesh; b.roof=roof; b.labelSprite=sp; b.mat=mat;
     buildingMeshes[b.id]={mesh,roof,sp};
   });
+  // neon storefront signage on a handful of street-level buildings
+  [['corner','OPEN','#F2A33C'],['adagency','ADS','#3FB8AF'],['cowork','CO-WORK','#C96F4A'],
+   ['cmarket','MARKET','#E8C064'],['clinic','CLINIC','#5FA86B']].forEach(([id,txt,col])=>{
+    const b=BUILDINGS.find(b=>b.id===id); if(!b)return;
+    addNeonSign(b.x+b.w/2,b.h3+14,b.y+b.d+1,txt,col);
+  });
   // empty lot starts flat: shrink it
   setHQEmpty();
   // tower starts as low construction (geometry is full 520, scaled down)
@@ -2001,12 +2447,26 @@ function buildCity(){
   tw.labelSprite.position.y=86;
   // streetlamps along roads
   const poleMat=new THREE.MeshLambertMaterial({color:0x3a352c});
+  let prevX1=null,prevX2=null;
   for(let x=120;x<W;x+=260){
-    [770,830].forEach(z=>addLamp(x,z,poleMat));
+    addLamp(x,770,poleMat); addLamp(x,830,poleMat);
+    if(prevX1!==null){
+      addPowerLine(prevX1,31,770,x,31,770);
+      addPowerLine(prevX2,31,830,x,31,830);
+    }
+    prevX1=x; prevX2=x;
   }
+  let prevZA=null,prevZB=null,prevZC=null,prevZD=null;
   for(let z=120;z<H;z+=260){
-    [770,830].forEach(dx=>{addLamp(800+(dx-800),z,poleMat);});
+    addLamp(770,z,poleMat); addLamp(830,z,poleMat);
     addLamp(1570,z,poleMat); addLamp(1630,z,poleMat);
+    if(prevZA!==null){
+      addPowerLine(770,31,prevZA,770,31,z);
+      addPowerLine(830,31,prevZB,830,31,z);
+      addPowerLine(1570,31,prevZC,1570,31,z);
+      addPowerLine(1630,31,prevZD,1630,31,z);
+    }
+    prevZA=z;prevZB=z;prevZC=z;prevZD=z;
   }
   // trees in zones 1 & 4
   [1,4].forEach(zid=>{
@@ -2018,10 +2478,10 @@ function buildCity(){
   for(let i=0;i<5;i++){
     const g=new THREE.Group();
     const body=new THREE.Mesh(new THREE.BoxGeometry(26,8,13),
-      new THREE.MeshLambertMaterial({color:carCols[i%carCols.length]}));
+      new THREE.MeshPhongMaterial({color:carCols[i%carCols.length],shininess:120,specular:0xffffff}));
     body.position.y=7;
     const cab=new THREE.Mesh(new THREE.BoxGeometry(13,6,11),
-      new THREE.MeshLambertMaterial({color:0x222831}));
+      new THREE.MeshPhongMaterial({color:0x222831,shininess:90,specular:0xaaaacc}));
     cab.position.set(-1,13,0);
     body.castShadow=true; cab.castShadow=true;
     g.add(body,cab);
@@ -2039,6 +2499,8 @@ function buildCity(){
   buildGoose();
   // founders commons plots
   buildPlots();
+  // street furniture, stalls, fountain, flags, birds
+  buildProps();
   // player + npcs
   playerGroup=makePerson(SKINS[2],FITS[0]); scene.add(playerGroup.group);
   playerParts=playerGroup;
@@ -2208,14 +2670,147 @@ function addLamp(x,z,poleMat){
   streetLampMats.push(bulbMat); lampGlows.push(glow.material);
 }
 function addTree(x,z){
-  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(2.4,3,14,6),
+  const s=rnd(0.8,1.3);
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(2.2*s,3*s,15*s,6),
     new THREE.MeshLambertMaterial({color:0x5a4630}));
-  trunk.position.set(x,7,z); trunk.castShadow=true;
-  const crown=new THREE.Mesh(new THREE.SphereGeometry(11,8,8),
-    new THREE.MeshLambertMaterial({color:0x4e6b3a}));
-  crown.position.set(x,21,z); crown.castShadow=true;
-  scene.add(trunk,crown);
+  trunk.position.set(x,7.5*s,z); trunk.castShadow=true;
+  scene.add(trunk);
+  // clustered canopy: 3 spheres, slight hue variance per tree
+  const greens=[0x4e6b3a,0x5a7a42,0x46613a,0x6b8248];
+  const base=greens[ri(0,greens.length-1)];
+  [[0,21,0,11],[6,17,3,7.5],[-5,18,-3,8]].forEach(([ox,oy,oz,r])=>{
+    const c=new THREE.Mesh(new THREE.SphereGeometry(r*s,7,7),
+      new THREE.MeshLambertMaterial({color:base}));
+    c.position.set(x+ox*s,oy*s,z+oz*s); c.castShadow=true;
+    scene.add(c);
+  });
 }
+function addBush(x,z){
+  const b=new THREE.Mesh(new THREE.SphereGeometry(rnd(4,7),6,6),
+    new THREE.MeshLambertMaterial({color:0x55703e}));
+  b.position.set(x,3.5,z); b.scale.y=0.7;
+  scene.add(b);
+}
+
+/* =========================================================
+   STREET PROPS — the lived-in layer
+   ========================================================= */
+function buildProps(){
+  const wood=new THREE.MeshLambertMaterial({color:0x6a5436});
+  const dark=new THREE.MeshLambertMaterial({color:0x2a2620});
+  // benches along the main horizontal road sidewalks
+  [[300,745],[640,745],[1050,745],[1380,745],[300,856],[980,856],[1340,856],[1900,856]].forEach(([x,z])=>{
+    const seat=new THREE.Mesh(new THREE.BoxGeometry(26,2.5,8),wood);
+    seat.position.set(x,8,z); seat.castShadow=true;
+    const back=new THREE.Mesh(new THREE.BoxGeometry(26,8,2),wood);
+    back.position.set(x,13,z+(z<800?-3:3));
+    const l1=new THREE.Mesh(new THREE.BoxGeometry(2.5,8,7),dark); l1.position.set(x-10,4,z);
+    const l2=new THREE.Mesh(new THREE.BoxGeometry(2.5,8,7),dark); l2.position.set(x+10,4,z);
+    scene.add(seat,back,l1,l2);
+  });
+  // fire hydrants — small, red, charming
+  const red=new THREE.MeshLambertMaterial({color:0xb33a2a});
+  [[150,860],[700,742],[1180,860],[1700,742],[2080,860]].forEach(([x,z])=>{
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(2.6,3,8,8),red);
+    body.position.set(x,4,z);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(2.7,8,6),red);
+    cap.position.set(x,8.4,z);
+    scene.add(body,cap);
+  });
+  // trash cans
+  const can=new THREE.MeshLambertMaterial({color:0x3a4046});
+  [[420,742],[880,858],[1480,742],[1820,858],[760,1500],[1660,300]].forEach(([x,z])=>{
+    const c=new THREE.Mesh(new THREE.CylinderGeometry(4,3.4,10,8),can);
+    c.position.set(x,5,z); scene.add(c);
+  });
+  // planters with greenery — Main Street + Capital Row polish
+  const stone=new THREE.MeshLambertMaterial({color:0x7a756a});
+  [[900,920],[1200,920],[1500,920],[940,250],[1180,420],[1430,250]].forEach(([x,z])=>{
+    const p=new THREE.Mesh(new THREE.BoxGeometry(16,8,16),stone);
+    p.position.set(x,4,z);
+    const g=new THREE.Mesh(new THREE.SphereGeometry(7,7,6),
+      new THREE.MeshLambertMaterial({color:0x5a7a42}));
+    g.position.set(x,11,z); g.scale.y=0.75;
+    scene.add(p,g);
+  });
+  // bushes scattered through The Grind, Sovereign District, Skyline
+  for(let i=0;i<8;i++)addBush(rnd(80,720),rnd(880,1540));
+  for(let i=0;i<8;i++)addBush(rnd(80,720),rnd(80,720));
+  for(let i=0;i<5;i++)addBush(rnd(1680,2340),rnd(880,1540));
+  // MARKET STALLS — striped canopies in front of City Market
+  const stripeCols=[[0xC96F4A,0xF5EFE3],[0x3FB8AF,0xF5EFE3],[0xE8C064,0x14120F]];
+  [[960,1150],[1050,1150],[1140,1150]].forEach(([x,z],i)=>{
+    const post=new THREE.MeshLambertMaterial({color:0x5a4a32});
+    [[-14,-10],[14,-10],[-14,10],[14,10]].forEach(([ox,oz])=>{
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(1,1,18,5),post);
+      p.position.set(x+ox,9,z+oz); scene.add(p);
+    });
+    // striped canopy texture
+    const cc=document.createElement('canvas'); cc.width=64; cc.height=32;
+    const cx2=cc.getContext('2d');
+    const [a,b2]=stripeCols[i];
+    for(let s2=0;s2<8;s2++){
+      cx2.fillStyle='#'+(s2%2?a:b2).toString(16).padStart(6,'0');
+      cx2.fillRect(s2*8,0,8,32);
+    }
+    const canopy=new THREE.Mesh(new THREE.BoxGeometry(36,2.5,26),
+      new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cc)}));
+    canopy.position.set(x,19,z); canopy.rotation.x=0.08; canopy.castShadow=true;
+    scene.add(canopy);
+    // crates of goods
+    const crate=new THREE.Mesh(new THREE.BoxGeometry(10,7,8),
+      new THREE.MeshLambertMaterial({color:0x8a6a3a}));
+    crate.position.set(x+rnd(-8,8),3.5,z+rnd(-4,4)); scene.add(crate);
+  });
+  // FLAGS on the Council Hall and the Tower
+  [[255,18,140],[2000,18,1000]].forEach(([x,zoff,z],fi)=>{
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(1,1,56,6),
+      new THREE.MeshLambertMaterial({color:0x9a958a}));
+    pole.position.set(x,28,z-6);
+    const flag=new THREE.Mesh(new THREE.PlaneGeometry(24,14),
+      new THREE.MeshLambertMaterial({color:fi===0?0x3FB8AF:0xE8C064,side:THREE.DoubleSide}));
+    flag.position.set(x+12,48,z-6);
+    scene.add(pole,flag);
+    flags.push({m:flag,phase:rnd(0,6)});
+  });
+  // FOUNTAIN PLAZA — Sovereign District centerpiece
+  const basin=new THREE.Mesh(new THREE.CylinderGeometry(30,32,8,18),
+    new THREE.MeshLambertMaterial({color:0x8a8378}));
+  basin.position.set(395,4,345); basin.castShadow=true;
+  // rippled water surface (rotating)
+  const wc=document.createElement('canvas'); wc.width=wc.height=128;
+  const wx=wc.getContext('2d');
+  wx.fillStyle='#2E8B84'; wx.fillRect(0,0,128,128);
+  wx.strokeStyle='rgba(255,255,255,0.35)'; wx.lineWidth=2;
+  for(let r2=12;r2<70;r2+=14){wx.beginPath();wx.arc(64,64,r2,0,Math.PI*2);wx.stroke();}
+  fountainWater=new THREE.Mesh(new THREE.CircleGeometry(27,20),
+    new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(wc),transparent:true,opacity:0.85}));
+  fountainWater.rotation.x=-Math.PI/2; fountainWater.position.set(395,8.4,345);
+  const column=new THREE.Mesh(new THREE.CylinderGeometry(3.4,4.4,16,8),
+    new THREE.MeshLambertMaterial({color:0x9a958a}));
+  column.position.set(395,16,345);
+  const orb=new THREE.Mesh(new THREE.SphereGeometry(5,10,8),
+    new THREE.MeshLambertMaterial({color:0x3FB8AF,emissive:0x1a4f4a,emissiveIntensity:0.5}));
+  orb.position.set(395,27,345);
+  scene.add(basin,fountainWater,column,orb);
+  // BIRDS — small flocks crossing the sky
+  for(let i=0;i<3;i++){
+    const bc=document.createElement('canvas'); bc.width=64; bc.height=32;
+    const bx=bc.getContext('2d');
+    bx.strokeStyle='rgba(20,18,15,0.8)'; bx.lineWidth=3; bx.lineCap='round';
+    [[16,16],[34,12],[50,18]].forEach(([px,py])=>{
+      bx.beginPath(); bx.moveTo(px-7,py); bx.quadraticCurveTo(px-2,py-6,px,py);
+      bx.quadraticCurveTo(px+2,py-6,px+7,py); bx.stroke();
+    });
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({
+      map:new THREE.CanvasTexture(bc),transparent:true,depthWrite:false}));
+    sp.scale.set(46,23,1);
+    sp.position.set(rnd(0,W),rnd(220,330),rnd(0,H));
+    scene.add(sp);
+    birds.push({sp,vx:rnd(14,26)*(Math.random()<0.5?1:-1),vz:rnd(-6,6)});
+  }
+}
+
 function addMurals(){
   if(muralsAdded)return; muralsAdded=true;
   const cols=[0x3FB8AF,0xC96F4A,0xE8C064,0x8FA98B];
@@ -2286,9 +2881,10 @@ function paintFace(tex,skinHex){
 function makePerson(skinHex,fitHex){
   // Blocky R6-style avatar: box head + face decal, shirt torso, skin arms, dark pants
   const group=new THREE.Group();
-  const skin=new THREE.MeshLambertMaterial({color:new THREE.Color(skinHex)});
-  const fit=new THREE.MeshLambertMaterial({color:new THREE.Color(fitHex)});
-  const pants=new THREE.MeshLambertMaterial({color:0x2e3440});
+  const skin=new THREE.MeshPhongMaterial({color:new THREE.Color(skinHex),shininess:16,specular:0x5a4c3e});
+  const fit=new THREE.MeshPhongMaterial({color:new THREE.Color(fitHex),shininess:9,specular:0x2c2620});
+  const pants=new THREE.MeshPhongMaterial({color:0x2e3440,shininess:5,specular:0x18181c});
+  const shoeMat=new THREE.MeshPhongMaterial({color:0xF5EFE3,shininess:34,specular:0x999488});
   // torso: 8 wide x 8 tall x 4 deep, top of legs at y=8
   const torso=new THREE.Mesh(new THREE.BoxGeometry(8,8,4),fit);
   torso.position.y=12;
@@ -2299,19 +2895,23 @@ function makePerson(skinHex,fitHex){
   const head=new THREE.Mesh(new THREE.BoxGeometry(5.6,5.6,5.6),headMats);
   head.position.y=19.2;
   // limbs swing from joints (pivot groups), Roblox-style
-  function limb(mat){
+  function limb(mat,isLeg){
     const pivot=new THREE.Group();
     const m=new THREE.Mesh(new THREE.BoxGeometry(3.4,8,3.4),mat);
     m.position.y=-4; pivot.add(m);
+    if(isLeg){
+      const shoe=new THREE.Mesh(new THREE.BoxGeometry(3.9,2.6,5.4),shoeMat);
+      shoe.position.set(0,-7.6,1.0); pivot.add(shoe);
+    }
     return pivot;
   }
-  const lArm=limb(skin); lArm.position.set(-5.7,16,0);
-  const rArm=limb(skin); rArm.position.set(5.7,16,0);
-  const lLeg=limb(pants); lLeg.position.set(-2.1,8,0);
-  const rLeg=limb(pants); rLeg.position.set(2.1,8,0);
-  const shadow=new THREE.Mesh(new THREE.CircleGeometry(6,12),
-    new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.16}));
-  shadow.rotation.x=-Math.PI/2; shadow.position.y=0.3;
+  const lArm=limb(skin,false); lArm.position.set(-5.7,16,0);
+  const rArm=limb(skin,false); rArm.position.set(5.7,16,0);
+  const lLeg=limb(pants,true); lLeg.position.set(-2.1,8,0);
+  const rLeg=limb(pants,true); rLeg.position.set(2.1,8,0);
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(7.5,16),
+    new THREE.MeshBasicMaterial({map:getAOTexture(),color:0x000000,transparent:true,opacity:0.55,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2; shadow.position.y=0.32;
   // skateboard (hidden until skating)
   const board=new THREE.Group();
   const deck=new THREE.Mesh(new THREE.BoxGeometry(13,1.2,5),
@@ -2398,7 +2998,16 @@ function updateSky(){
   // visible sun + moon discs on the sky
   sunDisc.position.set(playerPos.x+sdx*1800,Math.sin(ang)*1500+100,playerPos.z+900);
   sunDisc.lookAt(camera.position);
-  sunDisc.visible=Math.sin(ang)>-0.05&&!night;
+  const sunVisible=Math.sin(ang)>-0.05&&!night;
+  sunDisc.visible=sunVisible;
+  if(sunGlow){
+    const lowAngle=clamp(1-Math.sin(ang)/0.5,0,1); // brighter halo near horizon
+    sunGlow.forEach((sp,i)=>{
+      sp.position.copy(sunDisc.position);
+      sp.visible=sunVisible;
+      sp.material.opacity=[0.9,0.5,0.28][i]*(0.55+lowAngle*0.7)*(S&&(S.won||goldenHour>0)?1.4:1);
+    });
+  }
   moonDisc.position.set(playerPos.x-sdx*1800,-Math.sin(ang)*1300+260,playerPos.z+860);
   moonDisc.lookAt(camera.position);
   moonDisc.visible=night;
@@ -2412,6 +3021,29 @@ function updateSky(){
   streetLampMats.forEach(m=>m.color.setHex(lampOn?0xFFD080:0x554a30));
   lampGlows.forEach(m=>m.opacity=lampOn?0.85:0);
   streetLights.forEach(l=>l.intensity=lampOn?1.4:0);
+  neonSigns.forEach(s=>s.material.opacity=lampOn?0.95:0);
+  // gradient sky dome colors per phase
+  let topC,horC;
+  if(S&&(S.won||goldenHour>0)){topC='#8a5a16';horC='#e8c064';}
+  else if(h>=6&&h<8){const k=(h-6)/2;topC=lerpHex('#23306a','#6fa3d8',k);horC=lerpHex('#e8956a','#cfe3ee',k);}
+  else if(h>=8&&h<17){topC='#6fa3d8';horC='#cfe3ee';}
+  else if(h>=17&&h<20){const k=(h-17)/3;topC=lerpHex('#6fa3d8','#3a2c52',k);horC=lerpHex('#cfe3ee','#e2784a',k);}
+  else if(h>=20&&h<21){const k=h-20;topC=lerpHex('#3a2c52','#0a0f24',k);horC=lerpHex('#e2784a','#1c2742',k);}
+  else {topC='#0a0f24';horC='#1c2742';}
+  const skKey=topC+horC;
+  if(skKey!==lastSkyKey){lastSkyKey=skKey;paintSkyGrad(topC,horC);}
+  if(skyDome)skyDome.position.set(playerPos.x,0,playerPos.z);
+  scene.fog.color.set(horC); // horizon blends seamlessly into the dome
+  if(S&&S.event==='rain'){
+    sunLight.intensity*=0.55; hemiLight.intensity*=0.8;
+    horC=lerpHex(horC,'#5a6a78',0.45); topC=lerpHex(topC,'#3a4450',0.45);
+    if(skyDome){const k2=topC+horC; if(k2!==lastSkyKey){lastSkyKey=k2;paintSkyGrad(topC,horC);} scene.fog.color.set(horC);}
+  }
+  if(fillLight){
+    fillLight.intensity=night?0.10:0.22;
+    fillLight.position.set(playerPos.x-sdx*500,320,playerPos.z-320);
+    fillLight.target.position.set(playerPos.x,0,playerPos.z);
+    fillLight.target.updateMatrixWorld(); }
 }
 
 /* ---------------- INPUT ---------------- */
@@ -2565,7 +3197,8 @@ function loop(now){
     }
     // animate player
     const t=now/1000;
-    playerGroup.group.position.set(playerPos.x,skating?2.2:0,playerPos.z);
+    const idleBobP=moving?0:Math.sin(t*2.1)*0.34;
+    playerGroup.group.position.set(playerPos.x,(skating?2.2:0)+idleBobP,playerPos.z);
     playerGroup.group.rotation.y=playerYaw;
     playerGroup.group.rotation.x=skating?0.06:0;
     playerParts.board.visible=skating;
@@ -2614,7 +3247,8 @@ function loop(now){
           else { n.tx=n.hx; n.tz=n.hz; }
         }
       }
-      pm.group.position.set(n.x,0,n.z);
+      const idleBobN=nmoving?0:Math.sin(t*2.0+n.hx*0.07+n.hz*0.05)*0.3;
+      pm.group.position.set(n.x,idleBobN,n.z);
       // key NPCs idle-face player when close
       if(n.key&&!nmoving){
         const dpx=playerPos.x-n.x,dpz=playerPos.z-n.z;
@@ -2638,6 +3272,32 @@ function loop(now){
     clouds.forEach(cl=>{
       cl.position.x+=cl.userData.spd*DT;
       if(cl.position.x>W+200) cl.position.x=-200;
+    });
+    // flags flutter
+    flags.forEach(f=>{
+      f.phase+=DT*5;
+      f.m.rotation.y=Math.sin(f.phase)*0.22;
+      f.m.scale.x=1+Math.sin(f.phase*1.7)*0.08;
+    });
+    // fountain water spins, occasional sparkle drip
+    if(fountainWater){
+      fountainWater.rotation.z+=DT*0.4;
+      if(Math.random()<DT*1.6){
+        const m=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,1.2),
+          new THREE.MeshBasicMaterial({color:0x7FDBD4,transparent:true}));
+        m.position.set(395+rnd(-4,4),28,345+rnd(-4,4));
+        scene.add(m);
+        particles.push({m,vx:rnd(-10,10),vy:rnd(10,26),vz:rnd(-10,10),life:rnd(.5,.9)});
+        trimParticles();
+      }
+    }
+    // birds cross the sky
+    birds.forEach(b2=>{
+      b2.sp.position.x+=b2.vx*DT; b2.sp.position.z+=b2.vz*DT;
+      if(b2.sp.position.x>W+120)b2.sp.position.x=-120;
+      if(b2.sp.position.x<-120)b2.sp.position.x=W+120;
+      if(b2.sp.position.z>H+120)b2.sp.position.z=-120;
+      if(b2.sp.position.z<-120)b2.sp.position.z=H+120;
     });
     // the goose
     if(goose){
@@ -2697,6 +3357,8 @@ function loop(now){
   }
   perfSample(DT);
   updateFloats(DT);
+  updateRain(DT);
+  updateGrain(DT);
   // particles
   for(let i=particles.length-1;i>=0;i--){
     const p=particles[i]; p.life-=DT;
@@ -2824,6 +3486,8 @@ function startWorld(){
   if(S.daily===undefined)S.daily=null;
   if(S.townPlot===undefined)S.townPlot=null;
   if(S.muted===undefined)S.muted=false;
+  if(!S.insights)S.insights=[];
+  if(!S.insightSeen)S.insightSeen={};
   if(S.biz&&!S.biz.industry)S.biz.industry='services';
   buildNPCData(); buildNPCMeshes();
   applyFounderLook();
