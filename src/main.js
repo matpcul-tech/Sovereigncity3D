@@ -5,7 +5,7 @@ import { ac, tone, Music, sCash, sBig, sTap, ambientZone, setZoneAmbient, AC } f
 import { S, setState, freshState, QUESTS, saveGame, loadGame, dailyProgress, assignDaily, dailySettle, maybeChaos, progressPct, rel } from './state.js';
 import { toast, feed, dialogOpen, closeDialog, talkTo, openBoard, openLot, openMarket, openTechHub, openTower, openPlot, genericBuilding } from './dialog.js';
 import {
-  scene, camera, renderer, playerPos, playerGroup, playerParts, npcMeshes, questMarker,
+  scene, camera, composer, playerPos, playerGroup, playerParts, npcMeshes, questMarker,
   cars, clouds, goose, particles, goldenHour, setGoldenHour,
   spawnBurst, floatText, updateFloats, drawMinimap, drawTutorial, perfSample, updateSky,
   initThree, initMuteBtn, buildHQSign, setHQBuilt, setHQEmpty, addMurals, buildNPCMeshes,
@@ -330,7 +330,7 @@ function loop(now){
     updateSky();
     // hide lock sprites once unlocked
     ZONES.forEach(zo=>{ if(zo.lockSprite) zo.lockSprite.visible=S.stage<zo.unlock; });
-    renderer.render(scene,camera);
+    composer.render();
   drawMinimap();
   drawTutorial();
   }

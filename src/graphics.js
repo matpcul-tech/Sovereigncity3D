@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
 import { $, clamp, lerp, rnd, ri } from './util.js';
 import { W, H, ZW, ZH, ZONES, zoneAt, BUILDINGS, INDUSTRIES, SKINS, FITS, NPCS, npcById, PLOTS } from './worldData.js';
 import { ac, sBig, Music, sTap } from './audio.js';
@@ -9,8 +14,8 @@ import { getSupabase } from './supabase.js';
 /* =========================================================
    THREE.JS SCENE
    ========================================================= */
-export let renderer, scene, camera;
-let sunLight, hemiLight;
+export let renderer, scene, camera, composer;
+let sunLight, hemiLight, bloomPass;
 export const playerPos = { x: 560, z: 1180 };
 export let playerGroup = null, playerParts = null;
 export const npcMeshes = {}; // id -> {group, parts}
@@ -276,6 +281,8 @@ function applyLowPower() {
   sunLight.castShadow = false;
   renderer.setPixelRatio(1);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (composer) { composer.setPixelRatio(1); composer.setSize(window.innerWidth, window.innerHeight); }
+  if (bloomPass) bloomPass.enabled = false;
   scene.traverse(o => { if (o.isMesh) { o.castShadow = false; o.receiveShadow = false;
     if (o.material && o.material.needsUpdate !== undefined) o.material.needsUpdate = true; } });
   streetLights.forEach(l => { l.intensity = 0; l.visible = false; });
@@ -388,6 +395,13 @@ export function initThree() {
       'background:radial-gradient(ellipse at center,transparent 52%,rgba(10,8,5,0.34) 100%)';
     document.body.appendChild(v);
   }
+  // post-processing: ACES tonemapping (set above) + bloom for neon/emissive glow,
+  // finished with a gamma-correction pass so colors stay correct on screen
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.45, 0.55);
+  composer.addPass(bloomPass);
+  composer.addPass(new ShaderPass(GammaCorrectionShader));
   buildCity();
   buildStreetLights();
   initMinimap();
@@ -396,6 +410,7 @@ export function initThree() {
     renderer.setSize(window.innerWidth, window.innerHeight);
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    composer.setSize(window.innerWidth, window.innerHeight);
   });
 }
 
