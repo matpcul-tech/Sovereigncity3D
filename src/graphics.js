@@ -416,6 +416,22 @@ function paintSkyGrad(top, horizon) {
   x.fillStyle = g; x.fillRect(0, 0, 2, 256);
   skyTex.needsUpdate = true;
 }
+/* ---- cinematic vignette: cool edges deepen and a faint warm core
+   bleeds in as the city's neon lights take over at dusk/night ---- */
+let lastVignetteKey = '';
+function updateVignette(t) {
+  const key = t.toFixed(2);
+  if (key === lastVignetteKey) return;
+  lastVignetteKey = key;
+  const v = document.getElementById('vignette');
+  if (!v) return;
+  const edgeA = lerp(0.30, 0.62, t).toFixed(2);
+  const coreA = lerp(0, 0.10, t).toFixed(2);
+  const edge = lerpHex('#0a0805', '#160e22', t);
+  const er = parseInt(edge.slice(1, 3), 16), eg = parseInt(edge.slice(3, 5), 16), eb = parseInt(edge.slice(5, 7), 16);
+  v.style.background = 'radial-gradient(ellipse at center, rgba(255,176,96,' + coreA + ') 0%, transparent 46%, rgba(' +
+    er + ',' + eg + ',' + eb + ',' + edgeA + ') 100%)';
+}
 
 /* ---- procedural surface textures ---- */
 function noiseCanvas(base, grain, size) {
@@ -547,12 +563,13 @@ function buildCity() {
   // roads (textured asphalt) + sidewalks + crosswalks
   const asphalt = groundTexture(0x232019, 'asphalt'); asphalt.repeat.set(24, 1);
   const asphaltV = groundTexture(0x232019, 'asphalt'); asphaltV.repeat.set(1, 16);
-  const roadMatH = new THREE.MeshLambertMaterial({ map: asphalt });
-  const roadMatV = new THREE.MeshLambertMaterial({ map: asphaltV });
+  // Phong asphalt/pavement: subtle specular sheen for a glossy, rain-slicked feel
+  const roadMatH = new THREE.MeshPhongMaterial({ map: asphalt, specular: 0x303038, shininess: 22 });
+  const roadMatV = new THREE.MeshPhongMaterial({ map: asphaltV, specular: 0x303038, shininess: 22 });
   const walkTex = groundTexture(0x6e6a60, 'plaza'); walkTex.repeat.set(40, 1);
   const walkTexV = groundTexture(0x6e6a60, 'plaza'); walkTexV.repeat.set(1, 28);
-  const walkMatH = new THREE.MeshLambertMaterial({ map: walkTex });
-  const walkMatV = new THREE.MeshLambertMaterial({ map: walkTexV });
+  const walkMatH = new THREE.MeshPhongMaterial({ map: walkTex, specular: 0x282420, shininess: 8 });
+  const walkMatV = new THREE.MeshPhongMaterial({ map: walkTexV, specular: 0x282420, shininess: 8 });
   const r1 = new THREE.Mesh(new THREE.PlaneGeometry(W, 70), roadMatH);
   r1.rotation.x = -Math.PI / 2; r1.position.set(W / 2, 0.4, 800); r1.receiveShadow = true; scene.add(r1);
   [765, 835].forEach(sz => {
@@ -626,6 +643,11 @@ function buildCity() {
       awn.position.set(b.x + b.w / 2, 34, b.y + b.d + 8);
       awn.rotation.x = 0.28; awn.castShadow = true;
       scene.add(awn);
+      // colorful neon storefront sign above the awning
+      if (!b.lot && NEON_TEXT[b.id]) {
+        const ncol = NEON_COLS[(b.x + b.y) % NEON_COLS.length];
+        addNeonSign(b.x + b.w / 2, 44, b.y + b.d + 0.8, NEON_TEXT[b.id], ncol);
+      }
     }
     // rooftop AC units (not on the small board or the tower)
     if (!b.small && !b.tower) {
@@ -849,6 +871,64 @@ export async function recordFame() {
 }
 
 let lampGlows = [];
+// ground-level glow pools (wet-pavement reflections) and neon sign halos —
+// opacity driven by night/dusk progress in updateSky()
+const groundGlows = [];
+const neonGlows = [];
+let _glowTex = null;
+function glowTexture() {
+  if (_glowTex) return _glowTex;
+  const gc = document.createElement('canvas'); gc.width = gc.height = 64;
+  const gx = gc.getContext('2d');
+  const grad = gx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+  grad.addColorStop(0.4, 'rgba(255,255,255,0.4)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  gx.fillStyle = grad; gx.fillRect(0, 0, 64, 64);
+  _glowTex = new THREE.CanvasTexture(gc);
+  return _glowTex;
+}
+// colorful neon storefront signage — text + palette per building id
+const NEON_COLS = [0xFF3B6E, 0x3FE0FF, 0xFFD23F, 0x4CFF8F, 0xFF9A3F, 0xB14CFF];
+const NEON_TEXT = {
+  corner: 'OPEN', community: 'EVENTS', bank1: 'BANK', market: 'MARKET',
+  adagency: 'ADS', lawoffice: 'LAW', cowork: 'CO-WORK',
+  council: 'COUNCIL', cmarket: 'MARKET', language: 'LEARN', clinic: 'CLINIC'
+};
+function neonSignTexture(text, colHex) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 96;
+  const x = c.getContext('2d');
+  const col = '#' + colHex.toString(16).padStart(6, '0');
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.font = "bold 44px Arial, sans-serif";
+  x.shadowColor = col; x.shadowBlur = 22;
+  x.fillStyle = col; x.fillText(text, 128, 50);
+  x.shadowBlur = 6;
+  x.fillStyle = '#fff'; x.fillText(text, 128, 50);
+  return new THREE.CanvasTexture(c);
+}
+function addNeonSign(x, y, z, text, colHex) {
+  const w = 14 + text.length * 5.6;
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(w, w * 0.375),
+    new THREE.MeshBasicMaterial({ map: neonSignTexture(text, colHex), transparent: true, depthWrite: false, fog: false }));
+  sign.position.set(x, y, z);
+  scene.add(sign);
+  // additive glow halo behind the sign — bleeds light like neon at dusk/night
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: glowTexture(), color: colHex, transparent: true, depthWrite: false,
+    opacity: 0, blending: THREE.AdditiveBlending, fog: false }));
+  glow.scale.set(w * 1.4, w * 1.4 * 0.55, 1);
+  glow.position.set(x, y, z + 0.3);
+  scene.add(glow);
+  neonGlows.push(glow.material);
+  // soft pool of the sign's color reflected on the ground below
+  const refl = new THREE.Mesh(new THREE.PlaneGeometry(w * 1.1, w * 1.8),
+    new THREE.MeshBasicMaterial({ map: glowTexture(), color: colHex, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+  refl.rotation.x = -Math.PI / 2; refl.position.set(x, 0.66, z + w * 0.5);
+  scene.add(refl);
+  groundGlows.push(refl.material);
+}
 function addLamp(x, z, poleMat) {
   const pole = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 30, 6), poleMat);
   pole.position.set(x, 15, z); pole.castShadow = true;
@@ -865,6 +945,13 @@ function addLamp(x, z, poleMat) {
   glow.scale.set(42, 42, 1); glow.position.set(x, 31, z);
   scene.add(pole, bulb, glow);
   streetLampMats.push(bulbMat); lampGlows.push(glow.material);
+  // warm reflection pool on the wet pavement below the lamp
+  const refl = new THREE.Mesh(new THREE.PlaneGeometry(20, 56),
+    new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xFFC878, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+  refl.rotation.x = -Math.PI / 2; refl.position.set(x, 0.66, z);
+  scene.add(refl);
+  groundGlows.push(refl.material);
 }
 function addTree(x, z) {
   const s = rnd(0.8, 1.3);
@@ -1206,7 +1293,7 @@ export function spawnBurst(x, y, z, colHex) {
 
 /* ---------------- DAY/NIGHT ---------------- */
 const SKY_DAY = new THREE.Color(0x9bb8d4), SKY_DAWN = new THREE.Color(0xd9a06a),
-  SKY_DUSK = new THREE.Color(0xc4744e), SKY_NIGHT = new THREE.Color(0x121a2e),
+  SKY_DUSK = new THREE.Color(0xd9633e), SKY_NIGHT = new THREE.Color(0x0c1322),
   SKY_GOLD = new THREE.Color(0xd9a44e);
 const tmpC = new THREE.Color();
 export function updateSky() {
@@ -1239,21 +1326,27 @@ export function updateSky() {
   // stars
   if (stars) stars.material.opacity = night ? 0.9 : (h >= 20 && h < 21 ? (h - 20) * 0.9 : 0);
   // windows + lamps + halos
-  const winGlow = night ? 0.85 : (h >= 17 && h < 21 ? lerp(0, 0.85, (h - 17) / 4) : 0);
+  const winGlow = night ? 0.92 : (h >= 17 && h < 21 ? lerp(0, 0.92, (h - 17) / 4) : 0);
   BUILDINGS.forEach(b => { if (b.mat) b.mat.emissiveIntensity = winGlow; });
   PLOTS.forEach(p => { if (p.mesh) p.mesh.material.emissiveIntensity = winGlow; });
   const lampOn = night || h >= 19;
   streetLampMats.forEach(m => m.color.setHex(lampOn ? 0xFFD080 : 0x554a30));
-  lampGlows.forEach(m => m.opacity = lampOn ? 0.85 : 0);
-  streetLights.forEach(l => l.intensity = lampOn ? 1.4 : 0);
+  lampGlows.forEach(m => m.opacity = lampOn ? 0.92 : 0);
+  streetLights.forEach(l => l.intensity = lampOn ? 1.7 : 0);
+  // neon storefront signage: glow halos bleed light, wet pavement reflects it back
+  const neonGlow = 0.15 + winGlow * 0.6;
+  neonGlows.forEach(m => m.opacity = neonGlow);
+  const groundGlow = winGlow * 0.4;
+  groundGlows.forEach(m => m.opacity = groundGlow);
+  updateVignette(winGlow / 0.92);
   // gradient sky dome colors per phase
   let topC, horC;
   if (S && (S.won || goldenHour > 0)) { topC = '#8a5a16'; horC = '#e8c064'; }
   else if (h >= 6 && h < 8) { const k = (h - 6) / 2; topC = lerpHex('#23306a', '#6fa3d8', k); horC = lerpHex('#e8956a', '#cfe3ee', k); }
   else if (h >= 8 && h < 17) { topC = '#6fa3d8'; horC = '#cfe3ee'; }
-  else if (h >= 17 && h < 20) { const k = (h - 17) / 3; topC = lerpHex('#6fa3d8', '#3a2c52', k); horC = lerpHex('#cfe3ee', '#e2784a', k); }
-  else if (h >= 20 && h < 21) { const k = h - 20; topC = lerpHex('#3a2c52', '#0a0f24', k); horC = lerpHex('#e2784a', '#1c2742', k); }
-  else { topC = '#0a0f24'; horC = '#1c2742'; }
+  else if (h >= 17 && h < 20) { const k = (h - 17) / 3; topC = lerpHex('#6fa3d8', '#2e1f4a', k); horC = lerpHex('#cfe3ee', '#ff7a4a', k); }
+  else if (h >= 20 && h < 21) { const k = h - 20; topC = lerpHex('#2e1f4a', '#080c1f', k); horC = lerpHex('#ff7a4a', '#241a38', k); }
+  else { topC = '#080c1f'; horC = '#241a38'; }
   const skKey = topC + horC;
   if (skKey !== lastSkyKey) { lastSkyKey = skKey; paintSkyGrad(topC, horC); }
   if (skyDome) skyDome.position.set(playerPos.x, 0, playerPos.z);
