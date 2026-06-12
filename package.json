@@ -1,0 +1,19 @@
+{
+  "name": "sovereign-city-3d",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sovereign City 3D - Build What You Own. A third-person founder simulation built with Three.js.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "three": "^0.128.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}
