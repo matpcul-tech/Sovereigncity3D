@@ -2,8 +2,6 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { GammaCorrectionShader } from 'three/examples/jsm/shaders/GammaCorrectionShader.js';
 import { $, clamp, lerp, rnd, ri } from './util.js';
 import { W, H, ZW, ZH, ZONES, zoneAt, BUILDINGS, INDUSTRIES, SKINS, FITS, NPCS, npcById, PLOTS } from './worldData.js';
 import { ac, sBig, Music, sTap } from './audio.js';
@@ -332,6 +330,7 @@ export function initThree() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x9bb8d4);
   scene.fog = new THREE.Fog(0x9bb8d4, 500, 2300);
+  scene.environment = buildEnvMap();
   camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 1, 4000);
   hemiLight = new THREE.HemisphereLight(0xcfe4ff, 0x4a4034, 0.55);
   scene.add(hemiLight);
@@ -395,13 +394,13 @@ export function initThree() {
       'background:radial-gradient(ellipse at center,transparent 52%,rgba(10,8,5,0.34) 100%)';
     document.body.appendChild(v);
   }
-  // post-processing: ACES tonemapping (set above) + bloom for neon/emissive glow,
-  // finished with a gamma-correction pass so colors stay correct on screen
+  // post-processing: ACES tonemapping (set above) + bloom for neon/emissive glow.
+  // The final pass renders straight to screen, where renderer.outputEncoding
+  // already applies sRGB encoding — no extra gamma-correction pass needed.
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.45, 0.55);
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.45, 0.85);
   composer.addPass(bloomPass);
-  composer.addPass(new ShaderPass(GammaCorrectionShader));
   buildCity();
   buildStreetLights();
   initMinimap();
@@ -412,6 +411,29 @@ export function initThree() {
     camera.updateProjectionMatrix();
     composer.setSize(window.innerWidth, window.innerHeight);
   });
+}
+
+/* ---- procedural sky/ground environment map for PBR reflections ----
+   Built once from a small gradient sphere + lights via PMREMGenerator so
+   MeshStandardMaterial surfaces (roads, water, glass, cars, characters)
+   pick up soft sky and ground-color reflections. ---- */
+function buildEnvMap() {
+  const envScene = new THREE.Scene();
+  const ec = document.createElement('canvas'); ec.width = 2; ec.height = 256;
+  const ex = ec.getContext('2d');
+  // dim sky-to-ground gradient: provides reflection color/shape without
+  // adding significant extra exposure on top of the scene's direct lights
+  const g = ex.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, '#2e3947'); g.addColorStop(0.5, '#3a4047');
+  g.addColorStop(0.62, '#3a352c'); g.addColorStop(1, '#1a1814');
+  ex.fillStyle = g; ex.fillRect(0, 0, 2, 256);
+  const envSphere = new THREE.Mesh(new THREE.SphereGeometry(60, 16, 12),
+    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(ec), side: THREE.BackSide }));
+  envScene.add(envSphere);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const rt = pmrem.fromScene(envScene, 0, 0.1, 1000);
+  pmrem.dispose();
+  return rt.texture;
 }
 
 /* ---- sky gradient helpers ---- */
@@ -557,7 +579,7 @@ function buildCity() {
     const tex = groundTexture(zo.ground, kind);
     tex.repeat.set(10, 10);
     const g = new THREE.Mesh(new THREE.PlaneGeometry(ZW, ZH),
-      new THREE.MeshLambertMaterial({ map: tex }));
+      new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92, metalness: 0, envMapIntensity: 0.4 }));
     g.rotation.x = -Math.PI / 2;
     g.position.set(zo.x + ZW / 2, 0, zo.y + ZH / 2);
     g.receiveShadow = true;
@@ -578,13 +600,13 @@ function buildCity() {
   // roads (textured asphalt) + sidewalks + crosswalks
   const asphalt = groundTexture(0x232019, 'asphalt'); asphalt.repeat.set(24, 1);
   const asphaltV = groundTexture(0x232019, 'asphalt'); asphaltV.repeat.set(1, 16);
-  // Phong asphalt/pavement: subtle specular sheen for a glossy, rain-slicked feel
-  const roadMatH = new THREE.MeshPhongMaterial({ map: asphalt, specular: 0x303038, shininess: 22 });
-  const roadMatV = new THREE.MeshPhongMaterial({ map: asphaltV, specular: 0x303038, shininess: 22 });
+  // PBR asphalt/pavement: low roughness + sky env reflection for a glossy, rain-slicked feel
+  const roadMatH = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.42, metalness: 0.06, envMapIntensity: 1.1 });
+  const roadMatV = new THREE.MeshStandardMaterial({ map: asphaltV, roughness: 0.42, metalness: 0.06, envMapIntensity: 1.1 });
   const walkTex = groundTexture(0x6e6a60, 'plaza'); walkTex.repeat.set(40, 1);
   const walkTexV = groundTexture(0x6e6a60, 'plaza'); walkTexV.repeat.set(1, 28);
-  const walkMatH = new THREE.MeshPhongMaterial({ map: walkTex, specular: 0x282420, shininess: 8 });
-  const walkMatV = new THREE.MeshPhongMaterial({ map: walkTexV, specular: 0x282420, shininess: 8 });
+  const walkMatH = new THREE.MeshStandardMaterial({ map: walkTex, roughness: 0.82, metalness: 0, envMapIntensity: 0.5 });
+  const walkMatV = new THREE.MeshStandardMaterial({ map: walkTexV, roughness: 0.82, metalness: 0, envMapIntensity: 0.5 });
   const r1 = new THREE.Mesh(new THREE.PlaneGeometry(W, 70), roadMatH);
   r1.rotation.x = -Math.PI / 2; r1.position.set(W / 2, 0.4, 800); r1.receiveShadow = true; scene.add(r1);
   [765, 835].forEach(sz => {
@@ -636,7 +658,8 @@ function buildCity() {
     else h = rnd(zo.bh[0], zo.bh[1]);
     b.h3 = h;
     const tex = makeFacadeTexture(b.c, 0.35);
-    const mat = new THREE.MeshLambertMaterial({ map: tex, emissiveMap: tex, emissive: new THREE.Color(0xffc878), emissiveIntensity: 0 });
+    const mat = new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: new THREE.Color(0xffc878), emissiveIntensity: 0,
+      roughness: 0.55, metalness: 0.12, envMapIntensity: 0.8 });
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(b.w, h, b.d), mat);
     mesh.position.set(b.x + b.w / 2, h / 2, b.y + b.d / 2);
     mesh.castShadow = true; mesh.receiveShadow = true;
@@ -716,10 +739,10 @@ function buildCity() {
   for (let i = 0; i < 5; i++) {
     const g = new THREE.Group();
     const body = new THREE.Mesh(new THREE.BoxGeometry(26, 8, 13),
-      new THREE.MeshLambertMaterial({ color: carCols[i % carCols.length] }));
+      new THREE.MeshStandardMaterial({ color: carCols[i % carCols.length], roughness: 0.32, metalness: 0.45, envMapIntensity: 1.1 }));
     body.position.y = 7;
     const cab = new THREE.Mesh(new THREE.BoxGeometry(13, 6, 11),
-      new THREE.MeshLambertMaterial({ color: 0x222831 }));
+      new THREE.MeshStandardMaterial({ color: 0x222831, roughness: 0.15, metalness: 0.6, envMapIntensity: 1.2 }));
     cab.position.set(-1, 13, 0);
     body.castShadow = true; cab.castShadow = true;
     g.add(body, cab);
@@ -836,7 +859,8 @@ function renderTown(town) {
       const tex = makeFacadeTexture(ind.col, 0.4);
       const h = 70 + ((d.name || '').length % 5) * 14;
       const m = new THREE.Mesh(new THREE.BoxGeometry(p.w - 14, h, p.d - 14),
-        new THREE.MeshLambertMaterial({ map: tex, emissiveMap: tex, emissive: new THREE.Color(0xffc878), emissiveIntensity: 0 }));
+        new THREE.MeshStandardMaterial({ map: tex, emissiveMap: tex, emissive: new THREE.Color(0xffc878), emissiveIntensity: 0,
+          roughness: 0.55, metalness: 0.12, envMapIntensity: 0.8 }));
       m.position.set(p.x + p.w / 2, h / 2 + 2, p.z + p.d / 2);
       m.castShadow = true; scene.add(m); p.mesh = m; p.h = h;
       const roof = new THREE.Mesh(new THREE.BoxGeometry(p.w - 10, 4, p.d - 10),
@@ -1079,7 +1103,8 @@ function buildProps() {
   wx.strokeStyle = 'rgba(255,255,255,0.35)'; wx.lineWidth = 2;
   for (let r2 = 12; r2 < 70; r2 += 14) { wx.beginPath(); wx.arc(64, 64, r2, 0, Math.PI * 2); wx.stroke(); }
   fountainWater = new THREE.Mesh(new THREE.CircleGeometry(27, 20),
-    new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(wc), transparent: true, opacity: 0.85 }));
+    new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(wc), transparent: true, opacity: 0.85,
+      roughness: 0.08, metalness: 0.75, envMapIntensity: 1.3, emissive: new THREE.Color(0x1a4f4a), emissiveIntensity: 0.25 }));
   fountainWater.rotation.x = -Math.PI / 2; fountainWater.position.set(395, 8.4, 345);
   const column = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 4.4, 16, 8),
     new THREE.MeshLambertMaterial({ color: 0x9a958a }));
@@ -1188,16 +1213,16 @@ function getCharShadowTexture() {
 export function makePerson(skinHex, fitHex) {
   // Blocky R6-style avatar: box head + face decal, shirt torso, skin arms, dark pants
   const group = new THREE.Group();
-  const skin = new THREE.MeshPhongMaterial({ color: new THREE.Color(skinHex), shininess: 16, specular: 0x5a4c3e });
-  const fit = new THREE.MeshPhongMaterial({ color: new THREE.Color(fitHex), shininess: 9, specular: 0x2c2620 });
-  const pants = new THREE.MeshPhongMaterial({ color: 0x2e3440, shininess: 5, specular: 0x18181c });
-  const shoeMat = new THREE.MeshPhongMaterial({ color: 0xF5EFE3, shininess: 34, specular: 0x999488 });
+  const skin = new THREE.MeshStandardMaterial({ color: new THREE.Color(skinHex), roughness: 0.6, metalness: 0.04 });
+  const fit = new THREE.MeshStandardMaterial({ color: new THREE.Color(fitHex), roughness: 0.7, metalness: 0 });
+  const pants = new THREE.MeshStandardMaterial({ color: 0x2e3440, roughness: 0.8, metalness: 0 });
+  const shoeMat = new THREE.MeshStandardMaterial({ color: 0xF5EFE3, roughness: 0.42, metalness: 0.12 });
   // torso: 8 wide x 8 tall x 4 deep, top of legs at y=8
   const torso = new THREE.Mesh(new THREE.BoxGeometry(8, 8, 4), fit);
   torso.position.y = 12;
   // head: box with face decal on front (+z)
   const faceTex = makeFaceTexture(skinHex);
-  const faceMat = new THREE.MeshLambertMaterial({ map: faceTex });
+  const faceMat = new THREE.MeshStandardMaterial({ map: faceTex, roughness: 0.6, metalness: 0.04 });
   const headMats = [skin, skin, skin, skin, faceMat, skin]; // +x,-x,+y,-y,+z,-z
   const head = new THREE.Mesh(new THREE.BoxGeometry(5.6, 5.6, 5.6), headMats);
   head.position.y = 19.2;
