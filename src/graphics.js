@@ -22,6 +22,8 @@ let muralsAdded = false;
 export let goldenHour = 0;
 export function setGoldenHour(v) { goldenHour = v; }
 export const particles = [];
+// remote founders beyond the 24-avatar render cap: minimap dots only
+export const remoteDots = [];
 const PERSON_H = 16;
 
 export const clouds = [];
@@ -95,6 +97,14 @@ export function drawMinimap() {
   x.fillStyle = '#E8C064'; x.beginPath();
   x.arc(playerPos.x * MM_SCALE_X * 2, playerPos.z * MM_SCALE_Y * 2, 7, 0, Math.PI * 2); x.fill();
   x.strokeStyle = '#fff'; x.lineWidth = 2; x.stroke();
+  // remote founders beyond the render cap — minimap dots only
+  if (remoteDots.length) {
+    x.fillStyle = '#9FD8FF';
+    remoteDots.forEach(d => {
+      x.beginPath();
+      x.arc(d.x * MM_SCALE_X * 2, d.z * MM_SCALE_Y * 2, 3, 0, Math.PI * 2); x.fill();
+    });
+  }
   // zone label in corner
   const pz = zoneAt(playerPos.x, playerPos.z);
   if (pz) { x.fillStyle = pz.accent; x.font = 'bold 16px Arial';
@@ -876,7 +886,7 @@ export function paintFace(tex, skinHex) {
   drawSCFace(x);
   tex.needsUpdate = true;
 }
-function makePerson(skinHex, fitHex) {
+export function makePerson(skinHex, fitHex) {
   // Blocky R6-style avatar: box head + face decal, shirt torso, skin arms, dark pants
   const group = new THREE.Group();
   const skin = new THREE.MeshLambertMaterial({ color: new THREE.Color(skinHex) });

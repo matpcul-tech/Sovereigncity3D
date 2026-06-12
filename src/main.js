@@ -11,6 +11,7 @@ import {
   initThree, initMuteBtn, buildHQSign, setHQBuilt, setHQEmpty, addMurals, buildNPCMeshes,
   paintFace, makeLabelSprite, updateLabelSprite, loadTown, stageBanner, trimParticles
 } from './graphics.js';
+import { subscribeTown, sendPresenceUpdate, updateRemotePlayers } from './presence.js';
 
 /* ---------------- CAMERA / PLAYER ORIENTATION ---------------- */
 let playerYaw=0, camYaw=Math.PI, camPitch=0.42;
@@ -184,6 +185,8 @@ function loop(now){
       playerGroup.lLeg.rotation.x=swing; playerGroup.rLeg.rotation.x=-swing;
       playerGroup.lArm.rotation.x=-swing*0.8; playerGroup.rArm.rotation.x=swing*0.8;
     }
+    // Founders Commons: broadcast position to the town channel (no-op if solo)
+    sendPresenceUpdate(now,playerPos.x,playerPos.z,playerYaw,window._skating,moving);
     // time
     minAcc+=DT;
     while(minAcc>=0.1){
@@ -229,6 +232,8 @@ function loop(now){
         pm.ring.material.color.setHex(r>=2?0x5FA86B:(r<0?0xD4513B:0xE8C064));
       }
     }
+    // remote founders sharing this Town Code (ghosts: interpolated, no collision)
+    updateRemotePlayers(now);
     // cars
     cars.forEach(c=>{
       c.p+=c.spd*DT; if(c.p>1)c.p-=1; if(c.p<0)c.p+=1;
@@ -434,6 +439,7 @@ function startWorld(){
   if(!document.getElementById('muteBtn'))initMuteBtn();
   Music.setEnabled(!S.muted);
   loadTown();
+  subscribeTown();
   if(!startWorld.townPoll){
     startWorld.townPoll=setInterval(()=>{ if(S) loadTown(); },60000);
   }
