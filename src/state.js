@@ -1,7 +1,7 @@
 import { clamp, fmt, rnd, ri, $ } from './util.js';
 import { ZONES, BUILDINGS, INDUSTRIES, zoneAt, npcById } from './worldData.js';
 import { sCash, sBig, sBad, sWin, Music } from './audio.js';
-import { toast, feed, learn, showDialog } from './dialog.js';
+import { toast, feed, learn, showDialog, showInsightCard, openPhoneTo } from './dialog.js';
 import { spawnBurst, floatText, updateLabelSprite, stageBanner, gooseDash, setHQEmpty, playerPos, setGoldenHour, recordFame, townTalentBonus } from './graphics.js';
 import { updateHUDChips } from './main.js';
 
@@ -29,6 +29,7 @@ export function freshState(){
     comebackUsed:false,bankrupt:false,won:false,legacy:false,
     npcMem:{},npcRel:{},pitched:{},
     feed:[],learned:[],chikasha:0,
+    insights:[],insightSeen:{},
     streak:0,daily:null,townPlot:null,talent:null,muted:false,townCode:null
   };
 }
@@ -65,6 +66,37 @@ export function remember(id,txt){
 export function lastMem(id){ const m=S.npcMem[id]; return m&&m.length?m[m.length-1]:null; }
 
 export function sweetSpot(){ return Math.round((S.biz?S.biz.base:25)+S.stats.reputation*0.5); }
+
+/* =========================================================
+   FOUNDER INSIGHTS
+   ========================================================= */
+export const INSIGHT_META={
+  loss_day:           {icon:'📉',label:'Cash Flow',  color:'var(--danger)'},
+  churn_price:        {icon:'💸',label:'Churn',      color:'var(--danger)'},
+  churn_neglect:      {icon:'🧑‍🤝‍🧑',label:'Churn',      color:'var(--danger)'},
+  churn_manual:       {icon:'⚙️',label:'Churn',      color:'var(--danger)'},
+  runway_critical:    {icon:'⏳',label:'Runway',     color:'var(--danger)'},
+  first_profit:       {icon:'✅',label:'Milestone',  color:'var(--green)'},
+  moat_active:        {icon:'🛡️',label:'Moat',       color:'var(--turq)'},
+  automation_on:      {icon:'🤖',label:'Systems',    color:'var(--turq)'},
+  equity_sold:        {icon:'🤝',label:'Cap Table',  color:'var(--gold)'},
+  sovereign_progress: {icon:'👑',label:'Sovereignty',color:'var(--gold)'}
+};
+export function insight(key,title,body,opts){
+  opts=opts||{};
+  const meta=INSIGHT_META[key]||{icon:'💡',label:'Insight',color:'var(--gold)'};
+  const entry={key,title,body,day:S.day,icon:meta.icon,color:meta.color,label:meta.label};
+  S.insights.unshift(entry);
+  if(S.insights.length>30)S.insights.length=30;
+  const cta=opts.cta?{label:opts.cta.label,fn:()=>openPhoneTo(opts.cta.tab)}:null;
+  if(!S.insightSeen[key]){
+    S.insightSeen[key]=true;
+    showInsightCard(entry,cta);
+  } else {
+    toast('<b>'+entry.icon+' '+title+'</b><br>'+body);
+  }
+  saveGame();
+}
 
 /* =========================================================
    DAILY HUSTLE STREAK
@@ -144,14 +176,21 @@ export function dailySettle(){
     const lost=Math.max(1,Math.round(S.customers*0.08));
     S.customers-=lost; feed(lost+' customers churned. Your price outran your reputation.');
     learn('Churn','Customers who leave. The silent business killer.');
+    insight('churn_price','Your price outran your reputation',
+      'You charged '+fmt(S.biz.price)+', but your reputation only supports prices up to about '+fmt(ss)+' &mdash; your sweet spot. '+lost+' customer'+(lost===1?'':'s')+' left because of the gap. Bring the price back toward '+fmt(ss)+' to stop the bleed.',
+      {cta:{label:'Open Pricing',tab:'biz'}});
   }
   if(S.customers>20&&S.employees.length===0){
     const lost=Math.max(1,Math.round(S.customers*0.06));
     S.customers-=lost; feed(lost+' customers left over slow service. One founder can’t serve a crowd alone.');
+    insight('churn_neglect','You need hands on deck',
+      lost+' customer'+(lost===1?'':'s')+' left because '+S.biz.name+' has grown past what one founder can serve alone, and you have zero employees. Hiring removes this ceiling &mdash; staff can serve the crowd you can\'t reach by yourself.');
   }
   if(S.customers>45&&!S.automated){
     const lost=Math.max(1,Math.round(S.customers*0.05));
     S.customers-=lost; feed('Manual systems buckled. '+lost+' customers walked.');
+    insight('churn_manual','Manual systems have a ceiling',
+      'Manual systems buckled under the load. '+lost+' customer'+(lost===1?'':'s')+' walked because '+S.biz.name+' isn\'t automated at this scale. Automation at the Tech Hub removes this ceiling for good.');
   }
   if(S.customers>0&&Math.random()<S.stats.reputation*0.008){
     const got=ri(1,3); S.customers+=got;
@@ -185,6 +224,20 @@ export function dailySettle(){
   S.lastRevenue=revenue; S.lastExpenses=exp; S.lastProfit=profit;
   if(profit>0){ S.profitStreak++; if(revenue>0){sCash();floatText(S.px,30,S.py,'+'+fmt(profit),'#5FA86B');} dailyProgress('profit'); } else { if(profit<0)floatText(S.px,28,S.py,fmt(profit),'#D4513B'); S.profitStreak=0; }
   feed('Day '+S.day+' books: revenue '+fmt(revenue)+', expenses '+fmt(exp)+', profit '+fmt(profit)+'.');
+  if(profit<0){
+    insight('loss_day','Today was a loss day',
+      'Revenue: '+fmt(revenue)+'. Expenses: '+fmt(exp)+'. You came up '+fmt(-profit)+' short. Two ways to close that gap: raise revenue (more customers or a better price) or cut overhead (or automate to lower costs for good).',
+      {cta:{label:'Open Business',tab:'biz'}});
+    if(exp>0&&S.cash<exp*3){
+      const daysLeft=Math.max(0,Math.floor(S.cash/exp));
+      insight('runway_critical','Your runway is critically short',
+        'At your current burn rate of '+fmt(exp)+'/day, your '+fmt(S.cash)+' in cash covers about '+daysLeft+' more day'+(daysLeft===1?'':'s')+'. Fix the loss now, before the cash runs out.',
+        {cta:{label:'Open Business',tab:'biz'}});
+    }
+  } else if(profit>0&&!S.insightSeen.first_profit){
+    insight('first_profit','Profit is the real scoreboard',
+      'Today '+S.biz.name+' brought in '+fmt(revenue)+' in revenue and kept '+fmt(profit)+' after '+fmt(exp)+' in expenses. Revenue is vanity. Profit is what\'s left, and it\'s the number that actually builds your business. Today, yours is positive.');
+  }
   if(S.day===2)learn('Revenue vs Profit','Revenue is everything coming in. Profit is what’s left after expenses. Profit is the real number.');
   if(profit<0&&S.cash<exp*5)learn('Runway','How many days your cash lasts at your current burn rate. Yours is getting short.');
   if(S.manager&&S.automated&&S.quest>=11&&!S.won){
@@ -248,6 +301,8 @@ export function achieveSovereignty(){
   recordFame();
   feed('SOVEREIGN STATUS ACHIEVED. Your tower rises in The Skyline. Fireworks over the city.');
   toast('<b>SOVEREIGN STATUS.</b> Go see your tower in The Skyline.','gold');
+  insight('sovereign_progress','It still works when you step away',
+    'Day '+S.day+'. '+S.biz.name+' is running '+S.customers+' customers and '+fmt(S.lastProfit)+'/day in profit &mdash; without your hands on it. That\'s Sovereignty. The win was never about wealth. It\'s that the business still works when you step away.');
   saveGame();
 }
 export function victoryScene(){
@@ -259,6 +314,7 @@ export function victoryScene(){
    fmt(S.lastProfit)+'/day profit, hands off. You still own '+you.pct+'%.</p>'+
    '<p style="color:var(--turq)">The win condition was never wealth. It was sovereignty. <i>Yakoke</i> for building it the right way.</p>'+
    '<p style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#9A917F">Your name is on the Hall of Fame</p>'+
+   '<button class="btn ghost" onclick="downloadCertificate()">Download Certificate</button>'+
    '<button class="btn" onclick="enterLegacy()">Enter Legacy Mode</button>';
   $('bigModal').style.display='flex';
   sWin();
@@ -268,6 +324,58 @@ window.enterLegacy=function(){
   S.legacy=true; S.quest=13;
   toast('Legacy Mode: passive income flows daily. Mentor the city. Keep building.','gold');
   saveGame();
+};
+window.downloadCertificate=function(){
+  const you=S.equity.find(e=>e.who==='You');
+  const cv=document.createElement('canvas');
+  cv.width=1200; cv.height=850;
+  const x=cv.getContext('2d');
+  x.fillStyle='#14120F'; x.fillRect(0,0,1200,850);
+  x.strokeStyle='#E8C064'; x.lineWidth=6; x.strokeRect(28,28,1144,794);
+  x.strokeStyle='#3FB8AF'; x.lineWidth=2; x.strokeRect(48,48,1104,754);
+  x.textAlign='center';
+  x.fillStyle='#9A917F'; x.font='700 18px Archivo, sans-serif';
+  x.fillText('SOVEREIGN CITY', 600, 112);
+  x.fillStyle='#E8C064'; x.font='900 52px Archivo, sans-serif';
+  x.fillText('CERTIFICATE OF SOVEREIGNTY', 600, 178);
+  x.fillStyle='#3FB8AF'; x.font='600 17px Inter, sans-serif';
+  x.fillText('Awarded for building a business that runs without you', 600, 214);
+  x.fillStyle='#CFC6B4'; x.font='400 20px Inter, sans-serif';
+  x.fillText('This certifies that', 600, 300);
+  x.fillStyle='#F2A33C'; x.font='900 50px Archivo, sans-serif';
+  x.fillText(S.founder.name, 600, 365);
+  x.fillStyle='#CFC6B4'; x.font='400 20px Inter, sans-serif';
+  x.fillText('achieved Sovereign status founding', 600, 410);
+  x.fillStyle='#F5EFE3'; x.font='900 42px Archivo, sans-serif';
+  x.fillText(S.biz.name, 600, 460);
+  x.fillStyle='#9A917F'; x.font='700 16px Inter, sans-serif';
+  x.fillText(IND().name.toUpperCase(), 600, 490);
+  const stats=[
+    {l:'DAY ACHIEVED',v:String(S.day)},
+    {l:'CUSTOMERS',v:String(S.customers)},
+    {l:'DAILY PROFIT',v:fmt(S.lastProfit)},
+    {l:'FOUNDER EQUITY',v:you.pct+'%'}
+  ];
+  const colW=1104/4;
+  x.strokeStyle='#3A342A'; x.lineWidth=1;
+  x.beginPath(); x.moveTo(48,560); x.lineTo(1152,560); x.stroke();
+  x.beginPath(); x.moveTo(48,668); x.lineTo(1152,668); x.stroke();
+  stats.forEach((s,i)=>{
+    const cx=48+colW*i+colW/2;
+    if(i>0){ x.beginPath(); x.moveTo(48+colW*i,560); x.lineTo(48+colW*i,668); x.stroke(); }
+    x.fillStyle='#E8C064'; x.font='900 44px Archivo, sans-serif';
+    x.fillText(s.v, cx, 625);
+    x.fillStyle='#9A917F'; x.font='700 13px Inter, sans-serif';
+    x.fillText(s.l, cx, 650);
+  });
+  x.fillStyle='#7E7565'; x.font='600 15px Inter, sans-serif';
+  x.fillText('Sovereign Shield Technologies LLC  ·  Ada, Oklahoma', 600, 760);
+  x.fillStyle='#4A4438'; x.font='400 12px Inter, sans-serif';
+  x.fillText(new Date().toLocaleDateString(), 600, 786);
+  const a=document.createElement('a');
+  a.download=(S.biz.name||'Sovereign').replace(/[^a-z0-9]+/gi,'_')+'_Certificate.png';
+  a.href=cv.toDataURL('image/png');
+  a.click();
 };
 
 export function goBankrupt(){

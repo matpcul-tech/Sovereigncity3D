@@ -1,6 +1,6 @@
 import { $, clamp, fmt, rnd, ri } from './util.js';
 import { sCash, sBig, sBad, sTap, tone, ac } from './audio.js';
-import { S, IND, sweetSpot, rel, bumpRel, remember, lastMem, DAILY_TYPES, dailyProgress, checkProgression, progressPct, saveGame, comebackScene, victoryScene } from './state.js';
+import { S, IND, sweetSpot, rel, bumpRel, remember, lastMem, DAILY_TYPES, dailyProgress, checkProgression, progressPct, saveGame, comebackScene, victoryScene, insight } from './state.js';
 import { ZONES, INDUSTRIES, npcById, TALENTS } from './worldData.js';
 import { spawnBurst, floatText, playerPos, setHQBuilt, buildHQSign, addMurals, fameCache, townTalentBonus, claimPlot } from './graphics.js';
 
@@ -17,6 +17,27 @@ export function learn(term,def){
   if(S.learned.some(l=>l.t===term))return;
   S.learned.push({t:term,d:def});
   toast('<b style="color:var(--turq)">New term: '+term+'</b> &middot; check Learn tab','good');
+}
+
+/* ---------------- FOUNDER INSIGHTS CARD ---------------- */
+export function showInsightCard(entry,cta){
+  const d=document.createElement('div');
+  d.className='insightCard';
+  d.style.borderLeftColor=entry.color;
+  d.innerHTML='<div class="cat">'+entry.icon+' '+entry.label+'</div>'+
+    '<h4>'+entry.title+'</h4><p>'+entry.body+'</p>'+
+    '<div class="row"><button class="ack">Got it</button>'+
+    (cta?'<button class="cta">'+cta.label+'</button>':'')+'</div>';
+  $('insightCards').appendChild(d);
+  let dismissed=false;
+  function dismiss(){
+    if(dismissed)return; dismissed=true;
+    d.style.animation='cardUp .25s ease forwards';
+    setTimeout(()=>d.remove(),260);
+  }
+  d.querySelector('.ack').onclick=()=>{sTap();dismiss();};
+  if(cta) d.querySelector('.cta').onclick=()=>{sTap();dismiss();cta.fn();};
+  setTimeout(dismiss,9000);
 }
 
 /* ---------------- DIALOG ENGINE ---------------- */
@@ -305,6 +326,8 @@ function talkRedhawk(){
           addMurals();
           feed('You invested in the Sovereign District. New murals went up within a week.');
           toast('<b>+25% revenue bonus, permanent.</b> Zone 4 visibly improves. <i>Yakoke.</i>','gold');
+          insight('moat_active','You built a moat money can\'t buy',
+            'Your $2,000 investment in the Sovereign District gives '+S.biz.name+' a permanent +'+(S.biz.industry==='infra'?'35':'25')+'% revenue bonus. A competitor can copy your menu or your app. They can\'t copy a community\'s loyalty.');
           checkProgression(); saveGame();}},
        {label:'Tell me about this district first',stay:true,fn:()=>{
           $('dText').innerHTML='This district was built on the idea that sovereignty isn’t given, it’s built. Our bank, our clinic, our language center. <i>Yakoke</i> means thank you. <i>Halito</i> means hello. <i>Chokma</i> means good. Now you carry three words of Chikashshanompa’ with you.';
@@ -491,6 +514,9 @@ function runPitch(name,role,color,qs,done){
 function takeEquity(who,pct,c){
   const you=S.equity.find(e=>e.who==='You');
   you.pct-=pct; S.equity.push({who,pct,c});
+  insight('equity_sold','You sold equity — permanently',
+    'You sold '+pct+'% of '+(S.biz?S.biz.name:'your company')+' to '+who+'. That stake is permanent unless you buy it back later. You now own '+you.pct+'%.',
+    {cta:{label:'Open Cap Table',tab:'cap'}});
 }
 
 export function openTechHub(){
@@ -512,6 +538,8 @@ export function openTechHub(){
        learn('Systems','Manual is cheaper today. Automated is cheaper forever.');
        feed('Automation live. The business no longer needs your hands for every dollar.');
        toast('<b>Automated.</b> Ops costs down 40%. Scale ceiling removed.','gold');
+       insight('automation_on','You spent now to spend less forever',
+         'Automation cost '+fmt(aPrice)+' up front, but it cuts '+S.biz.name+'\'s daily operating costs by 40% and removes the customer ceiling your hands created. The bill is one-time. The savings compound every day after.');
        checkProgression(); saveGame();}},
      {label:'Not yet.'}]);
 }
@@ -598,6 +626,12 @@ document.querySelectorAll('.pTab').forEach(t=>t.onclick=()=>{
 });
 $('phoneBtn').onclick=()=>{ $('phone').style.display='flex'; $('phoneDot').style.display='none'; renderPhone(); sTap(); ac(); };
 $('pClose').onclick=()=>{ $('phone').style.display='none'; sTap(); };
+export function openPhoneTo(tabName){
+  pTab=tabName;
+  document.querySelectorAll('.pTab').forEach(x=>x.classList.toggle('sel',x.dataset.tab===tabName));
+  $('phone').style.display='flex'; $('phoneDot').style.display='none';
+  renderPhone();
+}
 export function renderPhone(){
   const c=$('pContent'); c.innerHTML='';
   if(pTab==='biz'){
@@ -631,6 +665,11 @@ export function renderPhone(){
      S.equity.map(e=>'<div class="capRow"><span style="min-width:110px">'+e.who+'</span>'+
        '<div class="cb" style="flex:'+e.pct+';background:'+e.c+'"></div><span>'+e.pct+'%</span></div>').join('')+
      '<div class="feedItem" style="font-size:11.5px;color:#9A917F">Equity is ownership. Guard it carefully. Every round, you own less, but of something bigger.</div>';
+  }
+  if(pTab==='insight'){
+    c.innerHTML=S.insights.length?
+      S.insights.map(e=>'<div class="insightEntry" style="border-left-color:'+e.color+'"><div class="t">DAY '+e.day+' &middot; '+e.icon+' '+e.label+'</div><b>'+e.title+'</b>'+e.body+'</div>').join(''):
+      '<div class="feedItem">Founder Insights explain the "why" behind what happens in your business: churn, profit, automation, equity. They\'ll show up here the moment they happen.</div>';
   }
   if(pTab==='learn'){
     c.innerHTML=S.learned.length?
