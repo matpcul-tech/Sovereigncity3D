@@ -1,0 +1,14 @@
+{
+  "name": "Sovereign City",
+  "short_name": "Sov. City",
+  "description": "Build What You Own - a third-person founder simulation.",
+  "start_url": "/Sovereigncity3D/",
+  "scope": "/Sovereigncity3D/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#14120F",
+  "theme_color": "#14120F",
+  "icons": [
+    { "src": "/Sovereigncity3D/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
