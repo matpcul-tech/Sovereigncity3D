@@ -39,6 +39,18 @@ button{font-family:inherit;cursor:pointer;border:none}
 .btn:active{transform:translateY(3px);box-shadow:0 1px 0 #B97718}
 .btn.ghost{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 2px #4A4438;font-weight:600;font-size:14px;padding:11px 24px}
 #title .foot{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));font-size:10px;letter-spacing:.12em;color:#6B6354;text-transform:uppercase}
+#slotList{display:flex;flex-direction:column;gap:10px;width:min(320px,88vw)}
+.slotRow{display:flex;align-items:stretch;gap:8px;width:100%}
+.slotMain{flex:1;min-width:0;background:transparent;color:var(--paper);text-align:left;
+  box-shadow:inset 0 0 0 2px #4A4438;border-radius:10px;padding:12px 16px;transition:transform .08s}
+.slotMain:active{transform:translateY(2px)}
+.slotRow.filled .slotMain{box-shadow:inset 0 0 0 2px var(--amber)}
+.slotTitle{font-weight:700;font-size:14px}
+.slotRow.filled .slotTitle{color:var(--amber)}
+.slotMeta{font-size:11px;color:#9A917F;margin-top:2px}
+.slotDel{flex-shrink:0;background:transparent;color:#6B6354;font-size:15px;line-height:1;
+  padding:0 14px;border-radius:10px;box-shadow:inset 0 0 0 2px #4A4438}
+.slotDel:active{color:var(--danger);transform:translateY(2px)}
 
 /* ---------- CREATOR ---------- */
 #creator{position:absolute;inset:0;z-index:49;background:#14120F;display:none;
@@ -171,8 +183,7 @@ button{font-family:inherit;cursor:pointer;border:none}
   <div><h1>SOVEREIGN<br><span>CITY</span></h1>
     <div class="tag" style="margin-top:10px">Build What You Own</div></div>
   <p class="sub">Third-person founder simulation. You have a dream and $5,000. Walk the city, solve a real problem, and raise a tower with your name on it.</p>
-  <button class="btn" id="newGameBtn">New Founder</button>
-  <button class="btn ghost" id="continueBtn" style="display:none">Continue</button>
+  <div id="slotList"></div>
   <div class="foot">Sovereign Shield Technologies LLC &middot; Ada, Oklahoma &middot; 3D Web Demo</div>
 </div>
 
@@ -3401,26 +3412,35 @@ function updateHUDChips(){
 setInterval(()=>{ if(S&&$('hud').style.display==='block')updateHUDChips(); },500);
 
 /* ---------------- SAVE / LOAD ---------------- */
-let memSave=null;
+const SAVE_SLOTS=3;
+function slotKey(i){ return SAVE_KEY+'-slot'+i; }
+let currentSlot=0;
+let memSave={};
+// migrate a pre-multi-slot save into slot 0
+(function migrateOldSave(){
+  try{
+    const old=localStorage.getItem(SAVE_KEY);
+    if(old&&!localStorage.getItem(slotKey(0))){
+      localStorage.setItem(slotKey(0),old);
+      localStorage.removeItem(SAVE_KEY);
+    }
+  }catch(e){}
+})();
 async function saveGame(){
   if(!S)return;
   const data=JSON.stringify(S);
-  memSave=data;
-  try{ localStorage.setItem(SAVE_KEY,data); }catch(e){}
-  try{ if(window.storage) await window.storage.set(SAVE_KEY,data); }catch(e){}
+  memSave[currentSlot]=data;
+  try{ localStorage.setItem(slotKey(currentSlot),data); }catch(e){}
 }
-async function loadGame(){
+function loadSlotSync(i){
   try{
-    if(window.storage){
-      const r=await window.storage.get(SAVE_KEY);
-      if(r&&r.value) return JSON.parse(r.value);
-    }
-  }catch(e){}
-  try{
-    const r=localStorage.getItem(SAVE_KEY);
+    const r=localStorage.getItem(slotKey(i));
     if(r) return JSON.parse(r);
   }catch(e){}
-  return memSave?JSON.parse(memSave):null;
+  return memSave[i]?JSON.parse(memSave[i]):null;
+}
+async function loadGame(slot){
+  return loadSlotSync(slot==null?currentSlot:slot);
 }
 
 /* ---------------- TITLE / CREATOR / BOOT ---------------- */
@@ -3517,10 +3537,51 @@ function startWorld(){
   updateHUDChips();
 }
 
-$('newGameBtn').onclick=()=>{ ac(); sTap();
+function renderSlots(){
+  const list=$('slotList'); list.innerHTML='';
+  for(let i=0;i<SAVE_SLOTS;i++){
+    const data=loadSlotSync(i);
+    const row=document.createElement('div');
+    row.className='slotRow'+(data?' filled':'');
+    const main=document.createElement('button');
+    main.className='slotMain';
+    if(data){
+      main.innerHTML='<div class="slotTitle">'+data.founder.name+'</div>'+
+        '<div class="slotMeta">Day '+data.day+' · Stage '+data.stage+' · '+fmt(data.cash)+'</div>';
+      main.onclick=()=>continueSlot(i);
+    } else {
+      main.innerHTML='<div class="slotTitle">Slot '+(i+1)+' — New Founder</div>'+
+        '<div class="slotMeta">Start a new game in this slot</div>';
+      main.onclick=()=>newGameSlot(i);
+    }
+    row.appendChild(main);
+    if(data){
+      const del=document.createElement('button');
+      del.className='slotDel'; del.textContent='✕';
+      del.onclick=(e)=>{ e.stopPropagation();
+        if(confirm('Delete this save? This cannot be undone.')){
+          try{ localStorage.removeItem(slotKey(i)); }catch(err){}
+          delete memSave[i]; renderSlots();
+        } };
+      row.appendChild(del);
+    }
+    list.appendChild(row);
+  }
+}
+function newGameSlot(i){
+  ac(); sTap(); currentSlot=i;
   $('title').style.display='none'; $('creator').style.display='flex';
   buildCreator(); drawPreview();
-};
+}
+async function continueSlot(i){
+  ac(); Music.init(); sTap();
+  const loaded=await loadGame(i);
+  if(!loaded){ toast('No save found.','bad'); return; }
+  currentSlot=i;
+  S=loaded;
+  startWorld();
+  toast('Welcome back, '+S.founder.name+'. Day '+S.day+'.','gold');
+}
 $('startBtn').onclick=()=>{
   ac(); Music.init(); Music.setZone(1);
   creatorState.name=($('cName').value||'Founder').trim().slice(0,16)||'Founder';
@@ -3531,14 +3592,6 @@ $('startBtn').onclick=()=>{
   toast('<b>Halito, '+S.founder.name+'.</b> Welcome to The Grind. Find Marcus Webb.','gold');
   feed('Day 1. A founder steps into Sovereign City with $5,000 and a dream.');
   saveGame();
-};
-$('continueBtn').onclick=async()=>{
-  ac(); Music.init(); sTap();
-  const loaded=await loadGame();
-  if(!loaded){ toast('No save found.','bad'); return; }
-  S=loaded;
-  startWorld();
-  toast('Welcome back, '+S.founder.name+'. Day '+S.day+'.','gold');
 };
 /* =========================================================
    SOVEREIGN CITY — CINEMATIC TRAILER ENGINE
@@ -3732,8 +3785,7 @@ window.Trailer=Trailer;
   initThree();
   if(bar())bar().style.width='85%';
   await new Promise(r=>setTimeout(r,60));
-  const s=await loadGame();
-  if(s) $('continueBtn').style.display='inline-block';
+  renderSlots();
   if(document.getElementById('bootBar'))document.getElementById('bootBar').style.width='100%';
   setTimeout(()=>{const l=document.getElementById('bootLoad');if(l)l.remove();},260);
   requestAnimationFrame(loop);
