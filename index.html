@@ -16,7 +16,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);
   font-family:'Inter',system-ui,sans-serif;color:var(--paper);
   touch-action:none;user-select:none;-webkit-user-select:none;position:fixed}
 canvas{display:block}
-#game{filter:saturate(1.22) contrast(1.08) brightness(1.0)}
+#game{filter:saturate(1.45) contrast(1.1) brightness(1.0)}
 #filmGrain{position:fixed;inset:-50%;width:200%;height:200%;pointer-events:none;z-index:4;
   opacity:0.05;mix-blend-mode:overlay;
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
@@ -287,12 +287,12 @@ const sWin=()=>{[392,494,587,784,988,1175].forEach((f,i)=>tone(f,.9,'triangle',.
 /* ---------------- WORLD DATA ---------------- */
 const W=2400,H=1600,ZW=800,ZH=800;
 const ZONES=[
- {id:1,name:'The Grind',x:0,y:800,ground:0x3d3a2e,accent:'#F2A33C',unlock:1,bh:[55,95]},
- {id:2,name:'Main Street',x:800,y:800,ground:0x3a4046,accent:'#7FB2D9',unlock:1,bh:[90,150]},
- {id:3,name:'Innovation Row',x:1600,y:0,ground:0x2c3a40,accent:'#52C7D9',unlock:3,bh:[150,230]},
- {id:4,name:'Sovereign District',x:0,y:0,ground:0x4a3c2e,accent:'#3FB8AF',unlock:1,bh:[60,110]},
- {id:5,name:'Capital Row',x:800,y:0,ground:0x2e3138,accent:'#C9CFD9',unlock:4,bh:[260,400]},
- {id:6,name:'The Skyline',x:1600,y:800,ground:0x35301f,accent:'#E8C064',unlock:3,bh:[80,120]}
+ {id:1,name:'The Grind',x:0,y:800,ground:0x4a8228,accent:'#F2A33C',unlock:1,bh:[55,95]},
+ {id:2,name:'Main Street',x:800,y:800,ground:0x3a3c42,accent:'#7FB2D9',unlock:1,bh:[90,150]},
+ {id:3,name:'Innovation Row',x:1600,y:0,ground:0x28383e,accent:'#52C7D9',unlock:3,bh:[150,230]},
+ {id:4,name:'Sovereign District',x:0,y:0,ground:0x3e7520,accent:'#3FB8AF',unlock:1,bh:[60,110]},
+ {id:5,name:'Capital Row',x:800,y:0,ground:0x3c3e44,accent:'#C9CFD9',unlock:4,bh:[260,400]},
+ {id:6,name:'The Skyline',x:1600,y:800,ground:0x4a7a24,accent:'#E8C064',unlock:3,bh:[80,120]}
 ];
 function zoneAt(x,z){ return ZONES.find(zo=>x>=zo.x&&x<zo.x+ZW&&z>=zo.y&&z<zo.y+ZH); }
 
@@ -2012,10 +2012,10 @@ function buildEnvMap(){
   const ec=document.createElement('canvas'); ec.width=2; ec.height=512;
   const ex=ec.getContext('2d');
   const eg=ex.createLinearGradient(0,0,0,512);
-  eg.addColorStop(0,'#1a2a4a');
-  eg.addColorStop(0.45,'#3a6a9a');
-  eg.addColorStop(0.55,'#7aa8c8');
-  eg.addColorStop(1,'#2a1e14');
+  eg.addColorStop(0,'#1a3a6a');
+  eg.addColorStop(0.42,'#2e6ab4');
+  eg.addColorStop(0.58,'#7ab4d8');
+  eg.addColorStop(1,'#2a1e10');
   ex.fillStyle=eg; ex.fillRect(0,0,2,512);
   const et=new THREE.CanvasTexture(ec);
   et.mapping=THREE.EquirectangularReflectionMapping;
@@ -2030,12 +2030,12 @@ function initThree(){
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.18;
+  renderer.toneMappingExposure=1.08;
   renderer.outputEncoding=THREE.LinearEncoding;
   window._maxAniso=renderer.capabilities.getMaxAnisotropy?renderer.capabilities.getMaxAnisotropy():4;
   scene=new THREE.Scene();
   scene.background=new THREE.Color(0x9bb8d4);
-  scene.fog=new THREE.Fog(0x9bb8d4,500,2300);
+  scene.fog=new THREE.Fog(0x5a8ec8,800,2800);
   scene.environment=buildEnvMap();
   camera=new THREE.PerspectiveCamera(62,window.innerWidth/window.innerHeight,1,4000);
   hemiLight=new THREE.HemisphereLight(0xb8d4f0,0x3a2e1a,0.7);
@@ -2157,12 +2157,16 @@ function noiseCanvas(base,grain,size){
 }
 function groundTexture(hexColor,kind){
   const base='#'+hexColor.toString(16).padStart(6,'0');
-  const c=noiseCanvas(base,kind==='asphalt'?22:34,128);
+  const c=noiseCanvas(base,kind==='asphalt'?22:(kind==='grass'?14:28),128);
   const x=c.getContext('2d');
   if(kind==='grass'){
-    x.strokeStyle='rgba(0,0,0,0.10)'; x.lineWidth=1;
-    for(let i=0;i<70;i++){const px=rnd(0,128),pz=rnd(0,128);
-      x.beginPath();x.moveTo(px,pz);x.lineTo(px+rnd(-2,2),pz-rnd(2,5));x.stroke();}
+    // light grass blades for texture variation
+    x.strokeStyle='rgba(255,255,255,0.12)'; x.lineWidth=1;
+    for(let i=0;i<90;i++){const px=rnd(0,128),pz=rnd(0,128);
+      x.beginPath();x.moveTo(px,pz);x.lineTo(px+rnd(-2,2),pz-rnd(3,7));x.stroke();}
+    x.strokeStyle='rgba(0,0,0,0.08)'; x.lineWidth=1;
+    for(let i=0;i<50;i++){const px=rnd(0,128),pz=rnd(0,128);
+      x.beginPath();x.moveTo(px,pz);x.lineTo(px+rnd(-1,1),pz-rnd(2,5));x.stroke();}
   }
   if(kind==='plaza'){
     x.strokeStyle='rgba(0,0,0,0.16)'; x.lineWidth=1.5;
@@ -2362,7 +2366,7 @@ function buildCity(){
     const tex=groundTexture(zo.ground,kind);
     tex.repeat.set(10,10);
     const g=new THREE.Mesh(new THREE.PlaneGeometry(ZW,ZH),
-      new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,map:tex}));
+      new THREE.MeshStandardMaterial({roughness:kind==='grass'?0.95:0.88,metalness:0.0,map:tex,envMapIntensity:0.2}));
     g.rotation.x=-Math.PI/2;
     g.position.set(zo.x+ZW/2,0,zo.y+ZH/2);
     g.receiveShadow=true;
@@ -3031,9 +3035,9 @@ function spawnBurst(x,y,z,colHex){
 }
 
 /* ---------------- DAY/NIGHT ---------------- */
-const SKY_DAY=new THREE.Color(0x9bb8d4), SKY_DAWN=new THREE.Color(0xd9a06a),
-      SKY_DUSK=new THREE.Color(0xc4744e), SKY_NIGHT=new THREE.Color(0x121a2e),
-      SKY_GOLD=new THREE.Color(0xd9a44e);
+const SKY_DAY=new THREE.Color(0x5a8ec8), SKY_DAWN=new THREE.Color(0xe8904a),
+      SKY_DUSK=new THREE.Color(0xc45a32), SKY_NIGHT=new THREE.Color(0x0a1020),
+      SKY_GOLD=new THREE.Color(0xe8a030);
 const tmpC=new THREE.Color();
 function updateSky(){
   const h=S?S.hour+S.min/60:12;
@@ -3085,8 +3089,8 @@ function updateSky(){
   // gradient sky dome colors per phase
   let topC,horC;
   if(S&&(S.won||goldenHour>0)){topC='#8a5a16';horC='#e8c064';}
-  else if(h>=6&&h<8){const k=(h-6)/2;topC=lerpHex('#23306a','#6fa3d8',k);horC=lerpHex('#e8956a','#cfe3ee',k);}
-  else if(h>=8&&h<17){topC='#6fa3d8';horC='#cfe3ee';}
+  else if(h>=6&&h<8){const k=(h-6)/2;topC=lerpHex('#1a2c5a','#2e6ab4',k);horC=lerpHex('#f08050','#7ab4d8',k);}
+  else if(h>=8&&h<17){topC='#2e6ab4';horC='#7ab4d8';}
   else if(h>=17&&h<20){const k=(h-17)/3;topC=lerpHex('#6fa3d8','#3a2c52',k);horC=lerpHex('#cfe3ee','#e2784a',k);}
   else if(h>=20&&h<21){const k=h-20;topC=lerpHex('#3a2c52','#0a0f24',k);horC=lerpHex('#e2784a','#1c2742',k);}
   else {topC='#0a0f24';horC='#1c2742';}
