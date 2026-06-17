@@ -2030,17 +2030,17 @@ function initThree(){
   renderer.shadowMap.enabled=true;
   renderer.shadowMap.type=THREE.PCFSoftShadowMap;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure=1.08;
-  renderer.outputEncoding=THREE.LinearEncoding;
+  renderer.toneMappingExposure=1.0;
+  renderer.outputEncoding=THREE.sRGBEncoding;
   window._maxAniso=renderer.capabilities.getMaxAnisotropy?renderer.capabilities.getMaxAnisotropy():4;
   scene=new THREE.Scene();
   scene.background=new THREE.Color(0x9bb8d4);
   scene.fog=new THREE.Fog(0x5a8ec8,800,2800);
   scene.environment=buildEnvMap();
   camera=new THREE.PerspectiveCamera(62,window.innerWidth/window.innerHeight,1,4000);
-  hemiLight=new THREE.HemisphereLight(0xb8d4f0,0x3a2e1a,0.7);
+  hemiLight=new THREE.HemisphereLight(0xb8d4f0,0x3a2e1a,0.5);
   scene.add(hemiLight);
-  sunLight=new THREE.DirectionalLight(0xffefd0,2.2);
+  sunLight=new THREE.DirectionalLight(0xffefd0,1.2);
   sunLight.position.set(400,600,300);
   sunLight.castShadow=true;
   sunLight.shadow.mapSize.set(2048,2048);
@@ -2127,19 +2127,17 @@ function initThree(){
     camera.updateProjectionMatrix();
     if(composer) composer.setSize(window.innerWidth,window.innerHeight);
   });
-  // EffectComposer: bloom then gamma correction
+  // EffectComposer: bloom only (sRGBEncoding handles gamma on final write)
   composer=new THREE.EffectComposer(renderer);
   composer.addPass(new THREE.RenderPass(scene,camera));
   const bloom=new THREE.UnrealBloomPass(
     new THREE.Vector2(window.innerWidth,window.innerHeight),
     1.4,   // strength
     0.5,   // radius
-    0.82   // threshold
+    0.88   // threshold — only truly bright emissives/lights bloom in sRGB space
   );
+  bloom.renderToScreen=true;
   composer.addPass(bloom);
-  const gammaPass=new THREE.ShaderPass(THREE.GammaCorrectionShader);
-  gammaPass.renderToScreen=true;
-  composer.addPass(gammaPass);
 }
 
 /* ---- procedural surface textures ---- */
@@ -3043,12 +3041,12 @@ function updateSky(){
   const h=S?S.hour+S.min/60:12;
   let sky,sun,hemi,night=false;
   if(S&&(S.won||goldenHour>0)){
-    sky=SKY_GOLD; sun=2.0; hemi=0.75;
-  } else if(h>=6&&h<8){ tmpC.copy(SKY_DAWN).lerp(SKY_DAY,(h-6)/2); sky=tmpC; sun=lerp(1.0,2.2,(h-6)/2); hemi=0.7; }
-  else if(h>=8&&h<17){ sky=SKY_DAY; sun=2.2; hemi=0.7; }
-  else if(h>=17&&h<20){ tmpC.copy(SKY_DAY).lerp(SKY_DUSK,(h-17)/3); sky=tmpC; sun=lerp(2.2,0.6,(h-17)/3); hemi=0.5; }
-  else if(h>=20&&h<21){ tmpC.copy(SKY_DUSK).lerp(SKY_NIGHT,h-20); sky=tmpC; sun=lerp(0.6,0.08,h-20); hemi=0.35; night=true; }
-  else { sky=SKY_NIGHT; sun=0.08; hemi=0.22; night=true; }
+    sky=SKY_GOLD; sun=1.1; hemi=0.6;
+  } else if(h>=6&&h<8){ tmpC.copy(SKY_DAWN).lerp(SKY_DAY,(h-6)/2); sky=tmpC; sun=lerp(0.5,1.2,(h-6)/2); hemi=0.5; }
+  else if(h>=8&&h<17){ sky=SKY_DAY; sun=1.2; hemi=0.5; }
+  else if(h>=17&&h<20){ tmpC.copy(SKY_DAY).lerp(SKY_DUSK,(h-17)/3); sky=tmpC; sun=lerp(1.2,0.35,(h-17)/3); hemi=0.38; }
+  else if(h>=20&&h<21){ tmpC.copy(SKY_DUSK).lerp(SKY_NIGHT,h-20); sky=tmpC; sun=lerp(0.35,0.05,h-20); hemi=0.25; night=true; }
+  else { sky=SKY_NIGHT; sun=0.05; hemi=0.18; night=true; }
   scene.background=sky instanceof THREE.Color?sky:tmpC;
   scene.fog.color.copy(scene.background);
   sunLight.intensity=sun;
