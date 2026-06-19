@@ -19,7 +19,9 @@ export default defineConfig({
         display: 'fullscreen',
         start_url: '/Sovereigncity3D/',
         icons: [
-          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml' }
+          { src: 'icons/icon-192.webp', sizes: '192x192', type: 'image/webp' },
+          { src: 'icons/icon-512.webp', sizes: '512x512', type: 'image/webp' },
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }
         ]
       },
       workbox: {
