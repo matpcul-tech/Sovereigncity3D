@@ -1,5 +1,6 @@
 import { clamp, fmt, rnd, ri, $ } from './util.js';
 import { ZONES, BUILDINGS, INDUSTRIES, zoneAt, npcById } from './worldData.js';
+import { getSupabase } from './supabase.js';
 import { sCash, sBig, sBad, sWin, Music } from './audio.js';
 import { toast, feed, learn, showDialog, showInsightCard, openPhoneTo } from './dialog.js';
 import { spawnBurst, floatText, updateLabelSprite, stageBanner, gooseDash, setHQEmpty, playerPos, setGoldenHour, recordFame, townTalentBonus } from './graphics.js';
@@ -439,17 +440,44 @@ export async function saveGame(){
   memSave=data;
   try{ localStorage.setItem(SAVE_KEY,data); }catch(e){}
   try{ if(window.storage) await window.storage.set(SAVE_KEY,data); }catch(e){}
+  // Cloud sync — fire-and-forget so it never blocks the game
+  const sb=getSupabase();
+  if(sb&&S.townCode&&S.founder){
+    sb.from('saves').upsert(
+      {town_code:S.townCode,founder_name:S.founder.name,data:S,updated_at:new Date().toISOString()},
+      {onConflict:'town_code,founder_name'}
+    ).then(({error})=>{ if(error) console.warn('[SC] cloud save:',error.message); });
+  }
 }
 export async function loadGame(){
+  // Load local first (fast, works offline)
+  let local=null;
   try{
     if(window.storage){
       const r=await window.storage.get(SAVE_KEY);
-      if(r&&r.value) return JSON.parse(r.value);
+      if(r&&r.value) local=JSON.parse(r.value);
     }
   }catch(e){}
-  try{
-    const raw=localStorage.getItem(SAVE_KEY);
-    if(raw) return JSON.parse(raw);
-  }catch(e){}
-  return memSave?JSON.parse(memSave):null;
+  if(!local){
+    try{ const raw=localStorage.getItem(SAVE_KEY); if(raw) local=JSON.parse(raw); }catch(e){}
+  }
+  if(!local) return memSave?JSON.parse(memSave):null;
+  // Try cloud if we have identity — prefer whichever is further along
+  const sb=getSupabase();
+  if(sb&&local.townCode&&local.founder){
+    try{
+      const {data,error}=await sb.from('saves').select('data').eq('town_code',local.townCode).eq('founder_name',local.founder.name).single();
+      if(!error&&data&&data.data){
+        const cloud=data.data;
+        if((cloud.day||0)>=(local.day||0)){
+          if(!cloud.townCode) cloud.townCode=local.townCode;
+          const str=JSON.stringify(cloud);
+          memSave=str;
+          try{ localStorage.setItem(SAVE_KEY,str); }catch(e){}
+          return cloud;
+        }
+      }
+    }catch(e){}
+  }
+  return local;
 }

@@ -2,7 +2,7 @@ import { $, clamp, fmt, rnd, ri } from './util.js';
 import { sCash, sBig, sBad, sTap, tone, ac } from './audio.js';
 import { S, IND, sweetSpot, rel, bumpRel, remember, lastMem, DAILY_TYPES, dailyProgress, checkProgression, progressPct, saveGame, comebackScene, victoryScene, insight } from './state.js';
 import { ZONES, INDUSTRIES, npcById, TALENTS } from './worldData.js';
-import { spawnBurst, floatText, playerPos, setHQBuilt, buildHQSign, addMurals, fameCache, townTalentBonus, claimPlot } from './graphics.js';
+import { spawnBurst, floatText, playerPos, setHQBuilt, buildHQSign, addMurals, fameCache, townTalentBonus, claimPlot, unsubscribeTownPlots } from './graphics.js';
 
 /* ---------------- TOASTS / FEED / LEARN ---------------- */
 export function toast(msg,kind){
@@ -626,6 +626,13 @@ document.querySelectorAll('.pTab').forEach(t=>t.onclick=()=>{
 });
 $('phoneBtn').onclick=()=>{ $('phone').style.display='flex'; $('phoneDot').style.display='none'; renderPhone(); sTap(); ac(); };
 $('pClose').onclick=()=>{ $('phone').style.display='none'; sTap(); };
+$('exitBtn').onclick=async()=>{
+  sTap();
+  if(!confirm('Save and return to the title screen?'))return;
+  await saveGame();
+  unsubscribeTownPlots();
+  location.reload();
+};
 export function openPhoneTo(tabName){
   pTab=tabName;
   document.querySelectorAll('.pTab').forEach(x=>x.classList.toggle('sel',x.dataset.tab===tabName));

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import './style.css';
 import { $, clamp, lerp, rnd, ri, fmt, dist2 } from './util.js';
 import { W, H, ZONES, zoneAt, BUILDINGS, SKINS, FITS, NPCS, PLOTS, buildNPCData } from './worldData.js';
 import { ac, tone, Music, sCash, sBig, sTap, ambientZone, setZoneAmbient, AC } from './audio.js';
@@ -9,7 +10,8 @@ import {
   cars, clouds, goose, particles, goldenHour, setGoldenHour,
   spawnBurst, floatText, updateFloats, drawMinimap, drawTutorial, perfSample, updateSky,
   initThree, initMuteBtn, buildHQSign, setHQBuilt, setHQEmpty, addMurals, buildNPCMeshes,
-  paintFace, makeLabelSprite, updateLabelSprite, loadTown, stageBanner, trimParticles, updateProps
+  paintFace, makeLabelSprite, updateLabelSprite, loadTown, stageBanner, trimParticles, updateProps,
+  subscribeTownPlots, unsubscribeTownPlots
 } from './graphics.js';
 import { subscribeTown, sendPresenceUpdate, updateRemotePlayers } from './presence.js';
 
@@ -443,7 +445,7 @@ function startWorld(){
   if(S.event){ const eb=$('eventBanner'); eb.textContent=String(S.event).toUpperCase(); eb.style.display='block'; }
   if(!document.getElementById('muteBtn'))initMuteBtn();
   Music.setEnabled(!S.muted);
-  loadTown();
+  loadTown().then(() => subscribeTownPlots());
   subscribeTown();
   if(!startWorld.townPoll){
     startWorld.townPoll=setInterval(()=>{ if(S) loadTown(); },60000);

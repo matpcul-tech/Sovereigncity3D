@@ -838,15 +838,37 @@ export async function loadTown() {
     } catch (e) {}
   }
   renderTown(town);
-  if (sb && S && S.townCode) {
+  // Hall of Fame is global — show top 20 fastest to Sovereignty across all towns
+  if (sb) {
     try {
-      const townId = await resolveTownId(sb);
-      if (townId) {
-        const { data } = await sb.from('fame').select('*').eq('town_id', townId).order('created_at', { ascending: false }).limit(50);
-        fameCache = (data || []).map(f => ({ name: f.founder_name, biz: f.biz_name, day: f.day }));
-      }
+      const { data: fameData } = await sb.from('fame').select('*').order('day_achieved', { ascending: true }).limit(20);
+      fameCache = (fameData || []).map(f => ({ name: f.founder_name, biz: f.biz_name, day: f.day_achieved }));
     } catch (e) {}
   }
+}
+
+let plotsChannel = null;
+export function subscribeTownPlots() {
+  const sb = getSupabase();
+  if (!sb || !S || !S.townCode) return;
+  if (plotsChannel) { try { sb.removeChannel(plotsChannel); } catch (e) {} }
+  plotsChannel = sb.channel('db-plots:' + S.townCode)
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'plots' }, (payload) => {
+      const row = payload.new;
+      if (row.town_id !== currentTownId) return;
+      const entry = { name: row.founder_name, biz: row.biz_name, industry: row.industry, talent: row.talent };
+      const plotsMap = {};
+      PLOTS.forEach(p => { if (p.data) plotsMap[p.idx] = p.data; });
+      plotsMap[row.plot_index] = entry;
+      renderTown({ plots: plotsMap });
+      if (S && S.founder && row.founder_name !== S.founder.name)
+        toast('<b>' + row.founder_name + '</b> built in Founders Commons as a ' + row.talent + '!', 'gold');
+    })
+    .subscribe();
+}
+export function unsubscribeTownPlots() {
+  const sb = getSupabase();
+  if (plotsChannel && sb) { try { sb.removeChannel(plotsChannel); } catch (e) {} plotsChannel = null; }
 }
 function renderTown(town) {
   const talents = new Set();
@@ -903,9 +925,16 @@ export async function recordFame() {
   try {
     const townId = await resolveTownId(sb);
     if (!townId) return;
-    await sb.from('fame').insert({ town_id: townId, founder_name: S.founder.name, biz_name: S.biz.name, day: S.day });
-    const { data } = await sb.from('fame').select('*').eq('town_id', townId).order('created_at', { ascending: false }).limit(50);
-    fameCache = (data || []).map(f => ({ name: f.founder_name, biz: f.biz_name, day: f.day }));
+    await sb.from('fame').insert({
+      town_id: townId,
+      founder_name: S.founder.name,
+      biz_name: S.biz.name,
+      industry: S.biz.industry,
+      day_achieved: S.day
+    });
+    // Reload global Hall of Fame after recording
+    const { data } = await sb.from('fame').select('*').order('day_achieved', { ascending: true }).limit(20);
+    fameCache = (data || []).map(f => ({ name: f.founder_name, biz: f.biz_name, day: f.day_achieved }));
   } catch (e) {}
 }
 
