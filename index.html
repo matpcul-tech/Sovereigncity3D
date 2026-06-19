@@ -665,7 +665,10 @@ function openLot(){
         S.employees.map(e=>e.name+' ('+e.trait+')').join(', ')+
         (S.automated?' The automated systems hum in the back room.':' Everything still runs by hand.'),
         [{label:'Back to work.'}]);}});
-  opts.push({label:'Step outside.'});
+  opts.push({label:'Step outside.',fn:()=>{
+    const lot=BUILDINGS.find(b=>b.id==='lot');
+    if(lot){ playerPos.x=lot.x+lot.w/2; playerPos.z=lot.y-80; S.px=playerPos.x; S.py=playerPos.z; }
+  }});
   showDialog(S.biz.name+' HQ','Level '+S.hqLevel,'#F2A33C',
     'Your building. Your name on the sign. '+S.customers+' customers and counting.',opts);
 }
