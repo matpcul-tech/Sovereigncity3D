@@ -157,6 +157,15 @@ button{font-family:inherit;cursor:pointer;border:none}
   border-radius:10px;padding:8px 18px;font-size:12px;font-weight:700;color:var(--gold);display:none;
   letter-spacing:.06em;text-transform:uppercase}
 
+/* ---------- SESSION MODE TIMER ---------- */
+#sessionTimer{position:fixed;top:calc(14px + env(safe-area-inset-top));right:72px;
+  background:rgba(20,18,15,.82);border:1.5px solid var(--gold);border-radius:8px;
+  padding:5px 13px;display:none;align-items:center;gap:8px;z-index:20;
+  font-family:'Archivo',sans-serif;font-size:13px;color:var(--gold);letter-spacing:.04em}
+#sessionTimer.warn{border-color:var(--danger);color:var(--danger);animation:timerPulse 1s ease-in-out infinite}
+@keyframes timerPulse{0%,100%{opacity:1}50%{opacity:.5}}
+#sessionTimerLabel{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#9A917F}
+
 #bigModal{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
   background:rgba(10,9,7,.82);padding:22px;pointer-events:auto}
 #bmCard{width:min(420px,100%);background:#1C1813;border:1px solid #4A4438;border-radius:22px;

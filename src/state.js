@@ -3,7 +3,7 @@ import { ZONES, BUILDINGS, INDUSTRIES, zoneAt, npcById } from './worldData.js';
 import { getSupabase } from './supabase.js';
 import { sCash, sBig, sBad, sWin, Music } from './audio.js';
 import { toast, feed, learn, showDialog, showInsightCard, openPhoneTo } from './dialog.js';
-import { spawnBurst, floatText, updateLabelSprite, stageBanner, gooseDash, setHQEmpty, playerPos, setGoldenHour, recordFame, townTalentBonus } from './graphics.js';
+import { spawnBurst, floatText, updateLabelSprite, stageBanner, gooseDash, setHQEmpty, playerPos, setGoldenHour, recordFame, townTalentBonus, getTownDailyChallenge } from './graphics.js';
 import { updateHUDChips } from './main.js';
 
 /* ---------------- STATE ---------------- */
@@ -112,6 +112,13 @@ export function assignDaily(){
   if(S.daily&&!S.daily.done&&S.streak>0){
     S.streak=0;
     toast('Hustle streak broken. Back to day one. The grind forgives, it doesn’t forget.','bad');
+  }
+  // Teacher override: if facilitator set a challenge for this town, show it instead
+  const teacherChallenge = S.townCode ? getTownDailyChallenge() : null;
+  if(teacherChallenge){
+    S.daily={type:'teacher',need:0,prog:0,done:true,day:S.day};
+    toast('<b>Today’s Challenge:</b> '+teacherChallenge+(S.streak>0?' · 🔥'+S.streak:''),'gold');
+    return;
   }
   const pool=S.biz?DAILY_TYPES:DAILY_TYPES.filter(d=>d.type==='zone'||d.type==='mentor');
   const pick=pool[ri(0,pool.length-1)];

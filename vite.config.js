@@ -1,11 +1,18 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { resolve } from 'path';
 
 export default defineConfig({
   base: '/Sovereigncity3D/',
   build: {
     outDir: 'dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: resolve(process.cwd(), 'index.html'),
+        facilitator: resolve(process.cwd(), 'facilitator.html'),
+      }
+    }
   },
   plugins: [
     VitePWA({

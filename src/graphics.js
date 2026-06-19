@@ -796,6 +796,8 @@ export function gooseDash() { if (goose) { goose.dash = 4; } }
    sees the same town. Build it together.
    ========================================================= */
 export let townTalentBonus = 0, fameCache = [];
+let townDailyChallenge = null;
+export function getTownDailyChallenge() { return townDailyChallenge; }
 let currentTownId = null, currentTownCode = null;
 
 async function resolveTownId(sb) {
@@ -834,6 +836,11 @@ export async function loadTown() {
         (data || []).forEach(row => {
           town.plots[row.plot_index] = { name: row.founder_name, biz: row.biz_name, industry: row.industry, talent: row.talent };
         });
+        // Fetch teacher's Hustle of the Day override
+        try {
+          const { data: tr } = await sb.from('towns').select('daily_challenge').eq('id', townId).maybeSingle();
+          townDailyChallenge = (tr && tr.daily_challenge) ? tr.daily_challenge : null;
+        } catch (e) {}
       }
     } catch (e) {}
   }

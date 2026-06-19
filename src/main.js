@@ -403,6 +403,49 @@ function drawPreview(){
   x.beginPath();x.arc(48,28,6.5,Math.PI*0.15,Math.PI*0.85);x.stroke();
 }
 
+/* ---------------- SESSION MODE ---------------- */
+// Activated by URL params: ?session=true&code=ABC123&duration=40
+// Used by teachers to share a single URL with a class.
+const _urlParams = new URLSearchParams(location.search);
+const _sessionMode = _urlParams.get('session') === 'true';
+const _sessionDuration = Math.max(1, parseInt(_urlParams.get('duration') || '40')) * 60 * 1000;
+const _sessionCode = normCode(_urlParams.get('code'));
+
+function normCode(v){ return (v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)||null; }
+
+let _sessionTimer = null;
+function startSessionTimer(){
+  const timerEl = $('sessionTimer'), displayEl = $('sessionTimerDisplay');
+  timerEl.style.display = 'flex';
+  const deadline = Date.now() + _sessionDuration;
+  // Hide mute button — sound is part of the classroom experience
+  const mb = document.getElementById('muteBtn');
+  if(mb) mb.style.display = 'none';
+  clearInterval(_sessionTimer);
+  _sessionTimer = setInterval(()=>{
+    const rem = Math.max(0, deadline - Date.now());
+    const m = Math.floor(rem/60000), s = Math.floor((rem%60000)/1000);
+    displayEl.textContent = m + ':' + String(s).padStart(2,'0');
+    if(rem <= 60000) timerEl.classList.add('warn');
+    if(rem <= 0){ clearInterval(_sessionTimer); showSessionComplete(); }
+  }, 500);
+}
+
+function showSessionComplete(){
+  const biggest = S&&S.insights&&S.insights.length ? S.insights[0] : null;
+  $('bmCard').innerHTML =
+    '<div style="font-size:48px">⏱</div>' +
+    '<h2 class="gold">SESSION COMPLETE</h2>' +
+    '<p><b>'+(S&&S.founder?S.founder.name:'Founder')+'</b> &middot; Day '+(S?S.day:1)+'</p>'+
+    (S&&S.biz?'<p style="color:var(--turq)">'+(S.biz.name||'')+'&ensp;&middot;&ensp;'+(S.customers||0)+' customer'+(S.customers===1?'':'s')+'</p>':'') +
+    (biggest?'<p style="margin-top:10px"><b>'+biggest.label+': '+biggest.title+'</b></p><p style="font-size:13px">'+biggest.body.slice(0,120)+(biggest.body.length>120?'…':'')+'</p>':'') +
+    '<p style="margin-top:12px;font-size:12px;color:#9A917F">Your teacher can see your progress on the Facilitator Dashboard.</p>' +
+    '<button class="btn ghost" id="sessionExitBtn">Save &amp; Exit</button>';
+  $('bigModal').style.display = 'flex';
+  saveGame();
+  document.getElementById('sessionExitBtn').onclick = async()=>{ await saveGame(); location.reload(); };
+}
+
 /* ---------------- TOWN CODE JOIN FLOW ---------------- */
 // Founders Commons: an optional 6-character code shared with friends.
 // Leave blank for solo play on a local save — no email, no password.
@@ -455,6 +498,7 @@ function startWorld(){
   if(S.event){ const eb=$('eventBanner'); eb.textContent=String(S.event).toUpperCase(); eb.style.display='block'; }
   if(!document.getElementById('muteBtn'))initMuteBtn();
   Music.setEnabled(!S.muted);
+  if(_sessionMode){ Music.setEnabled(true); startSessionTimer(); }
   loadTown().then(() => subscribeTownPlots());
   subscribeTown();
   if(!startWorld.townPoll){
@@ -684,10 +728,12 @@ window.Trailer=Trailer;
   initThree();
   if(bar())bar().style.width='85%';
   await new Promise(r=>setTimeout(r,60));
+  // Session mode: pre-fill town code from URL param
+  if(_sessionCode) townCodeInput.value=_sessionCode;
   const s=await loadGame();
   if(s){
     $('continueBtn').style.display='inline-block';
-    if(s.townCode) townCodeInput.value=s.townCode;
+    if(s.townCode&&!_sessionCode) townCodeInput.value=s.townCode;
   }
   if(document.getElementById('bootBar'))document.getElementById('bootBar').style.width='100%';
   setTimeout(()=>{const l=document.getElementById('bootLoad');if(l)l.remove();},260);
