@@ -645,6 +645,10 @@ function openLot(){
       [{label:'Buy the lot ($1,500)',locked:S.cash<1500,lockMsg:'Not enough cash.',fn:()=>{
         S.cash-=1500; S.hq=true; S.hqLevel=1;
         setHQBuilt(); buildHQSign(); S.quest=4; sBig();
+        // Step player out front of lot so save position isn't inside the new building
+        const lotB=BUILDINGS.find(b=>b.id==='lot');
+        playerPos.x=lotB.x+lotB.w/2; playerPos.z=lotB.y-80;
+        S.px=playerPos.x; S.py=playerPos.z;
         spawnBurst(playerPos.x,30,playerPos.z,0xF2A33C);
         feed('You bought the lot. '+S.biz.name+' has a home now.');
         learn('Overhead','Fixed costs like rent that you pay whether you sell or not.');
@@ -3573,6 +3577,16 @@ function startWorld(){
   playerPos.x=S.px; playerPos.z=S.py;
   camYaw=Math.PI; // look north into the city
   if(S.hq){ setHQBuilt(); buildHQSign(); } else setHQEmpty();
+  // Safety: if saved position is inside a building, push player in front of it
+  for(const b of BUILDINGS){
+    if(b.id==='lot'&&!S.hq) continue;
+    if(playerPos.x>b.x-6&&playerPos.x<b.x+b.w+6&&
+       playerPos.z>b.y-6&&playerPos.z<b.y+b.d+6){
+      playerPos.x=clamp(playerPos.x,b.x,b.x+b.w);
+      playerPos.z=b.y-80;
+      S.px=playerPos.x; S.py=playerPos.z; break;
+    }
+  }
   if(S.communityInvested) addMurals();
   const hq=BUILDINGS.find(b=>b.id==='lot');
   if(S.bankrupt&&S.hq){ hq.label='FOR LEASE'; updateLabelSprite(hq.labelSprite,'FOR LEASE','#D4513B'); }
