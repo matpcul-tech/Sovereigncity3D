@@ -435,6 +435,16 @@ function startWorld(){
   buildNPCData(); buildNPCMeshes();
   applyFounderLook();
   playerPos.x=S.px; playerPos.z=S.py;
+  // Safety: if saved position is inside a building, push player out front
+  for(const b of BUILDINGS){
+    if(b.id==='lot'&&!S.hq) continue;
+    if(playerPos.x>b.x-6&&playerPos.x<b.x+b.w+6&&
+       playerPos.z>b.y-6&&playerPos.z<b.y+b.d+6){
+      playerPos.x=clamp(playerPos.x,b.x,b.x+b.w);
+      playerPos.z=b.y-80;
+      S.px=playerPos.x; S.py=playerPos.z; break;
+    }
+  }
   camYaw=Math.PI; // look north into the city
   if(S.hq){ setHQBuilt(); buildHQSign(); } else setHQEmpty();
   if(S.communityInvested) addMurals();

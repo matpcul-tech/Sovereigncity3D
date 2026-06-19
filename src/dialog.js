@@ -1,7 +1,7 @@
 import { $, clamp, fmt, rnd, ri } from './util.js';
 import { sCash, sBig, sBad, sTap, tone, ac } from './audio.js';
 import { S, IND, sweetSpot, rel, bumpRel, remember, lastMem, DAILY_TYPES, dailyProgress, checkProgression, progressPct, saveGame, comebackScene, victoryScene, insight } from './state.js';
-import { ZONES, INDUSTRIES, npcById, TALENTS } from './worldData.js';
+import { W, H, ZONES, INDUSTRIES, BUILDINGS, npcById, TALENTS } from './worldData.js';
 import { spawnBurst, floatText, playerPos, setHQBuilt, buildHQSign, addMurals, fameCache, townTalentBonus, claimPlot, unsubscribeTownPlots } from './graphics.js';
 
 /* ---------------- TOASTS / FEED / LEARN ---------------- */
@@ -206,6 +206,9 @@ export function openLot(){
       [{label:'Buy the lot ($1,500)',locked:S.cash<1500,lockMsg:'Not enough cash.',fn:()=>{
         S.cash-=1500; S.hq=true; S.hqLevel=1;
         setHQBuilt(); buildHQSign(); S.quest=4; sBig();
+        // Step player out front of lot so save position isn't inside the new building
+        const lotB=BUILDINGS.find(b=>b.id==='lot');
+        if(lotB){ playerPos.x=lotB.x+lotB.w/2; playerPos.z=lotB.y-80; S.px=playerPos.x; S.py=playerPos.z; }
         spawnBurst(playerPos.x,30,playerPos.z,0xF2A33C);
         feed('You bought the lot. '+S.biz.name+' has a home now.');
         learn('Overhead','Fixed costs like rent that you pay whether you sell or not.');
@@ -226,7 +229,10 @@ export function openLot(){
         S.employees.map(e=>e.name+' ('+e.trait+')').join(', ')+
         (S.automated?' The automated systems hum in the back room.':' Everything still runs by hand.'),
         [{label:'Back to work.'}]);}});
-  opts.push({label:'Step outside.'});
+  opts.push({label:'Step outside.',fn:()=>{
+    const lot=BUILDINGS.find(b=>b.id==='lot');
+    if(lot){ playerPos.x=lot.x+lot.w/2; playerPos.z=lot.y-80; S.px=playerPos.x; S.py=playerPos.z; }
+  }});
   showDialog(S.biz.name+' HQ','Level '+S.hqLevel,'#F2A33C',
     'Your building. Your name on the sign. '+S.customers+' customers and counting.',opts);
 }
