@@ -129,8 +129,9 @@ function loop(now){
     if(keys['w']||keys['arrowup'])my-=1; if(keys['s']||keys['arrowdown'])my+=1;
     if(keys['a']||keys['arrowleft'])mx-=1; if(keys['d']||keys['arrowright'])mx+=1;
     let mlen=Math.hypot(mx,my); if(mlen>1){mx/=mlen;my/=mlen;}
-    const fx=Math.sin(camYaw),fz=Math.cos(camYaw);       // camera forward on ground
-    const rx=Math.sin(camYaw+Math.PI/2),rz=Math.cos(camYaw+Math.PI/2);
+    const fw=camYaw+Math.PI;                               // player faces opposite the camera orbit
+    const fx=Math.sin(fw),fz=Math.cos(fw);
+    const rx=Math.sin(fw+Math.PI/2),rz=Math.cos(fw+Math.PI/2);
     const vx=(fx*-my+rx*mx),vz=(fz*-my+rz*mx);
     // skateboard: unlocked at Stage 2. Full joystick push or Shift = ride.
     const pushHard=Math.hypot(joyVec.x,joyVec.y)>0.88||keys['shift'];
