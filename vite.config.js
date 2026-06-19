@@ -1,8 +1,19 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { resolve } from 'path';
 
 export default defineConfig({
   base: '/Sovereigncity3D/',
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        main: resolve(process.cwd(), 'index.html'),
+        facilitator: resolve(process.cwd(), 'facilitator.html'),
+      }
+    }
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -15,8 +26,9 @@ export default defineConfig({
         display: 'fullscreen',
         start_url: '/Sovereigncity3D/',
         icons: [
-          { src: 'icon-192.svg', sizes: 'any', type: 'image/svg+xml' },
-          { src: 'icon-512.svg', sizes: 'any', type: 'image/svg+xml' }
+          { src: 'icons/icon-192.webp', sizes: '192x192', type: 'image/webp' },
+          { src: 'icons/icon-512.webp', sizes: '512x512', type: 'image/webp' },
+          { src: 'icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' }
         ]
       },
       workbox: {

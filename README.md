@@ -56,7 +56,26 @@ Records a 30-second automated cinematic sequence. Use OBS Studio to capture.
 - **Three.js r128** — 3D rendering, procedural textures, shadows
 - **Web Audio API** — Generative per-zone soundtrack, zero audio files
 - **HTML5 Canvas** — Minimap, facade textures, floating reward text, tutorial arrows
-- **Vanilla JS** — No framework, no build step, one file
+- **Vanilla JS + Vite** — ES modules (`src/`), npm dependencies, no framework
+- **Supabase** — Optional shared-town data for Founders Commons
+- **PWA** — Installable, plays offline in solo mode via a service worker
+
+---
+
+## Development
+
+```
+npm install
+npm run dev      # local dev server
+npm run build    # production build to dist/
+```
+
+Founders Commons (shared towns via a Town Code) requires a Supabase
+project. Copy `supabase/migrations/0001_founders_commons.sql` into your
+project's SQL editor, then provide `VITE_SUPABASE_URL` and
+`VITE_SUPABASE_ANON_KEY` in a local `.env` file (or as repo secrets for
+the deploy workflow). Without these, the game runs fully in solo/local-save
+mode.
 
 ---
 

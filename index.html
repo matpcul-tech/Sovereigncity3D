@@ -15,7 +15,14 @@
   <div><h1>SOVEREIGN<br><span>CITY</span></h1>
     <div class="tag" style="margin-top:10px">Build What You Own</div></div>
   <p class="sub">Third-person founder simulation. You have a dream and $5,000. Walk the city, solve a real problem, and raise a tower with your name on it.</p>
-  <div id="slotList"></div>
+  <div id="townCodeWrap">
+    <label>Town Code <span>&mdash; share with friends to build together (optional)</span></label>
+    <input type="text" id="townCodeInput" maxlength="6" placeholder="Leave blank for solo play" autocomplete="off">
+  </div>
+  <div id="titleBtns">
+    <button class="btn" id="continueBtn" style="display:none">Continue Game</button>
+    <button class="btn ghost" id="newGameBtn">New Founder</button>
+  </div>
   <div class="foot">Sovereign Shield Technologies LLC &middot; Ada, Oklahoma &middot; 3D Web Demo</div>
 </div>
 
@@ -41,6 +48,7 @@
   <div id="questBar"></div>
   <div id="clockChip"><span id="clockTime">Day 1 &middot; 8:00 AM</span><br><span class="cash" id="clockCash">$5,000</span></div>
   <div id="eventBanner"></div>
+  <div id="sessionTimer"><span id="sessionTimerLabel">Session</span><span id="sessionTimerDisplay">40:00</span></div>
   <div id="camPad"></div>
   <div id="toasts"></div>
   <button id="interactBtn">Talk</button>
