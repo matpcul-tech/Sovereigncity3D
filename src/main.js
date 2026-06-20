@@ -110,10 +110,26 @@ $('phone').addEventListener('click',e=>{ if(e.target.id==='phone') $('phone').st
 /* ---------------- COLLISION ---------------- */
 function collide(nx,nz){
   for(const b of BUILDINGS){
-    if(b.id==='lot'&&!S.hq) continue; // walk over empty lot
+    if(b.id==='lot'&&!S.hq) continue;
     if(nx>b.x-6&&nx<b.x+b.w+6&&nz>b.y-6&&nz<b.y+b.d+6) return true;
   }
   return false;
+}
+function pushOutOfBuildings(px,pz){
+  const R=14;
+  for(const b of BUILDINGS){
+    if(b.id==='lot'&&!S.hq) continue;
+    const minX=b.x-R,maxX=b.x+b.w+R,minZ=b.y-R,maxZ=b.y+b.d+R;
+    if(px>minX&&px<maxX&&pz>minZ&&pz<maxZ){
+      const dL=px-minX,dR=maxX-px,dT=pz-minZ,dB=maxZ-pz;
+      const m=Math.min(dL,dR,dT,dB);
+      if(m===dL) px=minX;
+      else if(m===dR) px=maxX;
+      else if(m===dT) pz=minZ;
+      else pz=maxZ;
+    }
+  }
+  return {px,pz};
 }
 
 /* ---------------- MAIN LOOP ---------------- */
@@ -129,8 +145,9 @@ function loop(now){
     if(keys['w']||keys['arrowup'])my-=1; if(keys['s']||keys['arrowdown'])my+=1;
     if(keys['a']||keys['arrowleft'])mx-=1; if(keys['d']||keys['arrowright'])mx+=1;
     let mlen=Math.hypot(mx,my); if(mlen>1){mx/=mlen;my/=mlen;}
-    const fx=Math.sin(camYaw),fz=Math.cos(camYaw);       // camera forward on ground
-    const rx=Math.sin(camYaw+Math.PI/2),rz=Math.cos(camYaw+Math.PI/2);
+    const fw=camYaw+Math.PI;                               // player faces opposite the camera orbit
+    const fx=Math.sin(fw),fz=Math.cos(fw);
+    const rx=Math.sin(fw+Math.PI/2),rz=Math.cos(fw+Math.PI/2);
     const vx=(fx*-my+rx*mx),vz=(fz*-my+rz*mx);
     // skateboard: unlocked at Stage 2. Full joystick push or Shift = ride.
     const pushHard=Math.hypot(joyVec.x,joyVec.y)>0.88||keys['shift'];
@@ -156,10 +173,11 @@ function loop(now){
           lockNotice[zo.id]=now;
           toast(zo.name+' unlocks at Stage '+zo.unlock+'.','bad');
         }
-      } else if(!collide(nx,nz)){
+      } else {
         playerPos.x=nx; playerPos.z=nz;
-      } else if(!collide(nx,playerPos.z)){ playerPos.x=nx; }
-      else if(!collide(playerPos.x,nz)){ playerPos.z=nz; }
+      }
+      const ej=pushOutOfBuildings(playerPos.x,playerPos.z);
+      playerPos.x=ej.px; playerPos.z=ej.pz;
       playerYaw=Math.atan2(vx,vz);
       S.px=playerPos.x; S.py=playerPos.z;
       if(S.daily&&!S.daily.done&&S.daily.type==='zone'){
@@ -478,16 +496,7 @@ function startWorld(){
   buildNPCData(); buildNPCMeshes();
   applyFounderLook();
   playerPos.x=S.px; playerPos.z=S.py;
-  // Safety: if saved position is inside a building, push player out front
-  for(const b of BUILDINGS){
-    if(b.id==='lot'&&!S.hq) continue;
-    if(playerPos.x>b.x-6&&playerPos.x<b.x+b.w+6&&
-       playerPos.z>b.y-6&&playerPos.z<b.y+b.d+6){
-      playerPos.x=clamp(playerPos.x,b.x,b.x+b.w);
-      playerPos.z=b.y-80;
-      S.px=playerPos.x; S.py=playerPos.z; break;
-    }
-  }
+  { const ej=pushOutOfBuildings(playerPos.x,playerPos.z); playerPos.x=ej.px; playerPos.z=ej.pz; }
   camYaw=Math.PI; // look north into the city
   if(S.hq){ setHQBuilt(); buildHQSign(); } else setHQEmpty();
   if(S.communityInvested) addMurals();

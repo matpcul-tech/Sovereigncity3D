@@ -1,0 +1,3864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Sovereign City 3D | Build What You Own</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#14120F; --paper:#F5EFE3; --amber:#F2A33C; --turq:#3FB8AF;
+  --terra:#C96F4A; --gold:#E8C064; --danger:#D4513B; --green:#5FA86B;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--ink);
+  font-family:'Inter',system-ui,sans-serif;color:var(--paper);
+  touch-action:none;user-select:none;-webkit-user-select:none;position:fixed}
+canvas{display:block}
+#game{filter:saturate(1.45) contrast(1.1) brightness(1.0)}
+#filmGrain{position:fixed;inset:-50%;width:200%;height:200%;pointer-events:none;z-index:4;
+  opacity:0.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+#game{position:absolute;inset:0;z-index:1}
+button{font-family:inherit;cursor:pointer;border:none}
+
+/* ---------- TITLE ---------- */
+#title{position:absolute;inset:0;z-index:50;background:
+  linear-gradient(180deg,#0E1420 0%,#1A1208 60%,#14120F 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center}
+#title .skyline{width:min(420px,86vw);height:110px}
+#title h1{font-family:'Archivo',sans-serif;font-weight:900;font-size:clamp(34px,9vw,58px);
+  letter-spacing:.02em;line-height:.95}
+#title h1 span{color:var(--amber)}
+#title .tag{font-family:'Archivo';font-weight:700;font-size:clamp(13px,3.4vw,16px);
+  letter-spacing:.34em;color:var(--gold);text-transform:uppercase}
+#title .sub{max-width:340px;font-size:13px;line-height:1.55;color:#B9B0A0}
+.btn{background:var(--amber);color:var(--ink);font-weight:700;font-size:16px;
+  padding:14px 34px;border-radius:10px;box-shadow:0 4px 0 #B97718;transition:transform .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #B97718}
+.btn.ghost{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 2px #4A4438;font-weight:600;font-size:14px;padding:11px 24px}
+#title .foot{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));font-size:10px;letter-spacing:.12em;color:#6B6354;text-transform:uppercase}
+#slotList{display:flex;flex-direction:column;gap:10px;width:min(320px,88vw)}
+.slotRow{display:flex;align-items:stretch;gap:8px;width:100%}
+.slotMain{flex:1;min-width:0;background:transparent;color:var(--paper);text-align:left;
+  box-shadow:inset 0 0 0 2px #4A4438;border-radius:10px;padding:12px 16px;transition:transform .08s}
+.slotMain:active{transform:translateY(2px)}
+.slotRow.filled .slotMain{box-shadow:inset 0 0 0 2px var(--amber)}
+.slotTitle{font-weight:700;font-size:14px}
+.slotRow.filled .slotTitle{color:var(--amber)}
+.slotMeta{font-size:11px;color:#9A917F;margin-top:2px}
+.slotDel{flex-shrink:0;background:transparent;color:#6B6354;font-size:15px;line-height:1;
+  padding:0 14px;border-radius:10px;box-shadow:inset 0 0 0 2px #4A4438}
+.slotDel:active{color:var(--danger);transform:translateY(2px)}
+
+/* ---------- CREATOR ---------- */
+#creator{position:absolute;inset:0;z-index:49;background:#14120F;display:none;
+  flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;overflow-y:auto}
+#creator h2{font-family:'Archivo';font-weight:900;font-size:24px}
+#creator .eyebrow{font-size:11px;letter-spacing:.3em;color:var(--amber);text-transform:uppercase;font-weight:700}
+.cRow{width:min(360px,92vw);display:flex;flex-direction:column;gap:7px}
+.cRow label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9A917F;font-weight:600}
+.cRow input[type=text]{background:#221E18;border:2px solid #3A342A;border-radius:9px;
+  padding:12px 14px;color:var(--paper);font-size:16px;font-family:inherit;width:100%}
+.cRow input[type=text]:focus{outline:none;border-color:var(--amber)}
+.swatches{display:flex;gap:9px;flex-wrap:wrap}
+.sw{width:38px;height:38px;border-radius:50%;border:3px solid transparent;cursor:pointer}
+.sw.sel{border-color:var(--gold);transform:scale(1.1)}
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{background:#221E18;border:2px solid #3A342A;color:#CFC6B4;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600}
+.pill.sel{background:var(--amber);border-color:var(--amber);color:var(--ink)}
+#preview{width:96px;height:120px}
+
+/* ---------- HUD ---------- */
+#hud{position:absolute;inset:0;z-index:10;pointer-events:none;display:none}
+#questBar{position:absolute;top:max(10px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  background:rgba(20,18,15,.86);backdrop-filter:blur(6px);border:1px solid #3A342A;border-radius:999px;
+  padding:8px 18px;font-size:12.5px;font-weight:600;max-width:88vw;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;color:var(--gold)}
+#questBar b{color:var(--paper)}
+#clockChip{position:absolute;top:max(10px,env(safe-area-inset-top));right:10px;
+  background:rgba(20,18,15,.86);border:1px solid #3A342A;border-radius:10px;padding:6px 10px;
+  font-size:11px;font-weight:700;text-align:right;line-height:1.45;color:#CFC6B4}
+#clockChip .cash{color:var(--gold);font-size:13px}
+#stageChip{position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;
+  background:rgba(20,18,15,.86);border:1px solid #3A342A;border-radius:10px;padding:6px 10px;
+  font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--turq)}
+#interactBtn{position:absolute;bottom:calc(112px + env(safe-area-inset-bottom));right:18px;
+  background:var(--amber);color:var(--ink);font-weight:800;font-size:15px;border-radius:14px;
+  padding:15px 24px;box-shadow:0 4px 0 #B97718;pointer-events:auto;display:none;max-width:60vw}
+#phoneBtn{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));right:18px;
+  width:64px;height:64px;border-radius:18px;background:rgba(34,30,24,.85);border:2px solid #4A4438;
+  color:var(--paper);font-size:26px;pointer-events:auto;display:flex;align-items:center;justify-content:center}
+#phoneBtn .dot{position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;
+  background:var(--danger);display:none;border:2px solid var(--ink)}
+#joy{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));left:18px;width:128px;height:128px;
+  border-radius:50%;background:rgba(34,30,24,.45);border:2px solid rgba(74,68,56,.7);pointer-events:auto}
+#joyKnob{position:absolute;left:50%;top:50%;width:52px;height:52px;border-radius:50%;
+  background:rgba(242,163,60,.85);transform:translate(-50%,-50%)}
+#camPad{position:absolute;right:0;top:0;width:55%;height:100%;pointer-events:auto}
+#toasts{position:absolute;bottom:calc(172px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+  display:flex;flex-direction:column;gap:8px;align-items:center;width:88vw;pointer-events:none}
+.toast{background:rgba(20,18,15,.92);border:1px solid #4A4438;border-left:4px solid var(--amber);
+  border-radius:10px;padding:10px 16px;font-size:12.5px;font-weight:600;max-width:100%;
+  animation:tIn .25s ease,tOut .4s ease 3.6s forwards}
+.toast.good{border-left-color:var(--green)} .toast.bad{border-left-color:var(--danger)}
+.toast.gold{border-left-color:var(--gold);color:var(--gold)}
+@keyframes tIn{from{opacity:0;transform:translateY(10px)}to{opacity:1}}
+@keyframes tOut{to{opacity:0;transform:translateY(-8px)}}
+#hintKeys{position:absolute;bottom:calc(28px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
+  font-size:10px;letter-spacing:.14em;color:#7E7565;text-transform:uppercase;display:none}
+
+/* ---------- DIALOG ---------- */
+#dialog{position:absolute;inset:0;z-index:20;background:rgba(10,9,7,.6);display:none;
+  align-items:flex-end;justify-content:center;pointer-events:auto}
+#dBox{width:min(560px,100vw);background:#1C1813;border-top:1px solid #4A4438;
+  border-radius:22px 22px 0 0;padding:20px 20px calc(22px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:13px;animation:dUp .22s ease;max-height:78vh;overflow-y:auto}
+@keyframes dUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+#dHead{display:flex;align-items:center;gap:12px}
+#dPortrait{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  font-family:'Archivo';font-weight:900;font-size:20px;color:var(--ink);flex-shrink:0}
+#dName{font-family:'Archivo';font-weight:700;font-size:16px}
+#dRole{font-size:11px;color:#9A917F;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-top:2px}
+#dText{font-size:14.5px;line-height:1.6;color:#E8E0D0;min-height:46px}
+#dOpts{display:flex;flex-direction:column;gap:9px}
+.dOpt{background:#262119;border:1.5px solid #3F392E;border-radius:11px;padding:13px 15px;
+  color:var(--paper);font-size:14px;font-weight:600;text-align:left;line-height:1.4}
+.dOpt:active{background:#332C20;border-color:var(--amber)}
+.dOpt small{display:block;color:#9A917F;font-weight:500;font-size:11.5px;margin-top:3px}
+.dOpt.locked{opacity:.45}
+
+/* ---------- PHONE ---------- */
+#phone{position:absolute;inset:0;z-index:25;background:rgba(10,9,7,.6);display:none;
+  align-items:flex-end;justify-content:center;pointer-events:auto}
+#pBody{width:min(440px,100vw);max-height:82vh;background:#100E0B;border:1px solid #3A342A;
+  border-bottom:none;border-radius:26px 26px 0 0;display:flex;flex-direction:column;overflow:hidden;animation:dUp .22s ease}
+#pTop{padding:16px 18px 12px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #26221B}
+#pTop h3{font-family:'Archivo';font-weight:900;font-size:17px}
+#pClose{background:#262119;color:#CFC6B4;width:34px;height:34px;border-radius:50%;font-size:16px}
+#pTabs{display:flex;border-bottom:1px solid #26221B}
+.pTab{flex:1;background:none;color:#7E7565;font-size:10.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase;padding:12px 0 12px;border-bottom:2px solid transparent;white-space:nowrap}
+.pTab.sel{color:var(--amber);border-bottom-color:var(--amber)}
+#pContent{overflow-y:auto;padding:16px 18px calc(20px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;gap:12px;-webkit-overflow-scrolling:touch}
+#pFoot{padding:0 18px calc(16px + env(safe-area-inset-bottom));border-top:1px solid #26221B}
+#pFoot .btn{width:100%;margin-top:14px;padding:13px}
+.stat{display:flex;justify-content:space-between;align-items:baseline;padding:11px 14px;
+  background:#1A1610;border-radius:11px;border:1px solid #26221B}
+.stat .l{font-size:12px;color:#9A917F;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+.stat .v{font-family:'Archivo';font-weight:700;font-size:17px}
+.stat .v.gold{color:var(--gold)} .stat .v.green{color:var(--green)} .stat .v.red{color:var(--danger)}
+.barWrap{padding:12px 14px;background:#1A1610;border-radius:11px;border:1px solid #26221B}
+.barWrap .l{font-size:12px;color:#9A917F;font-weight:600;letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px;display:flex;justify-content:space-between}
+.bar{height:10px;background:#26221B;border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--turq),var(--gold));border-radius:99px;transition:width .4s}
+.priceRow{display:flex;align-items:center;gap:12px;padding:12px 14px;background:#1A1610;border-radius:11px;border:1px solid #26221B}
+.priceRow input{flex:1;accent-color:var(--amber)}
+.priceRow .pv{font-family:'Archivo';font-weight:700;font-size:18px;color:var(--gold);min-width:54px;text-align:right}
+.feedItem{padding:11px 14px;background:#1A1610;border-radius:11px;border:1px solid #26221B;font-size:13px;line-height:1.5}
+.feedItem .t{font-size:10px;color:#7E7565;font-weight:700;letter-spacing:.1em;margin-bottom:3px}
+.capRow{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600}
+.capRow .cb{height:9px;border-radius:99px}
+.glossEntry{padding:11px 14px;background:#1A1610;border-radius:11px;border-left:3px solid var(--turq);font-size:13px;line-height:1.5}
+.glossEntry b{color:var(--turq)}
+
+#eventBanner{position:absolute;top:calc(56px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  z-index:9;background:linear-gradient(90deg,#2A1F10,#3A2A12);border:1px solid var(--gold);
+  border-radius:10px;padding:8px 18px;font-size:12px;font-weight:700;color:var(--gold);display:none;
+  letter-spacing:.06em;text-transform:uppercase}
+
+#bigModal{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
+  background:rgba(10,9,7,.82);padding:22px;pointer-events:auto}
+#bmCard{width:min(420px,100%);background:#1C1813;border:1px solid #4A4438;border-radius:22px;
+  padding:28px 24px;display:flex;flex-direction:column;gap:14px;text-align:center;align-items:center}
+#bmCard h2{font-family:'Archivo';font-weight:900;font-size:26px;line-height:1.1}
+#bmCard p{font-size:14px;line-height:1.6;color:#CFC6B4}
+#bmCard .gold{color:var(--gold)}
+</style>
+</head>
+<body>
+
+<div id="title">
+  <canvas class="skyline" id="skylineCv" width="420" height="110"></canvas>
+  <div><h1>SOVEREIGN<br><span>CITY</span></h1>
+    <div class="tag" style="margin-top:10px">Build What You Own</div></div>
+  <p class="sub">Third-person founder simulation. You have a dream and $5,000. Walk the city, solve a real problem, and raise a tower with your name on it.</p>
+  <div id="slotList"></div>
+  <div class="foot">Sovereign Shield Technologies LLC &middot; Ada, Oklahoma &middot; 3D Web Demo</div>
+</div>
+
+<div id="creator">
+  <div class="eyebrow">Founder Creation</div>
+  <h2>This city is about to know your name.</h2>
+  <canvas id="preview" width="96" height="120"></canvas>
+  <div class="cRow"><label>Founder name</label><input type="text" id="cName" maxlength="16" placeholder="Your name" autocomplete="off"></div>
+  <div class="cRow"><label>Skin tone</label><div class="swatches" id="cSkin"></div></div>
+  <div class="cRow"><label>Fit</label><div class="swatches" id="cFit"></div></div>
+  <div class="cRow"><label>Voice</label><div class="pills" id="cVoice"></div></div>
+  <button class="btn" id="startBtn" style="margin-top:6px">Step Into The Grind</button>
+</div>
+
+<canvas id="game"></canvas>
+<div id="filmGrain"></div>
+<div id="warmGrade" style="position:fixed;inset:0;pointer-events:none;z-index:4;
+  background:radial-gradient(ellipse at 50% 60%,rgba(255,180,90,0.05) 0%,rgba(255,140,60,0.10) 100%);
+  mix-blend-mode:soft-light"></div>
+
+<div id="hud">
+  <div id="stageChip">Stage 1 &middot; Ideator</div>
+  <div id="questBar"></div>
+  <div id="clockChip"><span id="clockTime">Day 1 &middot; 8:00 AM</span><br><span class="cash" id="clockCash">$5,000</span></div>
+  <div id="eventBanner"></div>
+  <div id="camPad"></div>
+  <div id="toasts"></div>
+  <button id="interactBtn">Talk</button>
+  <div id="joy"><div id="joyKnob"></div></div>
+  <button id="phoneBtn">&#128241;<span class="dot" id="phoneDot"></span></button>
+  <div id="hintKeys">WASD move &middot; drag to look &middot; E interact</div>
+</div>
+
+<div id="dialog"><div id="dBox">
+  <div id="dHead"><div id="dPortrait">M</div>
+    <div><div id="dName"></div><div id="dRole"></div></div></div>
+  <div id="dText"></div><div id="dOpts"></div>
+</div></div>
+
+<div id="phone"><div id="pBody">
+  <div id="pTop"><h3>Founder Phone</h3><button id="pClose">&#10005;</button></div>
+  <div id="pTabs">
+    <button class="pTab sel" data-tab="biz">Business</button>
+    <button class="pTab" data-tab="insight">Insights</button>
+    <button class="pTab" data-tab="feed">Feed</button>
+    <button class="pTab" data-tab="cap">Cap Table</button>
+    <button class="pTab" data-tab="learn">Learn</button>
+  </div>
+  <div id="pContent"></div>
+  <div id="pFoot"><button class="btn ghost" id="exitBtn">Save &amp; Exit to Title</button></div>
+</div></div>
+
+<div id="bigModal"><div id="bmCard"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/GammaCorrectionShader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+<script>
+/* =========================================================
+   SOVEREIGN CITY 3D - Web Demo
+   Sovereign Shield Technologies LLC | Build What You Own
+   Third-person founder simulation. Three.js r128.
+   ========================================================= */
+'use strict';
+
+/* ---------------- UTIL ---------------- */
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const ri=(a,b)=>Math.floor(rnd(a,b+1));
+const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
+const dist2=(ax,az,bx,bz)=>Math.hypot(ax-bx,az-bz);
+
+/* ---------------- AUDIO ---------------- */
+let AC=null;
+function ac(){ if(!AC){ try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){} } return AC; }
+function tone(f,dur,type,vol,when){
+  const c=ac(); if(!c) return;
+  const o=c.createOscillator(),g=c.createGain();
+  o.type=type||'sine'; o.frequency.value=f;
+  g.gain.setValueAtTime(0,c.currentTime+(when||0));
+  g.gain.linearRampToValueAtTime(vol||0.12,c.currentTime+(when||0)+0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+(when||0)+dur);
+  o.connect(g); g.connect(c.destination);
+  o.start(c.currentTime+(when||0)); o.stop(c.currentTime+(when||0)+dur+0.05);
+}
+const sCash=()=>{tone(880,.12,'triangle',.10);tone(1320,.16,'triangle',.08,.06);};
+const sBig=()=>{[523,659,784,1047].forEach((f,i)=>tone(f,.5,'triangle',.09,i*.09));};
+const sBad=()=>{tone(196,.3,'sawtooth',.07);tone(147,.4,'sawtooth',.06,.12);};
+const sTap=()=>tone(440,.06,'square',.04);
+const sWin=()=>{[392,494,587,784,988,1175].forEach((f,i)=>tone(f,.9,'triangle',.10,i*.13));};
+
+/* ---------------- WORLD DATA ---------------- */
+const W=2400,H=1600,ZW=800,ZH=800;
+const ZONES=[
+ {id:1,name:'The Grind',x:0,y:800,ground:0x4a8228,accent:'#F2A33C',unlock:1,bh:[55,95]},
+ {id:2,name:'Main Street',x:800,y:800,ground:0x3a3c42,accent:'#7FB2D9',unlock:1,bh:[90,150]},
+ {id:3,name:'Innovation Row',x:1600,y:0,ground:0x28383e,accent:'#52C7D9',unlock:3,bh:[150,230]},
+ {id:4,name:'Sovereign District',x:0,y:0,ground:0x3e7520,accent:'#3FB8AF',unlock:1,bh:[60,110]},
+ {id:5,name:'Capital Row',x:800,y:0,ground:0x3c3e44,accent:'#C9CFD9',unlock:4,bh:[260,400]},
+ {id:6,name:'The Skyline',x:1600,y:800,ground:0x4a7a24,accent:'#E8C064',unlock:3,bh:[80,120]}
+];
+function zoneAt(x,z){ return ZONES.find(zo=>x>=zo.x&&x<zo.x+ZW&&z>=zo.y&&z<zo.y+ZH); }
+
+const BUILDINGS=[
+ {id:'corner',z:1,x:120,y:980,w:170,d:120,c:0x6a563a,label:'Corner Store'},
+ {id:'community',z:1,x:420,y:940,w:220,d:140,c:0x7a6442,label:'Community Center'},
+ {id:'bank1',z:1,x:140,y:1300,w:180,d:120,c:0x5d574a,label:'Local Bank'},
+ {id:'lot',z:1,x:460,y:1280,w:220,d:160,c:0x453e33,label:'Empty Lot',lot:true},
+ {id:'board',z:1,x:330,y:1140,w:60,d:40,c:0x8a6a38,label:'Community Board',small:true},
+ {id:'market',z:2,x:920,y:960,w:260,d:150,c:0x55687a,label:'City Market'},
+ {id:'adagency',z:2,x:1300,y:940,w:170,d:120,c:0x60707e,label:'Ad Agency'},
+ {id:'lawoffice',z:2,x:940,y:1280,w:170,d:120,c:0x6a7886,label:'Law Office'},
+ {id:'cowork',z:2,x:1260,y:1260,w:210,d:140,c:0x53616c,label:'Co-Working Space'},
+ {id:'techhub',z:3,x:1720,y:130,w:230,d:150,c:0x3d5e6c,label:'Tech Hub'},
+ {id:'ailab',z:3,x:2080,y:110,w:180,d:130,c:0x356676,label:'AI Lab'},
+ {id:'incubator',z:3,x:1760,y:460,w:200,d:140,c:0x446876,label:'Startup Incubator'},
+ {id:'patent',z:3,x:2100,y:440,w:160,d:120,c:0x3d5e66,label:'Patent Office'},
+ {id:'council',z:4,x:140,y:130,w:230,d:150,c:0x9a6a44,label:'Sovereign Council Hall'},
+ {id:'cmarket',z:4,x:470,y:120,w:200,d:130,c:0xaa7a4e,label:'Cultural Market'},
+ {id:'language',z:4,x:130,y:440,w:190,d:130,c:0x8a6244,label:'Language Center'},
+ {id:'clinic',z:4,x:430,y:430,w:200,d:140,c:0x9a7050,label:'Tribal Health Clinic'},
+ {id:'vc',z:5,x:920,y:120,w:190,d:170,c:0x49505e,label:'VC Partners'},
+ {id:'natbank',z:5,x:1230,y:110,w:200,d:180,c:0x505868,label:'National Bank HQ'},
+ {id:'exchange',z:5,x:960,y:460,w:220,d:150,c:0x454d5a,label:'Stock Exchange'},
+ {id:'media',z:5,x:1290,y:450,w:180,d:140,c:0x4c5462,label:'Media Conglomerate'},
+ {id:'tower',z:6,x:1880,y:1000,w:240,d:240,c:0x6a5826,label:'Construction Site',tower:true},
+ {id:'fame',z:6,x:1720,y:1360,w:200,d:120,c:0x7a6834,label:'Hall of Fame'}
+];
+
+const INDUSTRIES=[
+ {id:'music',name:'Music & Sound',base:18,col:0x7A6FB2,
+  line:'You make music? My playlist has been the same 12 songs since last year, honestly.',
+  perk:'Busk at City Market for cash and fans',
+  starters:['Beat Lab Studio','Block Party Records']},
+ {id:'arts',name:'Arts & Design',base:30,col:0xC96F4A,
+  line:'An artist? The whole block has blank walls and blank merch. Show me something.',
+  perk:'Higher viral chance on Sovereign Social',
+  starters:['Mural & Co Design','Print Shop Studio']},
+ {id:'acting',name:'Acting & Film',base:26,col:0xB6657F,
+  line:'You make videos? My cousin swears she should be famous. Convince me you\u2019re different.',
+  perk:'Higher viral chance, media loves you',
+  starters:['Block Films','Open Stage Collective']},
+ {id:'agency',name:'Agency & Talent',base:45,col:0x9AA4B5,
+  line:'An agency? Everybody talented around here, nobody got representation. Talk.',
+  perk:'Partnership intros bring double customers',
+  starters:['Sovereign Talent Agency','Hometown Marketing Co']},
+ {id:'tech',name:'Tech & Apps',base:35,col:0x52C7D9,
+  line:'An app? If it actually solves something around here, I\u2019m listening.',
+  perk:'Automation costs $3,500 instead of $5,000',
+  starters:['Neighborhood App Co','FixIt Software']},
+ {id:'ai',name:'AI Studio',base:50,col:0x3FB8AF,
+  line:'AI? Everybody talks about it, nobody around here builds it. Until you, maybe.',
+  perk:'Cheapest automation in the city: $3,000',
+  starters:['Sovereign AI Lab','SmartTools Studio']},
+ {id:'infra',name:'Infrastructure & Energy',base:60,col:0xE8C064,
+  line:'Power and infrastructure? Now THAT is the long game. Most kids don\u2019t even see it.',
+  perk:'Community investment pays 35% instead of 25%',
+  starters:['Sovereign Power Co','Node One Infrastructure']},
+ {id:'food',name:'Food & Drink',base:20,col:0xF2A33C,
+  line:'Food? Okay now you have my attention. What are we talking about?',
+  perk:'City Festival pays 4x instead of 3x',
+  starters:['Corner Kitchen','Hot Plate Delivery']},
+ {id:'fashion',name:'Fashion & Merch',base:28,col:0xD9D2C0,
+  line:'You make fits? The drip around here has been mid for months. Prove it.',
+  perk:'Higher viral chance on drops',
+  starters:['Sovereign Threads','Block Apparel']},
+ {id:'sports',name:'Sports & Fitness',base:24,col:0x5FA86B,
+  line:'Training? Coach Rivera always says the block needs more of that. What\u2019s your program?',
+  perk:'Coach Rivera intros bring double customers',
+  starters:['Grind Athletics','Court Kings Training']},
+ {id:'education',name:'Education & Tutoring',base:28,col:0x5E7C99,
+  line:'Tutoring? My kid\u2019s been struggling since fall, honestly.',
+  perk:'School partnerships bring double customers',
+  starters:['Neighborhood Tutoring Co','Homework Heroes']},
+ {id:'services',name:'Local Services',base:24,col:0x8FA98B,
+  line:'You fix things? Half this block needs SOMETHING fixed. What do you do?',
+  perk:'Loyal customers, lower churn',
+  starters:['Lawn & Lot Care Crew','Mobile Phone Repair']}
+];
+function IND(){ return INDUSTRIES.find(i=>i.id===(S.biz&&S.biz.industry))||INDUSTRIES[INDUSTRIES.length-1]; }
+
+/* ---------------- STATE ---------------- */
+const SAVE_KEY='sovereign-city-save-v2';
+let S=null;
+function freshState(){
+  return {
+    founder:{name:'Founder',skin:2,fit:0,voice:'Warm'},
+    px:560,py:1180,
+    day:1,hour:8,min:0,
+    cash:5000,debt:0,stage:1,
+    stats:{hustle:10,charisma:10,strategy:10,reputation:5,sovereignty:0},
+    biz:null,customers:0,
+    hq:false,hqLevel:0,
+    employees:[],manager:false,automated:false,communityInvested:false,
+    equity:[{who:'You',pct:100,c:'#E8C064'}],
+    investors:{park:false,chase:false,sovereignFund:false},
+    parkFailed:false,chaseFailed:false,
+    quest:0,
+    lastRevenue:0,lastExpenses:0,lastProfit:0,
+    profitStreak:0,sovereignDays:0,
+    event:null,eventDays:0,
+    comebackUsed:false,bankrupt:false,won:false,legacy:false,
+    npcMem:{},npcRel:{},pitched:{},
+    feed:[],learned:[],chikasha:0,
+    streak:0,daily:null,townPlot:null,talent:null,muted:false,
+    insights:[],insightSeen:{}
+  };
+}
+
+/* ---------------- QUESTS ---------------- */
+const QUESTS=[
+ {hint:'Find <b>Marcus Webb</b> outside the Corner Store',target:()=>npcPos('marcus')},
+ {hint:'Pick a problem at the <b>Community Board</b>',target:()=>bldPos('board')},
+ {hint:'Pitch neighbors face to face. Land <b>5 customers</b>',target:null,prog:()=>S.customers+'/5'},
+ {hint:'Buy the <b>Empty Lot</b> for your first HQ ($1,500)',target:()=>bldPos('lot')},
+ {hint:'Run a street demo at <b>City Market</b>. Reach <b>15 customers</b>',target:()=>bldPos('market'),prog:()=>S.customers+'/15'},
+ {hint:'Hire your first employee at your <b>HQ</b>',target:()=>bldPos('lot')},
+ {hint:'Visit <b>Dr. Redhawk</b> in the Sovereign District',target:()=>npcPos('redhawk')},
+ {hint:'Pitch <b>David Park</b> at the Co-Working Space (need $250+/day revenue)',target:()=>npcPos('park')},
+ {hint:'Buy <b>Automation</b> at the Tech Hub ($5,000)',target:()=>bldPos('techhub')},
+ {hint:'Pitch <b>Victoria Chase</b> on Capital Row',target:()=>npcPos('chase')},
+ {hint:'Hire a <b>General Manager</b> at your HQ ($8,000)',target:()=>bldPos('lot')},
+ {hint:'<b>Sovereignty:</b> 7 straight profitable days, hands off',target:()=>bldPos('tower'),prog:()=>S.sovereignDays+'/7'},
+ {hint:'Visit <b>your tower</b> in The Skyline',target:()=>bldPos('tower')},
+ {hint:'Legacy Mode. The city is yours. Keep building.',target:null}
+];
+function bldPos(id){ const b=BUILDINGS.find(b=>b.id===id); return {x:b.x+b.w/2,z:b.y+b.d+30}; }
+function npcPos(id){ const n=npcById(id); return n?{x:n.x,z:n.z}:null; }
+
+/* ---------------- NPCS ---------------- */
+const SKINS=['#F3D5B5','#E0AC7E','#C68B59','#9C6644','#7F4F24','#5C3A21'];
+const FITS=['#F2A33C','#3FB8AF','#C96F4A','#5E7C99','#8FA98B','#B6657F','#D9D2C0','#7A6FB2'];
+const FIRST=['Jaylen','Maya','Tommy','Rosa','Darius','Kim','Eli','Tasha','Ray','Lena','Hector','Nia','Owen','Pearl','Sam','Ida','Cole','Mona','Trey','Faye','Bo','June','Zeke','Ada','Gus','Vera'];
+const NPCS=[];
+function npcById(id){ return NPCS.find(n=>n.id===id); }
+function addNPC(o){
+  o.x=o.hx; o.z=o.hz; o.tx=o.x; o.tz=o.z; o.wait=rnd(1,4); o.spd=o.spd||10;
+  NPCS.push(o); return o;
+}
+function buildNPCData(){
+  NPCS.length=0;
+  addNPC({id:'marcus',name:'Marcus Webb',role:'Retired Entrepreneur',key:true,skin:4,fit:'#8B7355',hx:255,hz:1160,pc:'#F2A33C'});
+  addNPC({id:'redhawk',name:'Dr. Ayana Redhawk',role:'Chickasaw Elder & Businesswoman',key:true,skin:3,fit:'#3FB8AF',hx:300,hz:330,pc:'#3FB8AF'});
+  addNPC({id:'rivera',name:'Coach Rivera',role:'Community Center Director',key:true,skin:2,fit:'#5FA86B',hx:530,hz:1120,pc:'#5FA86B'});
+  addNPC({id:'park',name:'David Park',role:'Angel Investor',key:true,skin:1,fit:'#5E7C99',hx:1365,hz:1440,pc:'#5E7C99'});
+  addNPC({id:'chase',name:'Victoria Chase',role:'VC Partner',key:true,skin:0,fit:'#C9CFD9',hx:1015,hz:330,pc:'#9AA4B5'});
+  addNPC({id:'rival',name:'Rival Founder',role:'Competing Founder',key:true,skin:2,fit:'#B6657F',hx:1100,hz:1160,pc:'#B6657F'});
+  let f=0;
+  const inBld=(x,z)=>BUILDINGS.some(b=>x>b.x-10&&x<b.x+b.w+10&&z>b.y-10&&z<b.y+b.d+10);
+  ZONES.forEach(zo=>{
+    const n=zo.id===1?8:(zo.id===2?7:(zo.id===4?6:(zo.id===6?2:4)));
+    for(let i=0;i<n;i++){
+      let hx,hz,tries=0;
+      do{ hx=zo.x+rnd(90,ZW-90); hz=zo.y+rnd(90,ZH-90); tries++; }
+      while(inBld(hx,hz)&&tries<12);
+      addNPC({id:'c_'+zo.id+'_'+i,
+        name:FIRST[f++%FIRST.length]+' '+String.fromCharCode(65+ri(0,25))+'.',
+        role:'Neighbor',cust:true,skin:ri(0,5),fit:FITS[ri(0,7)],
+        hx,hz,wander:true});
+    }
+  });
+}
+function rel(id){ return S.npcRel[id]||0; }
+function bumpRel(id,d){ S.npcRel[id]=clamp((S.npcRel[id]||0)+d,-2,3); }
+function remember(id,txt){
+  if(!S.npcMem[id]) S.npcMem[id]=[];
+  S.npcMem[id].push(txt); if(S.npcMem[id].length>5) S.npcMem[id].shift();
+}
+function lastMem(id){ const m=S.npcMem[id]; return m&&m.length?m[m.length-1]:null; }
+
+/* ---------------- TOASTS / FEED / LEARN ---------------- */
+function toast(msg,kind){
+  const d=document.createElement('div');d.className='toast'+(kind?' '+kind:'');d.innerHTML=msg;
+  $('toasts').appendChild(d); setTimeout(()=>d.remove(),4200);
+}
+function feed(msg){
+  S.feed.unshift({d:S.day,m:msg}); if(S.feed.length>40)S.feed.pop();
+  $('phoneDot').style.display='block';
+}
+function learn(term,def){
+  if(S.learned.some(l=>l.t===term))return;
+  S.learned.push({t:term,d:def});
+  toast('<b style="color:var(--turq)">New term: '+term+'</b> &middot; check Learn tab','good');
+}
+
+/* ---------------- DIALOG ENGINE ---------------- */
+let dialogOpen=false;
+function showDialog(name,role,color,text,opts){
+  dialogOpen=true;
+  $('dialog').style.display='flex';
+  $('dPortrait').style.background=color||'#F2A33C';
+  $('dPortrait').textContent=name.split(' ').map(w=>w[0]).join('').slice(0,2);
+  $('dName').textContent=name; $('dRole').textContent=role||'';
+  $('dText').innerHTML=text;
+  const box=$('dOpts'); box.innerHTML='';
+  (opts||[{label:'Close'}]).forEach(o=>{
+    const b=document.createElement('button');
+    b.className='dOpt'+(o.locked?' locked':'');
+    b.innerHTML=o.label+(o.sub?'<small>'+o.sub+'</small>':'');
+    b.onclick=()=>{ sTap(); if(o.locked){toast(o.lockMsg||'Not yet.','bad');return;}
+      if(o.stay){ o.fn&&o.fn(); } else { closeDialog(); o.fn&&o.fn(); } };
+    box.appendChild(b);
+  });
+}
+function closeDialog(){ dialogOpen=false; $('dialog').style.display='none'; }
+
+/* =========================================================
+   CONVERSATIONS (full business sim)
+   ========================================================= */
+function greet(npc){
+  const m=lastMem(npc.id), r=rel(npc.id);
+  let g=r>=2?'Good to see you again':'Hey there';
+  g+=S.founder.voice==='Sharp'?', '+S.founder.name+'.':'.';
+  return m? g+' Last time, '+m+' I remember.' : g;
+}
+function talkTo(npc){
+  if(npc.id==='marcus') return talkMarcus();
+  if(npc.id==='redhawk') return talkRedhawk();
+  if(npc.id==='rivera') return talkRivera();
+  if(npc.id==='park') return talkPark();
+  if(npc.id==='chase') return talkChase();
+  if(npc.id==='rival') return talkRival();
+  return talkCustomer(npc);
+}
+
+function talkMarcus(){
+  dailyProgress('mentor');
+  const c='#F2A33C';
+  if(S.quest===0){
+    showDialog('Marcus Webb','Retired Entrepreneur',c,
+     'So you\u2019re the kid with $5,000 and a dream. I failed three businesses before one worked. You know what I learned? '+
+     '<b>Nobody buys an idea. They buy a solution to their problem.</b> Go read the Community Board. Pick a real problem this neighborhood actually has.',
+     [{label:'Where\u2019s the board?',sub:'Center of The Grind, by the lamppost',fn:()=>{
+        S.quest=1; remember('marcus','I sent you to the Community Board.');bumpRel('marcus',1);saveGame();}},
+      {label:'I already know what I want to build',fn:()=>{
+        S.quest=1; remember('marcus','you tried to skip the homework.');
+        toast('Marcus: "That\u2019s how my first one died. Board. Now."');saveGame();}}]);
+    return;
+  }
+  if(S.bankrupt&&!S.comebackUsed){ return comebackScene(); }
+  const tips=[
+   'Pricing tip: your sweet spot moves with your reputation. Charge what the trust can carry, not a dollar more.',
+   'Watch your burn rate. Cash going out faster than it comes in is a countdown clock, not a detail.',
+   'Customers who feel ignored leave quiet. That\u2019s churn, the silent killer. Talk to your people.',
+   'Investors don\u2019t fund ideas. They fund traction. Numbers first, story second.',
+   'A business that needs you every hour isn\u2019t an asset, it\u2019s a job. Build systems.'];
+  showDialog('Marcus Webb','Retired Entrepreneur',c,
+    greet(npcById('marcus'))+' '+tips[ri(0,tips.length-1)],
+    [{label:'Yakoke, Marcus.',fn:()=>{bumpRel('marcus',1);}},
+     {label:'How are the books looking? (advice)',sub:'Marcus reviews your numbers',fn:marcusReview}]);
+}
+function marcusReview(){
+  let msg;
+  if(!S.biz) msg='You don\u2019t have a business yet. Board first.';
+  else if(S.lastProfit<0) msg='You lost '+fmt(-S.lastProfit)+' yesterday. Expenses are eating you. Cut something or raise revenue, fast.';
+  else if(S.biz.price>sweetSpot()*1.25) msg='Your price is over what your reputation carries. You\u2019ll bleed customers. Bring it toward '+fmt(sweetSpot())+'.';
+  else if(S.biz.price<sweetSpot()*0.6) msg='You\u2019re underpricing. The neighborhood respects you more than that. Push toward '+fmt(sweetSpot())+'.';
+  else msg='Solid. Revenue '+fmt(S.lastRevenue)+', expenses '+fmt(S.lastExpenses)+'. Profit is the real number, and yours was '+fmt(S.lastProfit)+'. Keep stacking.';
+  showDialog('Marcus Webb','Retired Entrepreneur','#F2A33C',msg,[{label:'Got it.'}]);
+}
+
+function openBoard(){
+  if(S.biz){
+    showDialog('Community Board','The Grind','#8a6a38',
+      'New opportunities post here weekly. Your venture <b>'+S.biz.name+'</b> ('+IND().name+') is already on the wall.',
+      [{label:'Back to the grind.'}]);
+    return;
+  }
+  showDialog('Community Board','Found ANYTHING','#8a6a38',
+    'This city runs on every kind of talent. Music, art, film, tech, AI, food, fashion, infrastructure. Pick your lane. Whatever you choose becomes a real business in this city.',
+    INDUSTRIES.map(ind=>({label:ind.name,sub:ind.perk,fn:()=>pickConcept(ind)})));
+}
+function pickConcept(ind){
+  const opts=ind.starters.map(s=>({label:s,sub:'A proven starting concept',fn:()=>foundBusiness(ind,s)}));
+  opts.push({label:'\u2728 Bring my own idea',sub:'Name your business yourself. It goes on the building.',stay:true,fn:()=>nameBusiness(ind)});
+  opts.push({label:'\u2190 Different lane',fn:openBoard});
+  showDialog(ind.name,'Choose your concept','#'+ind.col.toString(16).padStart(6,'0'),
+    'Perk for this lane: <b>'+ind.perk+'</b>. Start with a proven concept, or bring your own.',opts);
+}
+function nameBusiness(ind){
+  $('dText').innerHTML='What\u2019s it called? This name goes on your HQ, your tower, and the Hall of Fame.'+
+   '<input type="text" id="bizNameInput" maxlength="24" placeholder="Your business name" '+
+   'style="margin-top:12px;width:100%;background:#221E18;border:2px solid #3A342A;border-radius:9px;padding:12px 14px;color:#F5EFE3;font-size:16px;font-family:inherit">';
+  const box=$('dOpts'); box.innerHTML='';
+  const b=document.createElement('button'); b.className='dOpt';
+  b.innerHTML='Found it';
+  b.onclick=()=>{ const v=($('bizNameInput').value||'').trim();
+    if(!v){ toast('It needs a name.','bad'); return; }
+    closeDialog(); foundBusiness(ind,v.slice(0,24)); };
+  box.appendChild(b);
+  setTimeout(()=>{ const i=$('bizNameInput'); if(i)i.focus(); },80);
+}
+function foundBusiness(ind,name){
+  S.biz={id:ind.id,industry:ind.id,name:name,base:ind.base,price:ind.base};
+  S.quest=2; S.stats.strategy+=4;
+  learn('Value Proposition','The specific problem you solve and why it\u2019s worth paying for.');
+  feed('You founded '+name+' ('+ind.name+'). The city barely notices. Yet.');
+  toast('<b>'+name+'</b> is born. Lane: '+ind.name+'. Now go get customers, face to face.','gold'); sBig();
+  saveGame();
+}
+
+function sweetSpot(){ return Math.round((S.biz?S.biz.base:25)+S.stats.reputation*0.5); }
+function talkCustomer(npc){
+  if(!S.biz){
+    showDialog(npc.name,'Neighbor','#8FA98B',
+      greet(npc)+' You look like you\u2019re up to something. Come back when you\u2019ve got something to offer.',[{label:'Soon.'}]);
+    return;
+  }
+  if(S.pitched[npc.id]===S.day){
+    showDialog(npc.name,'Neighbor','#8FA98B','You already came by today. Persistence is good, pestering isn\u2019t.',[{label:'Fair.'}]);
+    return;
+  }
+  showDialog(npc.name,'Potential Customer','#8FA98B',
+    greet(npc)+' ... '+IND().line+' Alright, pitch me. Why you?',
+    [{label:'Lead with their problem',sub:'"You shouldn\u2019t have to deal with that. Here\u2019s exactly how I fix it."',fn:()=>pitchResult(npc,0.75)},
+     {label:'Lead with the price',sub:'"Cheapest in the city, guaranteed."',fn:()=>pitchResult(npc,0.45)},
+     {label:'Lead with yourself',sub:'"I\u2019m the hardest worker in this zip code."',fn:()=>pitchResult(npc,0.55)}]);
+}
+function pitchResult(npc,base){
+  S.pitched[npc.id]=S.day;
+  dailyProgress('pitch');
+  const odds=clamp(base+S.stats.hustle*0.006+S.stats.reputation*0.004+rel(npc.id)*0.08,0.1,0.95);
+  if(Math.random()<odds){
+    S.customers++; S.stats.hustle=clamp(S.stats.hustle+2,0,100);
+    S.stats.reputation=clamp(S.stats.reputation+1,0,100);
+    bumpRel(npc.id,2); remember(npc.id,'I signed up as your customer.');
+    sCash(); spawnBurst(playerPos.x,14,playerPos.z,0xE8C064);
+    toast('<b>'+npc.name+'</b> is in! Customer #'+S.customers,'good');
+    if(S.customers===1) learn('Customer Discovery','Talking to real people to find out what they\u2019ll actually pay for.');
+    checkProgression();
+  } else {
+    S.stats.hustle=clamp(S.stats.hustle+1,0,100);
+    bumpRel(npc.id,-1); remember(npc.id,'you pitched me and I passed.');
+    sBad(); floatText(playerPos.x,28,playerPos.z,'NO DEAL','#D4513B');
+    toast(npc.name+' passed. Rejection is data. Adjust and keep moving.','bad');
+    learn('Rejection Handling','Every no teaches you something a yes never could.');
+  }
+  saveGame();
+}
+
+function openLot(){
+  if(!S.hq){
+    if(S.quest<3){
+      showDialog('Empty Lot','For Sale &middot; $1,500','#9A917F',
+        'Cracked concrete, good bones, your name could be on this. Land your first 5 customers, then come claim it.',[{label:'I\u2019ll be back.'}]);
+      return;
+    }
+    showDialog('Empty Lot','For Sale &middot; $1,500','#9A917F',
+      'This lot becomes your headquarters. Rent is $50/day after purchase. Every empire starts on a cracked slab.',
+      [{label:'Buy the lot ($1,500)',locked:S.cash<1500,lockMsg:'Not enough cash.',fn:()=>{
+        S.cash-=1500; S.hq=true; S.hqLevel=1;
+        setHQBuilt(); buildHQSign(); S.quest=4; sBig();
+        // Step player out front of lot so save position isn't inside the new building
+        const lotB=BUILDINGS.find(b=>b.id==='lot');
+        playerPos.x=lotB.x+lotB.w/2; playerPos.z=lotB.y-80;
+        S.px=playerPos.x; S.py=playerPos.z;
+        spawnBurst(playerPos.x,30,playerPos.z,0xF2A33C);
+        feed('You bought the lot. '+S.biz.name+' has a home now.');
+        learn('Overhead','Fixed costs like rent that you pay whether you sell or not.');
+        toast('<b>HQ secured.</b> Rent: $50/day. Now scale to 15 customers.','gold');
+        checkProgression(); saveGame();}},
+       {label:'Not yet.'}]);
+    return;
+  }
+  const opts=[];
+  if(S.quest===5&&S.employees.length===0)
+    opts.push({label:'Interview candidates',sub:'Your first hire. Choose carefully.',fn:hireScene});
+  if(S.quest===10&&!S.manager)
+    opts.push({label:'Hire General Manager ($8,000)',sub:'Runs the business without you',
+      locked:S.cash<8000,lockMsg:'Need $8,000.',fn:hireManager});
+  if(S.employees.length>0&&!S.manager&&S.quest>5&&S.quest<10)
+    opts.push({label:'Check on the team',fn:()=>{
+      showDialog(S.biz.name+' HQ','Your team','#F2A33C',
+        S.employees.map(e=>e.name+' ('+e.trait+')').join(', ')+
+        (S.automated?' The automated systems hum in the back room.':' Everything still runs by hand.'),
+        [{label:'Back to work.'}]);}});
+  opts.push({label:'Step outside.',fn:()=>{
+    const lot=BUILDINGS.find(b=>b.id==='lot');
+    if(lot){ playerPos.x=lot.x+lot.w/2; playerPos.z=lot.y-80; S.px=playerPos.x; S.py=playerPos.z; }
+  }});
+  showDialog(S.biz.name+' HQ','Level '+S.hqLevel,'#F2A33C',
+    'Your building. Your name on the sign. '+S.customers+' customers and counting.',opts);
+}
+function hireScene(){
+  const cands=[
+    {name:'Tasha M.',trait:'Hustler',sub:'High energy, asks for $120/day, talks more than she listens',good:true},
+    {name:'Glen P.',trait:'Cheapest',sub:'Will work for $90/day, shrugged twice in the interview',good:false},
+    {name:'Rosa D.',trait:'Detail-Driven',sub:'$120/day, asked YOU three smart questions about the customers',good:true}];
+  showDialog('Hiring Day','Your first employee','#F2A33C',
+    'Three candidates came in. The wrong hire poisons culture. The right one multiplies everything.',
+    cands.map(c=>({label:c.name+' &middot; '+c.trait,sub:c.sub,fn:()=>{
+      S.employees.push({name:c.name,trait:c.trait,good:c.good});
+      S.quest=6; learn('Payroll','Your team gets paid every day, sale or no sale. Miss it and they walk.');
+      if(c.good){ S.stats.strategy+=3; toast('<b>'+c.name+' joined.</b> Good instinct. Output multiplied.','good'); sBig(); }
+      else { toast(c.name+' joined... that shrug was a warning. Productivity will lag.','bad'); sBad(); }
+      feed('First hire: '+c.name+'. Payroll starts tomorrow.');
+      checkProgression(); saveGame();}})));
+}
+function hireManager(){
+  S.cash-=8000; S.manager=true; S.quest=11; S.sovereignDays=0;
+  sBig(); learn('Sovereignty','Your business runs without you. That is the goal.');
+  feed('General Manager hired. The machine can run without your hands on it.');
+  toast('<b>GM hired.</b> Now prove it: 7 straight profitable days, hands off.','gold');
+  showDialog('Your GM','General Manager','#3FB8AF',
+    '"I\u2019ve got the floor. Go be a founder, not an operator. Check your phone, watch the profit, and let the system breathe."',
+    [{label:'It\u2019s yours. Run it.'}]);
+  saveGame();
+}
+
+function openMarket(){
+  if(!S.biz){ showDialog('City Market','Main Street','#7FB2D9','Stalls, noise, money changing hands. Get a business first.',[{label:'OK'}]); return; }
+  if(S.quest<4){ showDialog('City Market','Main Street','#7FB2D9','The market\u2019s where you scale, but you need an HQ to fulfill demand first.',[{label:'Right.'}]); return; }
+  showDialog('City Market','Street Demo &middot; $100 table fee','#7FB2D9',
+    'Set up a table, demo '+S.biz.name+' to the crowd. High traffic, real stakes. How do you run it?',
+    [(S.biz.industry==='music'?{label:'\uD83C\uDFB8 Busk for the crowd',sub:'Free. Play live, earn cash and fans on the spot.',fn:busk}:null),
+     {label:'Free samples / free first service',sub:'Costs extra $80, converts best',
+      locked:S.cash<180,lockMsg:'Need $180.',fn:()=>demoResult(180,0.8)},
+     {label:'Straight pitch from the table',sub:'$100, decent odds',
+      locked:S.cash<100,lockMsg:'Need $100.',fn:()=>demoResult(100,0.55)},
+     {label:'Post on Sovereign Social instead',sub:'Free. Could go viral. Could flop publicly.',fn:socialPost},
+     {label:'Not today.'}].filter(Boolean));
+}
+function busk(){
+  const fans=ri(1,4), cash=ri(20,90)+S.stats.charisma;
+  S.customers+=fans; S.cash+=cash; S.stats.charisma+=1;
+  [392,494,587,659].forEach((f,i)=>tone(f,.35,'triangle',.09,i*.12));
+  spawnBurst(playerPos.x,18,playerPos.z,0x7A6FB2);
+  floatText(playerPos.x,30,playerPos.z,'+'+fmt(cash),'#7A6FB2');
+  toast('<b>The set went off.</b> +'+fmt(cash)+' in the case, +'+fans+' fans.','gold');
+  feed('Street set at City Market. The crowd stayed for the whole thing.');
+  checkProgression(); saveGame();
+}
+function demoResult(cost,base){
+  S.cash-=cost;
+  const got=Math.random()<clamp(base+S.stats.charisma*0.004,0,0.95)?ri(3,6):ri(0,2);
+  if(got>0){
+    S.customers+=got; S.stats.charisma+=2; S.stats.reputation+=2;
+    sCash(); toast('<b>+'+got+' customers</b> from the demo. The block is talking.','good');
+  } else { sBad(); toast('Demo flopped. Wrong crowd, wrong hour. Data, not defeat.','bad'); }
+  checkProgression(); saveGame();
+}
+function socialPost(){
+  const r=Math.random();
+  const viralLine=['arts','acting','fashion','music'].includes(S.biz.industry)?0.42:0.3;
+  if(r<viralLine){ const got=ri(5,9); S.customers+=got; S.stats.reputation+=5;
+    sBig(); spawnBurst(playerPos.x,20,playerPos.z,0x3FB8AF);
+    feed('Your post went VIRAL on Sovereign Social. +'+got+' customers overnight.');
+    toast('<b>VIRAL.</b> +'+got+' customers. A news crew drove past your block.','gold');
+  } else if(r<0.7){ const got=ri(1,3); S.customers+=got;
+    toast('+'+got+' customers from the post. Steady beats flashy.','good'); sCash();
+  } else { S.stats.reputation=Math.max(0,S.stats.reputation-2);
+    sBad(); feed('Your post flopped. A few neighbors clowned it in the comments.');
+    toast('Post flopped publicly. Reputation dinged. It happens to everyone.','bad'); }
+  checkProgression(); saveGame();
+}
+
+function talkRedhawk(){
+  dailyProgress('mentor');
+  const c='#3FB8AF';
+  if(!S.biz||S.quest<6){
+    showDialog('Dr. Ayana Redhawk','Chickasaw Elder & Businesswoman',c,
+      '<i>Chokma.</i> I\u2019ve heard of you. Come back when your business has roots, and we\u2019ll talk about what makes them deep.',
+      [{label:'Chokma. I\u2019ll return.',fn:()=>{S.chikasha++;}}]);
+    return;
+  }
+  if(!S.communityInvested){
+    showDialog('Dr. Ayana Redhawk','Chickasaw Elder & Businesswoman',c,
+      '<i>Chokma, '+S.founder.name+'.</i> A business that takes from a community is a visitor. A business that invests in one becomes part of it, and the community protects what is part of it. '+
+      'Invest $2,000 here, into the youth programs and the market, and watch what loyalty does to your numbers.',
+      [{label:'Invest $2,000 in the community',sub:'+'+(S.biz.industry==='infra'?'35':'25')+'% to ALL revenue, permanently. The moat money can\u2019t buy.',
+        locked:S.cash<2000,lockMsg:'Return when you have $2,000.',fn:()=>{
+          S.cash-=2000; S.communityInvested=true; S.stats.reputation+=8; S.stats.sovereignty+=10;
+          if(S.quest===6)S.quest=7;
+          bumpRel('redhawk',3); remember('redhawk','you invested in this community.');
+          learn('Competitive Moat','The thing that makes your business hard to copy. Community loyalty is one money can\u2019t buy.');
+          sBig(); spawnBurst(playerPos.x,25,playerPos.z,0x3FB8AF);
+          addMurals();
+          feed('You invested in the Sovereign District. New murals went up within a week.');
+          toast('<b>+25% revenue bonus, permanent.</b> Zone 4 visibly improves. <i>Yakoke.</i>','gold');
+          insight('moat_active','You just built a moat',
+            'That $2,000 is gone from your cash, but it bought something a competitor can\u2019t copy '+
+            'by undercutting your price: loyalty. Every future day, your revenue runs '+
+            (S.biz&&S.biz.industry==='infra'?'35%':'25%')+' higher, permanently. The community protects '+
+            'what it has a stake in. This is the moat money alone can\u2019t buy.');
+          checkProgression(); saveGame();}},
+       {label:'Tell me about this district first',stay:true,fn:()=>{
+          $('dText').innerHTML='This district was built on the idea that sovereignty isn\u2019t given, it\u2019s built. Our bank, our clinic, our language center. <i>Yakoke</i> means thank you. <i>Halito</i> means hello. <i>Chokma</i> means good. Now you carry three words of Chikashshanompa\u2019 with you.';
+          S.chikasha=3;}},
+       {label:'Not yet.',fn:()=>{remember('redhawk','you hesitated on the community investment.');}}]);
+    return;
+  }
+  showDialog('Dr. Ayana Redhawk','Chickasaw Elder & Businesswoman',c,
+    greet(npcById('redhawk'))+' The murals went up because of you. '+
+    (S.investors.sovereignFund?'The Sovereign Fund watches your tower rise with pride.':'When you\u2019re ready for capital that doesn\u2019t take your soul with your equity, the Sovereign Fund is here.'),
+    S.investors.sovereignFund||S.stage<3?[{label:'Yakoke, Dr. Redhawk.'}]:
+    [{label:'Tell me about the Sovereign Fund',sub:'$8,000 for 5% equity. Community-rooted businesses only.',fn:sovereignFund},
+     {label:'Yakoke, Dr. Redhawk.'}]);
+}
+function sovereignFund(){
+  showDialog('The Sovereign Fund','Collective Investment Group','#3FB8AF',
+    'We invest in businesses rooted in community. $8,000 for 5%. No board seat taken, one condition given: you mentor a young founder when your time comes.',
+    [{label:'Accept the Sovereign Fund ($8,000 for 5%)',fn:()=>{
+      S.cash+=8000; S.investors.sovereignFund=true; takeEquity('Sovereign Fund',5,'#3FB8AF');
+      sBig(); feed('The Sovereign Fund invested $8,000. Terms a VC would never offer.');
+      toast('<b>+$8,000.</b> Sovereign Fund holds 5%. Sovereignty-first terms.','gold'); saveGame();}},
+     {label:'Let me think on it.'}]);
+}
+
+function talkRivera(){
+  dailyProgress('mentor');
+  const opts=[{label:'Appreciate you, Coach.',fn:()=>bumpRel('rivera',1)}];
+  if(S.stage>=3&&S.biz) opts.unshift({label:'Connect me to a school partner',sub:'+6 customers, +reputation, once per stage',fn:()=>{
+     if(S.npcMem['rivera_school']===S.stage){toast('Coach already made this stage\u2019s intro.','bad');return;}
+     const got=['sports','education','agency'].includes(S.biz.industry)?12:6;
+     S.npcMem['rivera_school']=S.stage; S.customers+=got; S.stats.reputation+=4;
+     sCash(); toast('<b>School partnership.</b> +'+got+' customers via Coach Rivera.','good');
+     feed('Coach Rivera connected you to a school program. Institutional money is different money.');
+     checkProgression(); saveGame();}});
+  showDialog('Coach Rivera','Community Center Director','#5FA86B',
+    greet(npcById('rivera'))+(S.biz?
+    ' The kids ask about you, you know. The founder from the block. '+(S.stage>=3?'Schools have been calling me about '+S.biz.name+'.':'Keep grinding. When you\u2019re bigger, I can connect you to the schools.'):
+    ' This center is where this neighborhood\u2019s future hangs out every afternoon. Build something they can look up to.'),opts);
+}
+
+function talkRival(){
+  const hostile=rel('rival')<0;
+  showDialog('Rival Founder','Competing Founder','#B6657F',
+    greet(npcById('rival'))+(S.biz?
+    (hostile?' We both know only one of us owns this market.':' Same city, same hunger. Question is whether we eat alone or together.'):
+    ' I started six months before you. The grind doesn\u2019t care who came first, only who stays.'),
+    S.biz&&S.stage>=3?[
+     {label:'Propose a partnership',sub:'Joint venture: both gain customers, rivalry ends',fn:()=>{
+        if(Math.random()<0.4+S.stats.charisma*0.005){
+          bumpRel('rival',3); S.customers+=5; remember('rival','we became partners.');
+          sBig(); toast('<b>Partnership formed.</b> +5 customers. A rival became an ally.','gold');
+          learn('Blue Ocean','Skip the fight. Find or create the market nobody is contesting.');
+        } else { bumpRel('rival',-2); remember('rival','you tried to partner and I laughed.');
+          sBad(); toast('They laughed it off. The rivalry just got personal.','bad'); }
+        saveGame();}},
+     {label:'Talk trash',sub:'Feels good. Costs reputation.',fn:()=>{
+        bumpRel('rival',-2); S.stats.reputation=Math.max(0,S.stats.reputation-3);
+        remember('rival','you talked trash on the street.');
+        toast('Word travels. Reputation -3. Was it worth it?','bad'); saveGame();}},
+     {label:'Walk away.'}]:[{label:'We\u2019ll see.'}]);
+}
+
+const PARK_QS=[
+ {q:'"Walk me in. How many paying customers, real number?"',
+  a:[{t:'State the exact number and the trend',good:true},
+     {t:'"A lot. Honestly the market is huge."',good:false},
+     {t:'Pivot to the vision before answering',good:false}]},
+ {q:'"What\u2019s your churn look like? Who leaves and why?"',
+  a:[{t:'"Some leave when price outruns trust. I track it and adjust."',good:true},
+     {t:'"Nobody leaves. They love us."',good:false},
+     {t:'"Churn? We\u2019re focused on growth, not losses."',good:false}]},
+ {q:'"Why does this survive when a big player copies you?"',
+  a:[{t:'"They can copy the service. They can\u2019t copy community roots."',good:true},
+     {t:'"We\u2019ll just out-spend them."',good:false},
+     {t:'"They won\u2019t notice us."',good:false}]}];
+function talkPark(){
+  const c='#5E7C99';
+  if(S.investors.park){
+    showDialog('David Park','Angel Investor',c,greet(npcById('park'))+' My $10K is working hard in your hands. Keep the updates coming.',[{label:'Always.'}]);
+    return;
+  }
+  if(S.quest<7||!S.biz){
+    showDialog('David Park','Angel Investor',c,'I write $5K to $15K checks for founders with real customer numbers. Come back with traction, not a story.',[{label:'Noted.'}]);
+    return;
+  }
+  if(S.lastRevenue<250){
+    showDialog('David Park','Angel Investor',c,
+      greet(npcById('park'))+' I looked at your run rate. '+fmt(S.lastRevenue)+'/day isn\u2019t there yet. I need $250+/day. '+
+      (S.parkFailed?'You bounced back before. Do it again.':'Data-focused isn\u2019t cold, it\u2019s respect for your time and mine.'),
+      [{label:'I\u2019ll be back with the numbers.'}]);
+    return;
+  }
+  runPitch('David Park','Angel Investor',c,PARK_QS,(score)=>{
+    if(score>=2){
+      const amt=score===3?15000:10000;
+      S.cash+=amt; S.investors.park=true; takeEquity('David Park',15,'#5E7C99');
+      S.quest=8; S.stage=Math.max(S.stage,4); sBig();
+      learn('Equity Dilution','You sold 15%. You own less, but of something bigger.');
+      learn('Cap Table','The list of everyone who owns a piece of your company. Check your phone.');
+      feed('David Park wired '+fmt(amt)+' for 15%. A construction crane appeared by your HQ within a day.');
+      toast('<b>FUNDED: '+fmt(amt)+'</b> for 15% equity. Capital unlocked.','gold');
+      insight('equity_sold','You just sold part of your company',
+        'That '+fmt(amt)+' is real, and so is the trade: David Park now owns 15% of '+S.biz.name+
+        ', forever. You still control '+(100-15)+'% and the decisions, but every dollar this business '+
+        'ever makes, 15 cents of it has his name on it now. Check your Cap Table tab. That number only '+
+        'moves one direction unless you buy it back, and most founders never do.',
+        {cta:{label:'View Cap Table',fn:()=>openPhoneTo('cap')}});
+      spawnBurst(playerPos.x,25,playerPos.z,0xE8C064);
+      S.hqLevel=2; setHQBuilt();
+      checkProgression(); saveGame();
+    } else {
+      S.parkFailed=true; remember('park','your pitch fell apart under questions.');
+      sBad(); feed('Park passed. "Come back with stronger answers." He\u2019ll remember.');
+      showDialog('David Park','Angel Investor',c,
+        '"Not yet. You stumbled where it matters. I remember every pitch, the failures and the comebacks. Tighten your numbers and return."',
+        [{label:'I\u2019ll be back.'}]);
+      saveGame();
+    }
+  });
+}
+
+const CHASE_QS=[
+ {q:'"Your unit economics. Cost to acquire a customer versus what they\u2019re worth. Go."',
+  a:[{t:'"Acquisition runs under $30 street-level, each customer is worth multiples of that a year."',good:true},
+     {t:'"We don\u2019t really track that yet."',good:false},
+     {t:'"Customers find us, so acquisition is basically free."',good:false}]},
+ {q:'"You\u2019ve raised before. How much of the company do you still control?"',
+  a:[{t:'Quote your cap table from memory, to the percent',good:true},
+     {t:'"Most of it, I think."',good:false},
+     {t:'"Does it matter? I run the company."',good:false}]},
+ {q:'"Why scale this city-wide instead of staying a neighborhood story?"',
+  a:[{t:'"The model is proven where trust is hardest to earn. Every district is easier from here."',good:true},
+     {t:'"Because bigger is better."',good:false},
+     {t:'"My investors expect it."',good:false}]},
+ {q:'"Last one. When the recession hits, and it will, what survives?"',
+  a:[{t:'"Community-rooted revenue. Loyalty doesn\u2019t churn with the market index."',good:true},
+     {t:'"We\u2019ll cut everything and hibernate."',good:false},
+     {t:'"Recessions are opportunities!" (say nothing else)',good:false}]}];
+function talkChase(){
+  const c='#9AA4B5';
+  if(S.investors.chase){
+    showDialog('Victoria Chase','VC Partner',c,greet(npcById('chase'))+' The board, which is to say me, is pleased. Your tower is the talk of Capital Row.',[{label:'It\u2019s just the beginning.'}]);
+    return;
+  }
+  if(S.stage<4){
+    showDialog('Victoria Chase','VC Partner',c,'I write $25K to $100K checks at Stage 4 and beyond. You\u2019re not there. This isn\u2019t cruelty, it\u2019s a calendar.',[{label:'See you at Stage 4.'}]);
+    return;
+  }
+  if(!S.automated){
+    showDialog('Victoria Chase','VC Partner',c,
+      greet(npcById('chase'))+' I don\u2019t fund founders who ARE the operations. Automate at the Tech Hub, then we talk real numbers.',
+      [{label:'Innovation Row. On it.'}]);
+    return;
+  }
+  runPitch('Victoria Chase','VC Partner, Capital Row',c,CHASE_QS,(score)=>{
+    if(score>=3){
+      const amt=score===4?100000:50000;
+      S.cash+=amt; S.investors.chase=true; takeEquity('Victoria Chase',20,'#9AA4B5');
+      S.quest=10; sBig();
+      learn('Valuation','What your whole company is worth, implied by what investors pay for their slice.');
+      feed('Victoria Chase wired '+fmt(amt)+' for 20%. Cold until you prove traction. Warm now.');
+      toast('<b>FUNDED: '+fmt(amt)+'</b> for 20%. Capital Row knows your name.','gold');
+      spawnBurst(playerPos.x,25,playerPos.z,0xE8C064);
+      checkProgression(); saveGame();
+    } else {
+      S.chaseFailed=true; remember('chase','your first pitch to me missed.');
+      sBad(); feed('Chase passed. The door isn\u2019t closed, but it didn\u2019t open either.');
+      showDialog('Victoria Chase','VC Partner',c,'"Close, not closed. Sharpen the answers you fumbled and come back. I respect a second pitch more than a first one."',[{label:'Count on it.'}]);
+      saveGame();
+    }
+  });
+}
+
+function runPitch(name,role,color,qs,done){
+  let i=0,score=0;
+  function ask(){
+    if(i>=qs.length){ done(score); return; }
+    const q=qs[i];
+    const shuffled=q.a.map((a,idx)=>({...a,idx})).sort(()=>Math.random()-0.5);
+    showDialog(name,role+' &middot; Question '+(i+1)+'/'+qs.length,color,q.q,
+      shuffled.map(a=>({label:a.t,fn:()=>{
+        if(a.good){score++; S.stats.charisma+=1; tone(660,.1,'triangle',.08);}
+        else tone(220,.15,'sawtooth',.05);
+        i++; setTimeout(ask,80);}})));
+  }
+  showDialog(name,role,color,
+    '"Sit down. I have '+(qs.length===3?'three':'four')+' questions. Your answers decide the check size, or whether there is one."',
+    [{label:'Begin the pitch.',fn:ask}]);
+}
+function takeEquity(who,pct,c){
+  const you=S.equity.find(e=>e.who==='You');
+  you.pct-=pct; S.equity.push({who,pct,c});
+}
+
+function openTechHub(){
+  if(S.stage<3){
+    showDialog('Tech Hub','Innovation Row','#52C7D9','Glass walls, pitch meetings, drone deliveries. Unlocks at Stage 3. You\u2019re close.',[{label:'Soon.'}]);
+    return;
+  }
+  if(S.automated){
+    showDialog('Tech Hub','Innovation Row','#52C7D9','Your systems are live: routing, scheduling, payments, all automated. The scrappy startup became a scalable operation here.',[{label:'It still feels new.'}]);
+    return;
+  }
+  const aPrice=S.biz&&S.biz.industry==='ai'?3000:(S.biz&&S.biz.industry==='tech'?3500:5000);
+  showDialog('Tech Hub','Innovation Row','#52C7D9',
+    'Automation package for '+(S.biz?S.biz.name:'your business')+': '+fmt(aPrice)+' up front. Cuts daily ops costs 40% and removes the customer-cap your hands put on the business.'+
+    (aPrice<5000?' <b>Your lane gets the builder discount.</b>':''),
+    [{label:'Buy Automation ('+fmt(aPrice)+')',locked:S.cash<aPrice,lockMsg:'Need '+fmt(aPrice)+'.',fn:()=>{
+       S.cash-=aPrice; S.automated=true; if(S.quest===8)S.quest=9;
+       S.stats.strategy+=6; S.stats.sovereignty+=10; sBig();
+       learn('Systems','Manual is cheaper today. Automated is cheaper forever.');
+       feed('Automation live. The business no longer needs your hands for every dollar.');
+       toast('<b>Automated.</b> Ops costs down 40%. Scale ceiling removed.','gold');
+       insight('automation_on','You bought yourself time',
+         'Tomorrow\u2019s overhead drops about 40%, and the customer ceiling that was about to cost you '+
+         'business is gone. This cost cash today to save cash every day after. That trade, '+
+         'spend now to spend less forever, is what separates a job from a business.');
+       checkProgression(); saveGame();}},
+     {label:'Not yet.'}]);
+}
+
+function genericBuilding(b){
+  const zo=ZONES.find(z=>z.id===b.z);
+  const flavor={
+    bank1:'The teller nods. Your balance: '+fmt(S.cash)+'. '+(S.debt>0?'Outstanding debt: '+fmt(S.debt)+'.':'No debts. Keep it that way.'),
+    community:'Kids at homework tables, a pickup game out back. Coach Rivera\u2019s office is by the door.',
+    adagency:'"Billboards start at $500." Maybe when the revenue justifies it.',
+    lawoffice:'"Incorporate early, litigate never," the sign reads. Wisdom, $400/hour.',
+    cowork:'Laptops, cold brew, three pitches happening at once. David Park holds court near the window.',
+    council:'The Sovereign Council Hall. Carved cedar doors. The center of a different kind of power.',
+    cmarket:'Traditional craftwork next to startup merch. The Cultural Market hums.',
+    language:'Chikashshanompa\u2019 lessons through the window: <i>Halito. Chokma. Yakoke.</i>',
+    clinic:'The Tribal Health Clinic. Community care, community owned.',
+    natbank:'Marble and silence. Your community bank back home moves faster.',
+    exchange:'The Market Index ticker: '+marketLabel()+'.',
+    media:'News crews load vans. '+(S.stats.reputation>40?'A producer recognizes you.':'Nobody looks at you twice. Yet.'),
+    ailab:'Researchers argue about agent architectures over coffee.',
+    incubator:'A cohort of founders mid-bootcamp. You remember Day 1.',
+    patent:'"Protect what you build." Forms in triplicate.',
+    fame:'The Hall of Fame, shared by every founder of this demo. '+(fameCache.length?
+      'On the wall: '+fameCache.slice(0,8).map(f=>f.name+' ('+f.biz+', Day '+f.day+')').join(' \u00B7 ')+'.':
+      'Blank plaques wait for the first Sovereign founders.')+(S.won?' Your name is up there. Permanently.':'')
+  };
+  showDialog(b.label,zo.name,zo.accent,flavor[b.id]||'The door is open, the day is short.',[{label:'Move on.'}]);
+}
+function marketLabel(){
+  if(S.event==='boom')return 'BOOM &middot; demand surging';
+  if(S.event==='recession')return 'RECESSION &middot; spending tight';
+  if(S.event==='festival')return 'CITY FESTIVAL &middot; 3x foot traffic';
+  return 'STEADY';
+}
+
+function openTower(){
+  if(!S.won){
+    showDialog('Construction Site','The Skyline','#E8C064',
+      'Scaffolding and a sign: <b>FUTURE HOME OF '+(S.biz?S.biz.name.toUpperCase():'SOMEONE')+'</b>. This zone didn\u2019t exist when you started. It builds itself as you approach sovereignty. '+S.sovereignDays+'/7 sovereign days.',
+      [{label:'It\u2019s rising.'}]);
+    return;
+  }
+  if(S.quest===12){ S.quest=13; victoryScene(); return; }
+  showDialog(S.biz.name+' Tower','The Skyline','#E8C064',
+    'Your name on the top floor. Employees wave from the windows. Citizens look up. The city changed because of you.',
+    [{label:'Build what you own.'}]);
+}
+
+/* =========================================================
+   DAILY HUSTLE STREAK
+   ========================================================= */
+const DAILY_TYPES=[
+ {type:'pitch',need:2,txt:()=>'Pitch 2 people face to face today'},
+ {type:'profit',need:1,txt:()=>'End the day in profit'},
+ {type:'zone',need:1,txt:d=>'Set foot in '+ZONES.find(z=>z.id===d.zone).name+' today'},
+ {type:'mentor',need:1,txt:()=>'Check in with a mentor today'}
+];
+function assignDaily(){
+  if(S.daily&&!S.daily.done&&S.streak>0){
+    S.streak=0;
+    toast('Hustle streak broken. Back to day one. The grind forgives, it doesn\u2019t forget.','bad');
+  }
+  const pool=S.biz?DAILY_TYPES:DAILY_TYPES.filter(d=>d.type==='zone'||d.type==='mentor');
+  const pick=pool[ri(0,pool.length-1)];
+  S.daily={type:pick.type,need:pick.need,prog:0,done:false,day:S.day};
+  if(pick.type==='zone'){
+    const unlocked=ZONES.filter(z=>S.stage>=z.unlock&&z.id!==(zoneAt(playerPos.x,playerPos.z)||{}).id);
+    S.daily.zone=unlocked[ri(0,unlocked.length-1)].id;
+  }
+  toast('<b>Hustle of the Day:</b> '+pick.txt(S.daily)+(S.streak>0?' &middot; \uD83D\uDD25'+S.streak:''),'gold');
+}
+function dailyProgress(type,n){
+  if(!S.daily||S.daily.done||S.daily.type!==type)return;
+  S.daily.prog+=(n||1);
+  if(S.daily.prog>=S.daily.need){
+    S.daily.done=true; S.streak++;
+    const reward=50+25*Math.min(S.streak,8);
+    S.cash+=reward; sCash();
+    spawnBurst(playerPos.x,18,playerPos.z,0xE8C064);
+    floatText(playerPos.x,36,playerPos.z,'+'+fmt(reward),'#E8C064');
+    toast('<b>Hustle complete!</b> \uD83D\uDD25 Streak '+S.streak+' &middot; +'+fmt(reward),'gold');
+    feed('Daily hustle done. Streak: '+S.streak+'. Bonus '+fmt(reward)+'.');
+    saveGame();
+  }
+}
+
+/* =========================================================
+   CHAOS EVENTS (the city has jokes)
+   ========================================================= */
+const CHAOS=[
+ {t:'The market goose stole a whole sandwich and outran two security guards. The crowd that gathered? Foot traffic.',
+  fx:()=>{ if(S.biz&&S.customers>0){S.customers++;toast('+1 customer from goose-related foot traffic.','good');} gooseDash(); }},
+ {t:'A customer paid entirely in quarters. Counting it took an hour. It was somehow exactly right.'},
+ {t:'Rival Founder posted cringe on Sovereign Social. Your reputation rose by doing absolutely nothing.',
+  fx:()=>{S.stats.reputation=clamp(S.stats.reputation+2,0,100);}},
+ {t:'A kid set up a lemonade stand right outside your block. Respect the hustle. You bought two cups.',
+  fx:()=>{S.cash=Math.max(0,S.cash-2);S.stats.hustle=clamp(S.stats.hustle+1,0,100);}},
+ {t:'The pigeons outside the Stock Exchange appear to have unionized. Negotiations ongoing.'},
+ {t:'BigCorp\u2019s delivery drone dropped a package in the wrong city. Their reviews are having a day.'},
+ {t:'Marcus beat three teenagers at park chess. Simultaneously. While giving business advice.'},
+ {t:'Someone\u2019s car alarm has been going off to the exact rhythm of the Zone 1 lo-fi. The block decided to keep it.'},
+ {t:'A tourist asked the goose for directions. The goose was, reportedly, helpful.',fx:()=>gooseDash()},
+ {t:'Your autocorrect changed "synergy" to "sausage" in an email. The recipient said it was the most honest pitch they\u2019d read.',
+  fx:()=>{if(S.biz){S.stats.charisma=clamp(S.stats.charisma+2,0,100);}}},
+ {t:'Coach Rivera\u2019s youth team won. The whole Grind heard about it before the final whistle.'},
+ {t:'Capital Row executive seen eating a gas station burrito in a parked luxury car. Humanity confirmed.'}
+];
+function maybeChaos(){
+  if(Math.random()>0.07)return;
+  const e=CHAOS[ri(0,CHAOS.length-1)];
+  feed(e.t);
+  toast(e.t.length>90?e.t.slice(0,90)+'\u2026':e.t);
+  if(e.fx)e.fx();
+}
+
+/* =========================================================
+   ECONOMY
+   ========================================================= */
+function dailySettle(){
+  if(!S.biz) return;
+  const ss=sweetSpot();
+  const churnLine=S.biz.industry==='services'?1.45:1.3;
+  if(S.biz.price>ss*churnLine&&S.customers>0){
+    const lost=Math.max(1,Math.round(S.customers*0.08));
+    S.customers-=lost; feed(lost+' customers churned. Your price outran your reputation.');
+    learn('Churn','Customers who leave. The silent business killer.');
+    insight('churn_price','Your price outran your trust',
+      'You charged '+fmt(S.biz.price)+', but your reputation only carries about '+fmt(ss)+
+      ' right now. '+lost+' customer'+(lost===1?'':'s')+' left overnight. '+
+      'Lower your price toward '+fmt(ss)+', or build reputation (community investment, referrals, demos) to justify charging more.',
+      {cta:{label:'Adjust Price',fn:()=>openPhoneTo('biz')}});
+  }
+  if(S.customers>20&&S.employees.length===0){
+    const lost=Math.max(1,Math.round(S.customers*0.06));
+    S.customers-=lost; feed(lost+' customers left over slow service. One founder can\u2019t serve a crowd alone.');
+    insight('churn_neglect','You outgrew yourself',
+      'At '+ (S.customers+lost)+' customers, one person can\u2019t deliver fast enough. '+lost+
+      ' customer'+(lost===1?'':'s')+' walked over slow service. Hiring isn\u2019t a cost, it\u2019s '+
+      'the fix for a ceiling your own two hands created. Visit your HQ to hire.',
+      {cta:{label:'Go to HQ',fn:()=>{}}});
+  }
+  if(S.customers>45&&!S.automated){
+    const lost=Math.max(1,Math.round(S.customers*0.05));
+    S.customers-=lost; feed('Manual systems buckled. '+lost+' customers walked.');
+    insight('churn_manual','Manual systems hit a wall',
+      'At '+(S.customers+lost)+' customers, doing everything by hand stops scaling. '+lost+
+      ' customer'+(lost===1?'':'s')+' fell through the cracks. Automation at the Tech Hub removes '+
+      'this ceiling entirely, this is the exact gap it closes.',
+      {cta:{label:'Tech Hub',fn:()=>{}}});
+  }
+  if(S.customers>0&&Math.random()<S.stats.reputation*0.008){
+    const got=ri(1,3); S.customers+=got;
+    feed('+'+got+' customers by referral. Reputation compounds.');
+  }
+  let demand=1-clamp((S.biz.price-ss)/ss,-0.25,0.6)*0.8;
+  demand=clamp(demand,0.3,1.25);
+  let mult=1;
+  if(S.event==='festival')mult*=(S.biz.industry==='food'?4:3);
+  if(S.event==='boom')mult*=1.4;
+  if(S.event==='recession')mult*=0.55;
+  if(S.communityInvested)mult*=(S.biz.industry==='infra'?1.35:1.25);
+  if(S.townPlot!=null)mult*=1+townTalentBonus;
+  if(S.employees.length>0)mult*=S.employees.some(e=>!e.good)?1.15:1.35;
+  if(S.automated)mult*=1.3;
+  if(S.manager)mult*=1.15;
+  const revenue=Math.round(S.customers*S.biz.price*0.16*demand*mult);
+  let exp=20;
+  if(S.hq)exp+=50;
+  exp+=S.employees.length*120;
+  if(S.manager)exp+=250;
+  if(S.automated)exp=Math.round(exp*0.6+60);
+  if(S.event==='heatwave')exp=Math.round(exp*1.25);
+  let profit=revenue-exp;
+  if(profit>0&&S.debt>0){
+    const pay=Math.min(S.debt,profit);
+    S.debt-=pay; profit-=pay;
+    feed('Paid '+fmt(pay)+' toward debt. Remaining: '+fmt(S.debt)+'.');
+  }
+  S.cash+=profit;
+  S.lastRevenue=revenue; S.lastExpenses=exp; S.lastProfit=profit;
+  if(profit>0){
+    S.profitStreak++;
+    if(revenue>0){sCash();floatText(S.px,30,S.py,'+'+fmt(profit),'#5FA86B');}
+    dailyProgress('profit');
+    if(!S.insightSeen.first_profit){
+      insight('first_profit','First profitable day',
+        'Revenue '+fmt(revenue)+' minus expenses '+fmt(exp)+' leaves '+fmt(profit)+
+        ' in your pocket. That number, not revenue, is the real scoreboard. Everything from '+
+        'here is about growing that gap and making it survive bad days.');
+    }
+  } else {
+    if(profit<0){
+      floatText(S.px,28,S.py,fmt(profit),'#D4513B');
+      const gap=exp-revenue;
+      insight('loss_day','You lost money today',
+        'Revenue '+fmt(revenue)+' didn\u2019t cover expenses '+fmt(exp)+', a gap of '+fmt(gap)+
+        '. Either '+(S.customers<3?'you need more customers':'raise revenue (more customers, or a price closer to '+fmt(ss)+')')+
+        ', or cut overhead (fewer employees, or automate to drop costs 40%). One loss day is normal. '+
+        'A pattern of them is your runway counting down.',
+        {cta:{label:'Check Numbers',fn:()=>openPhoneTo('biz')}});
+    }
+    S.profitStreak=0;
+  }
+  feed('Day '+S.day+' books: revenue '+fmt(revenue)+', expenses '+fmt(exp)+', profit '+fmt(profit)+'.');
+  if(S.day===2)learn('Revenue vs Profit','Revenue is everything coming in. Profit is what\u2019s left after expenses. Profit is the real number.');
+  if(profit<0&&S.cash<exp*5)learn('Runway','How many days your cash lasts at your current burn rate. Yours is getting short.');
+  if(profit<0&&exp>0&&S.cash<exp*3&&S.cash>0){
+    const days=Math.max(1,Math.floor(S.cash/exp));
+    insight('runway_critical','Runway warning',
+      'At today\u2019s burn rate of '+fmt(exp)+'/day, you have about '+days+' day'+(days===1?'':'s')+
+      ' of cash left before you hit zero. This is the moment founders either fix the business or run out '+
+      'of road. Raise revenue, cut a cost, or both, starting tomorrow.',
+      {cta:{label:'Check Numbers',fn:()=>openPhoneTo('biz')}});
+  }
+  if(S.manager&&S.automated&&S.quest>=11&&!S.won){
+    if(profit>0){ S.sovereignDays++;
+      S.stats.sovereignty=clamp(S.stats.sovereignty+4,0,100);
+      toast('Sovereign day '+S.sovereignDays+'/7. Profit without your hands: '+fmt(profit),'good');
+      if(S.sovereignDays>=7) achieveSovereignty();
+    } else { S.sovereignDays=0; toast('Loss day. Sovereign streak reset. Adjust price or costs.','bad'); }
+  }
+  if(S.cash<0&&!S.won){
+    S.debt+= -S.cash; S.cash=0;
+    if(S.debt>500) goBankrupt();
+  }
+  if(S.eventDays>0){ S.eventDays--; if(S.eventDays===0){ S.event=null; $('eventBanner').style.display='none'; } }
+  else if(Math.random()<0.22) rollEvent();
+  saveGame();
+}
+function rollEvent(){
+  const r=Math.random();
+  let e,label,days;
+  if(S.day%12===0){ e='festival';label='CITY FESTIVAL &middot; 3x customers, 2 days';days=2; }
+  else if(r<0.3){ e='recession';label='RECESSION SEASON &middot; spending tight';days=3;
+    learn('Market Timing','The same business performs differently in a boom vs a recession. Resilience is built before the storm.'); }
+  else if(r<0.55){ e='boom';label='MARKET BOOM &middot; demand up';days=3; }
+  else if(r<0.75){ e='rain';label='RAIN &middot; foot traffic down, delivery demand up';days=1; }
+  else { e='heatwave';label='HEAT WAVE &middot; energy costs up';days=2; }
+  S.event=e;S.eventDays=days;
+  const eb=$('eventBanner');eb.innerHTML=label;eb.style.display='block';
+  feed('Market event: '+label.split('&middot;')[0].trim());
+  if(S.lastRevenue>400&&Math.random()<0.5){
+    feed('BigCorp launched a competing '+(S.biz?S.biz.name.toLowerCase():'product')+' line. They noticed you.');
+    toast('BigCorp is moving into your market. Differentiate or be drowned out.','bad');
+  }
+}
+
+function checkProgression(){
+  if(S.quest===2&&S.customers>=5){
+    S.quest=3; S.stage=Math.max(S.stage,2);
+    stageBanner('STAGE 2','Hustler · The city acknowledges you');
+    toast('<b>Stage 2: Hustler.</b> The city acknowledges you. An empty lot just hit the market.','gold'); sBig();
+    feed('You hit 5 customers. First media mention in the neighborhood paper.');
+  }
+  if(S.quest===4&&S.customers>=15){
+    S.quest=5; S.stage=Math.max(S.stage,3);
+    stageBanner('STAGE 3','Builder · Innovation Row open');
+    toast('<b>Stage 3: Builder.</b> Innovation Row unlocked. Time to hire.','gold'); sBig();
+    feed('15 customers. Competitors started watching you. Innovation Row gates opened.');
+  }
+  updateHUDChips();
+}
+function achieveSovereignty(){
+  S.won=true; S.stage=5; S.quest=12;
+  S.stats.sovereignty=100;
+  stageBanner('SOVEREIGN','Build What You Own');
+  insight('sovereign_progress','You built something that doesn\u2019t need you',
+    S.biz.name+' made '+fmt(S.lastProfit)+' yesterday, and you didn\u2019t work it. That\u2019s the '+
+    'entire goal of this game and of a real business: not how much it makes, but whether it still '+
+    'works when you step away. Download your certificate. You earned it.');
+  Music.setZone(6);
+  const tb=BUILDINGS.find(b=>b.id==='tower');
+  tb.label=S.biz.name+' Tower';
+  if(tb.labelSprite) updateLabelSprite(tb.labelSprite,tb.label,'#E8C064');
+  sWin(); goldenHour=0.01;
+  for(let i=0;i<12;i++) setTimeout(()=>spawnBurst(rnd(1750,2250),rnd(60,300),rnd(900,1300),[0xE8C064,0xF2A33C,0x3FB8AF][ri(0,2)]),i*250);
+  recordFame();
+  feed('SOVEREIGN STATUS ACHIEVED. Your tower rises in The Skyline. Fireworks over the city.');
+  toast('<b>SOVEREIGN STATUS.</b> Go see your tower in The Skyline.','gold');
+  saveGame();
+}
+function victoryScene(){
+  const you=S.equity.find(e=>e.who==='You');
+  $('bmCard').innerHTML=
+   '<div style="font-size:44px">&#127942;</div>'+
+   '<h2 class="gold">SOVEREIGN</h2>'+
+   '<p>Day '+S.day+'. '+S.biz.name+' runs without you. '+S.customers+' customers. '+
+   fmt(S.lastProfit)+'/day profit, hands off. You still own '+you.pct+'%.</p>'+
+   '<p style="color:var(--turq)">The win condition was never wealth. It was sovereignty. <i>Yakoke</i> for building it the right way.</p>'+
+   '<p style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#9A917F">Your name is on the Hall of Fame</p>'+
+   '<button class="btn" onclick="downloadCertificate()" style="margin-bottom:8px">Download Certificate</button>'+
+   '<button class="btn ghost" onclick="enterLegacy()">Enter Legacy Mode</button>';
+  $('bigModal').style.display='flex';
+  sWin();
+}
+window.downloadCertificate=downloadCertificate;
+window.enterLegacy=function(){
+  $('bigModal').style.display='none';
+  S.legacy=true; S.quest=13;
+  toast('Legacy Mode: passive income flows daily. Mentor the city. Keep building.','gold');
+  saveGame();
+};
+
+function goBankrupt(){
+  S.bankrupt=true;
+  const hq=BUILDINGS.find(b=>b.id==='lot');
+  if(S.hq){ hq.label='FOR LEASE'; if(hq.labelSprite) updateLabelSprite(hq.labelSprite,'FOR LEASE','#D4513B'); }
+  sBad();
+  $('bmCard').innerHTML=
+   '<div style="font-size:44px">&#127783;&#65039;</div>'+
+   '<h2 style="color:var(--danger)">BANKRUPT</h2>'+
+   '<p>Cash hit zero with '+fmt(S.debt)+' in debt. Rain started. The lights dimmed around your building, and a For Lease sign planted itself out front.</p>'+
+   '<p style="color:var(--gold)">Rule 4 of this city: <b>failure is a chapter, not an ending.</b></p>'+
+   '<button class="btn" onclick="seekComeback()">'+(S.comebackUsed?'Start Over':'Find Marcus')+'</button>';
+  $('bigModal').style.display='flex';
+  feed('BANKRUPTCY. Competitors celebrated visibly. The block went quiet.');
+}
+window.seekComeback=function(){
+  $('bigModal').style.display='none';
+  if(S.comebackUsed){
+    const keep=S.learned, who=S.founder;
+    S=freshState(); S.learned=keep; S.founder=who;
+    playerPos.x=S.px; playerPos.z=S.py;
+    const lotB=BUILDINGS.find(b=>b.id==='lot');
+    lotB.label='Empty Lot';
+    if(lotB.labelSprite) updateLabelSprite(lotB.labelSprite,'Empty Lot','#F5EFE3');
+    setHQEmpty();
+    toast('A new chapter in The Grind. The lessons came with you.','good');
+    updateHUDChips(); saveGame(); return;
+  }
+  playerPos.x=560; playerPos.z=1180; S.px=560; S.py=1180;
+  toast('Marcus is waiting outside the Corner Store.','gold');
+};
+function comebackScene(){
+  showDialog('Marcus Webb','Retired Entrepreneur','#F2A33C',
+    'Three times, kid. THREE times I went down before it worked. The city forgets a failure faster than you think. Here\u2019s $1,500 of my own money. Debt\u2019s cleared. One condition: you don\u2019t quit.',
+    [{label:'Take the comeback loan ($1,500)',fn:()=>{
+      S.cash+=1500; S.debt=0; S.bankrupt=false; S.comebackUsed=true;
+      const hq=BUILDINGS.find(b=>b.id==='lot');
+      if(S.hq){ hq.label=S.biz.name+' HQ'; if(hq.labelSprite) updateLabelSprite(hq.labelSprite,hq.label,'#F2A33C'); }
+      bumpRel('marcus',3); remember('marcus','I funded your comeback.');
+      sBig(); feed('Marcus funded your comeback. The For Lease sign came down.');
+      toast('<b>Back in business.</b> Bankruptcy is a chapter, not an ending.','gold');
+      learn('Resilience','Recovery is a founder skill. The comeback is part of the story.');
+      saveGame();}}]);
+}
+
+/* =========================================================
+   PHONE UI
+   ========================================================= */
+let pTab='biz';
+document.querySelectorAll('.pTab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.pTab').forEach(x=>x.classList.remove('sel'));
+  t.classList.add('sel'); pTab=t.dataset.tab; renderPhone(); sTap();
+});
+$('phoneBtn').onclick=()=>{ $('phone').style.display='flex'; $('phoneDot').style.display='none'; renderPhone(); sTap(); ac(); };
+$('pClose').onclick=()=>{ $('phone').style.display='none'; sTap(); };
+$('exitBtn').onclick=async()=>{
+  sTap();
+  if(!confirm('Save and return to the title screen?'))return;
+  await saveGame();
+  location.reload();
+};
+function renderPhone(){
+  const c=$('pContent'); c.innerHTML='';
+  if(pTab==='biz'){
+    if(!S.biz){ c.innerHTML='<div class="feedItem">No business yet. The Community Board in The Grind has four real problems waiting for a founder.</div>'; return; }
+    const burn=S.lastExpenses, runway=burn>0?Math.floor(S.cash/burn):999;
+    c.innerHTML=
+     stat('Cash',fmt(S.cash),'gold')+
+     stat('Customers',S.customers,'')+
+     stat('Revenue / day',fmt(S.lastRevenue),'green')+
+     stat('Expenses / day',fmt(S.lastExpenses),'red')+
+     stat('Profit / day',fmt(S.lastProfit),S.lastProfit>=0?'green':'red')+
+     stat('Runway',runway>365?'Stable':runway+' days',runway<8?'red':'')+
+     '<div class="priceRow"><span style="font-size:12px;color:#9A917F;font-weight:600">PRICE</span>'+
+     '<input type="range" min="'+Math.round(S.biz.base*0.5)+'" max="'+Math.round(S.biz.base*2.2)+'" value="'+S.biz.price+'" id="priceSlider">'+
+     '<span class="pv" id="priceVal">'+fmt(S.biz.price)+'</span></div>'+
+     '<div class="feedItem" style="font-size:11.5px;color:#9A917F">Sweet spot moves with reputation. Current trust carries about '+fmt(sweetSpot())+'. Too high churns customers, too low destroys margin.</div>'+
+     (S.daily?'<div class="feedItem" style="border-left:3px solid var(--gold)"><b>Hustle of the Day:</b> '+
+       DAILY_TYPES.find(d=>d.type===S.daily.type).txt(S.daily)+' \u00B7 '+
+       (S.daily.done?'DONE \uD83D\uDD25'+S.streak:S.daily.prog+'/'+S.daily.need)+'</div>':'')+
+     bar('Sovereign Progress',S.won?100:Math.round(progressPct()))+
+     (S.manager?bar('Sovereign Days (hands-off profit)',S.sovereignDays/7*100,S.sovereignDays+'/7'):'');
+    const sl=$('priceSlider');
+    sl.oninput=()=>{ S.biz.price=+sl.value; $('priceVal').textContent=fmt(S.biz.price); };
+    sl.onchange=()=>{ saveGame(); learn('Pricing Power','You set the price. The market answers tomorrow morning.'); };
+  }
+  if(pTab==='insight'){
+    c.innerHTML=S.insights.length?
+      '<div class="feedItem" style="border-left:3px solid var(--gold)">Every entry here is a real consequence '+
+      'of a real decision you made: the cause, the effect, and what it means next.</div>'+
+      S.insights.map(i=>
+        '<div class="glossEntry" style="border-left-color:'+i.color+'">'+
+        '<div style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:'+i.color+';font-weight:700;margin-bottom:3px">'+
+        'DAY '+i.day+' \u00B7 '+i.icon+' '+i.label+'</div>'+
+        '<b>'+i.title+'</b><br>'+i.body+'</div>').join('')
+      :'<div class="feedItem">No insights yet. As your business hits real moments, profit, loss, your first investor, this tab fills in with what it meant and what to do next.</div>';
+  }
+  if(pTab==='feed'){
+    c.innerHTML=S.feed.length?S.feed.map(f=>'<div class="feedItem"><div class="t">DAY '+f.d+'</div>'+f.m+'</div>').join(''):'<div class="feedItem">Quiet so far. Make some noise.</div>';
+  }
+  if(pTab==='cap'){
+    c.innerHTML='<div class="feedItem" style="border-left:3px solid var(--gold)"><b>Cap Table</b> &middot; who owns '+(S.biz?S.biz.name:'the company')+'</div>'+
+     S.equity.map(e=>'<div class="capRow"><span style="min-width:110px">'+e.who+'</span>'+
+       '<div class="cb" style="flex:'+e.pct+';background:'+e.c+'"></div><span>'+e.pct+'%</span></div>').join('')+
+     '<div class="feedItem" style="font-size:11.5px;color:#9A917F">Equity is ownership. Guard it carefully. Every round, you own less, but of something bigger.</div>';
+  }
+  if(pTab==='learn'){
+    c.innerHTML=S.learned.length?
+      S.learned.map(l=>'<div class="glossEntry"><b>'+l.t+'</b><br>'+l.d+'</div>').join(''):
+      '<div class="feedItem">Every lesson in this city comes from an action and its consequence. Terms you earn show up here.</div>';
+    if(S.chikasha>=3) c.innerHTML+='<div class="glossEntry" style="border-left-color:var(--terra)"><b>Chikashshanompa\u2019</b><br><i>Halito</i> = hello &middot; <i>Chokma</i> = good &middot; <i>Yakoke</i> = thank you. Gifted by Dr. Redhawk.</div>';
+  }
+}
+function stat(l,v,cls){return '<div class="stat"><span class="l">'+l+'</span><span class="v '+cls+'">'+v+'</span></div>';}
+function bar(l,pct,suffix){return '<div class="barWrap"><div class="l"><span>'+l+'</span><span>'+(suffix||Math.round(pct)+'%')+'</span></div><div class="bar"><i style="width:'+clamp(pct,0,100)+'%"></i></div></div>';}
+function progressPct(){
+  let p=0;
+  if(S.biz)p+=8; p+=clamp(S.customers,0,30)*0.8; if(S.hq)p+=8;
+  if(S.employees.length)p+=8; if(S.communityInvested)p+=8;
+  if(S.investors.park)p+=10; if(S.automated)p+=10; if(S.investors.chase)p+=10;
+  if(S.manager)p+=6; p+=S.sovereignDays*1.5;
+  return clamp(p,0,99);
+}
+
+/* =========================================================
+   THREE.JS SCENE
+   ========================================================= */
+let renderer,scene,camera;
+let composer=null;
+let sunLight,hemiLight;
+const playerPos={x:560,z:1180};
+let playerYaw=0,camYaw=Math.PI,camPitch=0.42;
+let playerGroup=null,playerParts=null;
+const npcMeshes={}; // id -> {group, parts}
+const buildingMeshes={};
+let questMarker=null;
+let streetLampMats=[];
+let cars=[];
+let muralsAdded=false;
+let goldenHour=0;
+const particles=[];
+const PERSON_H=16;
+
+let clouds=[],stars=null,sunDisc=null,moonDisc=null,sunGlow=null;
+let skyDome=null,skyCanvas=null,skyTex=null,fillLight=null,lastSkyKey='';
+const flags=[],birds=[];let fountainWater=null;
+
+/* =========================================================
+   MINIMAP — 2D canvas overlay
+   ========================================================= */
+let minimapCV=null,minimapCTX=null;
+const MM_W=148,MM_H=100; // display px
+const MM_SCALE_X=MM_W/2400, MM_SCALE_Y=MM_H/1600;
+const ZONE_COLORS_MM=['#3d3a2e','#3a4046','#2c3a40','#4a3c2e','#2e3138','#35301f'];
+function initMinimap(){
+  minimapCV=document.createElement('canvas');
+  minimapCV.id='minimapCV';
+  minimapCV.width=MM_W*2; minimapCV.height=MM_H*2;
+  minimapCV.style.cssText='position:absolute;top:max(58px,calc('+
+    '10px + env(safe-area-inset-top) + 44px));right:10px;'+
+    'width:'+MM_W+'px;height:'+MM_H+'px;z-index:11;'+
+    'border-radius:10px;border:2px solid rgba(242,163,60,0.6);'+
+    'background:rgba(20,18,15,0.78);image-rendering:pixelated';
+  document.getElementById('hud').appendChild(minimapCV);
+  minimapCTX=minimapCV.getContext('2d');
+}
+function drawMinimap(){
+  if(!minimapCV||!S)return;
+  const x=minimapCTX, W=MM_W*2, H=MM_H*2;
+  x.clearRect(0,0,W,H);
+  // zones
+  ZONES.forEach((zo,i)=>{
+    x.fillStyle=S.stage<zo.unlock?'rgba(20,18,15,0.9)':ZONE_COLORS_MM[i];
+    x.fillRect(zo.x*MM_SCALE_X*2,zo.y*MM_SCALE_Y*2,800*MM_SCALE_X*2,800*MM_SCALE_Y*2);
+    if(S.stage>=zo.unlock){
+      x.fillStyle=zo.accent+'55';
+      x.fillRect(zo.x*MM_SCALE_X*2+2,zo.y*MM_SCALE_Y*2+2,
+        800*MM_SCALE_X*2-4,800*MM_SCALE_Y*2-4);
+    }
+  });
+  // roads
+  x.fillStyle='rgba(40,36,28,0.9)';
+  x.fillRect(0,800*MM_SCALE_Y*2,W,4); x.fillRect(800*MM_SCALE_X*2,0,4,H); x.fillRect(1600*MM_SCALE_X*2,0,4,H);
+  // buildings as tiny dots
+  x.fillStyle='rgba(245,239,227,0.22)';
+  BUILDINGS.forEach(b=>x.fillRect(b.x*MM_SCALE_X*2,b.y*MM_SCALE_Y*2,
+    Math.max(b.w*MM_SCALE_X*2,3),Math.max(b.d*MM_SCALE_Y*2,3)));
+  // founders commons plots
+  PLOTS.forEach(p=>{
+    x.fillStyle=p.data?'rgba(232,192,100,0.7)':'rgba(100,90,60,0.35)';
+    x.fillRect(p.x*MM_SCALE_X*2,p.z*MM_SCALE_Y*2,p.w*MM_SCALE_X*2,p.d*MM_SCALE_Y*2);
+  });
+  // key NPCs
+  const npcCols={marcus:'#F2A33C',redhawk:'#3FB8AF',rivera:'#5FA86B',
+    park:'#5E7C99',chase:'#9AA4B5',rival:'#B6657F'};
+  Object.entries(npcCols).forEach(([id,c])=>{
+    const n=npcById(id); if(!n)return;
+    x.fillStyle=c; x.beginPath();
+    x.arc(n.x*MM_SCALE_X*2,n.z*MM_SCALE_Y*2,5,0,Math.PI*2); x.fill();
+  });
+  // quest target pulsing ring
+  const q=QUESTS[S?S.quest:0];
+  if(q&&q.target){
+    const t=q.target();
+    if(t){
+      const pulse=0.5+0.5*Math.sin(Date.now()/260);
+      x.strokeStyle='rgba(232,192,100,'+clamp(0.5+pulse*0.5,0,1)+')';
+      x.lineWidth=3; x.beginPath();
+      x.arc(t.x*MM_SCALE_X*2,t.z*MM_SCALE_Y*2,6+pulse*4,0,Math.PI*2); x.stroke();
+    }
+  }
+  // player — gold dot, larger
+  x.fillStyle='#E8C064'; x.beginPath();
+  x.arc(playerPos.x*MM_SCALE_X*2,playerPos.z*MM_SCALE_Y*2,7,0,Math.PI*2); x.fill();
+  x.strokeStyle='#fff'; x.lineWidth=2; x.stroke();
+  // zone label in corner
+  const pz=zoneAt(playerPos.x,playerPos.z);
+  if(pz){ x.fillStyle=pz.accent; x.font='bold 16px Arial';
+    x.fillText(pz.name,6,H-6); }
+}
+
+
+/* =========================================================
+   FLOATING REWARD TEXT
+   ========================================================= */
+const floatPool=[];
+function floatText(x,y,z,text,color){
+  const c=document.createElement('canvas'); c.width=256; c.height=80;
+  const cx=c.getContext('2d');
+  cx.font='bold 48px Arial'; cx.textAlign='center'; cx.textBaseline='middle';
+  cx.fillStyle=color||'#E8C064';
+  // glow
+  cx.shadowColor=color||'#E8C064'; cx.shadowBlur=12;
+  cx.fillText(text,128,40);
+  const mat=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),
+    transparent:true,depthTest:false});
+  const sp=new THREE.Sprite(mat);
+  sp.scale.set(44,14,1);
+  sp.position.set(x,y,z);
+  scene.add(sp);
+  floatPool.push({sp,life:1.6,vy:28});
+  while(floatPool.length>10){const old=floatPool.shift();scene.remove(old.sp);}
+}
+function updateFloats(DT){
+  for(let i=floatPool.length-1;i>=0;i--){
+    const f=floatPool[i]; f.life-=DT;
+    if(f.life<=0){scene.remove(f.sp);floatPool.splice(i,1);continue;}
+    f.sp.position.y+=f.vy*DT; f.vy*=0.95;
+    f.sp.material.opacity=clamp(f.life,0,1);
+  }
+}
+
+
+/* =========================================================
+   GENERATIVE GAME MUSIC — a real soundtrack per district
+   ========================================================= */
+let ambientZone=null;
+const Music={
+  enabled:true, zone:null, nextNote:0, step:0, timer:null,
+  master:null, noiseBuf:null,
+  // midi helpers
+  f:m=>440*Math.pow(2,(m-69)/12),
+  themes:{
+    1:{bpm:84, root:57, scale:[0,3,5,7,10],        // A minor pent — lo-fi grind
+       chords:[[0,3,7],[ -4,0,3],[ -2,2,5],[ -5,-2,2]],
+       kick:[0,8,10], hat:[2,6,10,14], pad:.5, melP:.30, bright:0},
+    2:{bpm:100,root:60, scale:[0,2,4,7,9],         // C major pent — main street
+       chords:[[0,4,7],[ -3,0,4],[ -7,-3,0],[ -5,-1,2]],
+       kick:[0,4,8,12], hat:[2,6,10,14], pad:.4, melP:.38, bright:1},
+    3:{bpm:112,root:52, scale:[0,3,5,7,10],        // E minor pent — synth row
+       chords:[[0,3,7],[ -2,2,5],[ -4,0,3],[ -7,-4,0]],
+       kick:[0,6,8,14], hat:[1,3,5,7,9,11,13,15], pad:.35, melP:.5, bright:2},
+    4:{bpm:76, root:50, scale:[0,2,4,7,9],         // D major pent — sovereign, warm
+       chords:[[0,4,7],[ -5,0,4],[ -3,2,4],[ -7,-3,0]],
+       kick:[0,7,8,11], hat:[4,12], pad:.6, melP:.34, bright:0},
+    5:{bpm:96, root:55, scale:[0,3,5,7,10],        // G minor pent — capital tension
+       chords:[[0,3,7],[ -4,0,3],[ -1,3,6],[ -5,-2,2]],
+       kick:[0,8], hat:[4,12], pad:.55, melP:.2, bright:0},
+    6:{bpm:92, root:53, scale:[0,2,4,7,9],         // F major pent — skyline triumph
+       chords:[[0,4,7],[2,5,9],[ -3,0,4],[ -1,4,7]],
+       kick:[0,4,8,12], hat:[2,6,10,14], pad:.7, melP:.42, bright:1}
+  },
+  lastMel:0,
+  init(){
+    if(this.master||!ac())return;
+    this.master=AC.createGain();
+    this.master.gain.value=0.0;
+    this.master.connect(AC.destination);
+    // noise buffer for hats
+    const len=AC.sampleRate*0.1;
+    this.noiseBuf=AC.createBuffer(1,len,AC.sampleRate);
+    const d=this.noiseBuf.getChannelData(0);
+    for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,2);
+    this.nextNote=AC.currentTime+0.1;
+    this.timer=setInterval(()=>this.schedule(),90);
+    this.master.gain.linearRampToValueAtTime(this.enabled?0.9:0,AC.currentTime+2);
+  },
+  setZone(z){ this.zone=z; },
+  setEnabled(on){
+    this.enabled=on;
+    if(this.master)this.master.gain.linearRampToValueAtTime(on?0.9:0,AC.currentTime+0.6);
+  },
+  tone(freq,t,dur,type,vol,attack){
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.type=type; o.frequency.value=freq;
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(vol,t+(attack||0.02));
+    g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t+dur+0.05);
+  },
+  hat(t,vol){
+    const s=AC.createBufferSource(); s.buffer=this.noiseBuf;
+    const g=AC.createGain(); g.gain.setValueAtTime(vol,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.06);
+    s.connect(g); g.connect(this.master); s.start(t);
+  },
+  kick(t){
+    const o=AC.createOscillator(),g=AC.createGain();
+    o.type='sine';
+    o.frequency.setValueAtTime(140,t);
+    o.frequency.exponentialRampToValueAtTime(45,t+0.10);
+    g.gain.setValueAtTime(0.30,t);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
+    o.connect(g); g.connect(this.master);
+    o.start(t); o.stop(t+0.3);
+  },
+  schedule(){
+    if(!this.master)return;
+    const th=this.themes[this.zone]||this.themes[1];
+    const spb=60/th.bpm/4; // 16th note length
+    while(this.nextNote<AC.currentTime+0.35){
+      const t=this.nextNote, s=this.step%16, bar=Math.floor(this.step/16)%4;
+      const chord=th.chords[bar];
+      // kick
+      if(th.kick.includes(s))this.kick(t);
+      // hats
+      if(th.hat.includes(s))this.hat(t,0.05);
+      // bass on beats 1 & 3
+      if(s===0||s===8)
+        this.tone(this.f(th.root-12+chord[0]),t,spb*6,'sine',0.14,0.01);
+      // pad: chord at bar start, slow attack, long
+      if(s===0)chord.forEach(iv=>
+        this.tone(this.f(th.root+iv),t,spb*15,'triangle',0.035*th.pad,spb*4));
+      // melody: sparse pentatonic random walk on 8ths
+      if(s%2===0&&Math.random()<th.melP){
+        let idx=this.lastMel+ (Math.random()<0.5?-1:1)*(Math.random()<0.7?1:2);
+        idx=clamp(idx,0,th.scale.length*2-1);
+        this.lastMel=idx;
+        const oct=Math.floor(idx/th.scale.length), deg=th.scale[idx%th.scale.length];
+        const mtype=th.bright===2?'square':(th.bright===1?'triangle':'sine');
+        this.tone(this.f(th.root+12+oct*12+deg),t,spb*3,'triangle',
+          th.bright===2?0.035:0.05,0.015);
+        if(th.bright===2) // synth row gets an echo arp
+          this.tone(this.f(th.root+24+deg),t+spb,spb*2,'square',0.018,0.01);
+      }
+      this.step++; this.nextNote+=spb;
+    }
+  }
+};
+function setZoneAmbient(zoneId){
+  ambientZone=zoneId;
+  if(AC){ Music.init(); Music.setZone(zoneId); }
+}
+/* =========================================================
+   TUTORIAL SYSTEM — gentle first-game arrows
+   ========================================================= */
+let tutCV=null,tutCTX=null,tutMsg='',tutTarget=null;
+function initTutorial(){
+  tutCV=document.createElement('canvas');
+  tutCV.id='tutCV';
+  tutCV.style.cssText='position:absolute;inset:0;pointer-events:none;z-index:9';
+  document.getElementById('hud').appendChild(tutCV);
+  tutCV.width=window.innerWidth; tutCV.height=window.innerHeight;
+  window.addEventListener('resize',()=>{tutCV.width=window.innerWidth;tutCV.height=window.innerHeight;});
+}
+function drawTutorial(){
+  if(!tutCV||!S||dialogOpen)return;
+  const x=tutCTX=tutCTX||tutCV.getContext('2d');
+  x.clearRect(0,0,tutCV.width,tutCV.height);
+  const q=QUESTS[S.quest];
+  if(!q||!q.target||S.quest>2)return; // only guide for quests 0-2
+  const t=q.target(); if(!t)return;
+  // world→screen projection
+  const v3=new THREE.Vector3(t.x,18,t.z);
+  v3.project(camera);
+  const sx=(v3.x*0.5+0.5)*tutCV.width, sy=(-v3.y*0.5+0.5)*tutCV.height;
+  const onScreen=v3.z<1&&sx>0&&sx<tutCV.width&&sy>0&&sy<tutCV.height;
+  if(onScreen){
+    // pulsing ring on target
+    const pulse=0.5+0.5*Math.sin(Date.now()/280);
+    x.strokeStyle='rgba(232,192,100,'+(0.6+pulse*0.4)+')';
+    x.lineWidth=3; x.beginPath(); x.arc(sx,sy,18+pulse*8,0,Math.PI*2); x.stroke();
+  } else {
+    // off-screen: draw arrow at edge pointing toward target
+    const cx=tutCV.width/2, cy=tutCV.height/2;
+    const ang=Math.atan2(sy-cy,sx-cx);
+    const edge=70;
+    const ax=clamp(cx+Math.cos(ang)*cx*0.8,edge,tutCV.width-edge);
+    const ay=clamp(cy+Math.sin(ang)*cy*0.8,edge,tutCV.height-edge);
+    x.save(); x.translate(ax,ay); x.rotate(ang+Math.PI/2);
+    x.fillStyle='rgba(232,192,100,0.88)';
+    x.beginPath(); x.moveTo(0,-18); x.lineTo(11,8); x.lineTo(-11,8); x.closePath(); x.fill();
+    x.restore();
+    // label
+    x.font='bold 13px Arial'; x.textAlign='center'; x.fillStyle='rgba(232,192,100,0.9)';
+    x.fillText('Follow the arrow',ax,ay+28);
+  }
+}
+
+
+/* =========================================================
+   HQ BUSINESS SIGN — 3D branded sign on the founder's lot
+   ========================================================= */
+let hqSign=null;
+function buildHQSign(){
+  if(hqSign){scene.remove(hqSign);hqSign=null;}
+  if(!S||!S.biz)return;
+  const b=BUILDINGS.find(b=>b.id==='lot');
+  const ind=INDUSTRIES.find(i=>i.id===S.biz.industry)||INDUSTRIES[INDUSTRIES.length-1];
+  const c=document.createElement('canvas'); c.width=512; c.height=128;
+  const x=c.getContext('2d');
+  // sign background
+  x.fillStyle='#'+ind.col.toString(16).padStart(6,'0');
+  x.fillRect(0,0,512,128);
+  x.fillStyle='rgba(0,0,0,0.35)'; x.fillRect(0,0,512,32);
+  x.fillStyle='rgba(0,0,0,0.35)'; x.fillRect(0,96,512,32);
+  // business name
+  x.font='bold 52px Arial'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillStyle='#FFFFFF';
+  x.shadowColor='rgba(0,0,0,0.6)'; x.shadowBlur=8;
+  x.fillText(S.biz.name.toUpperCase(),256,56);
+  // industry strip
+  x.font='600 22px Arial'; x.fillStyle='rgba(255,255,255,0.75)'; x.shadowBlur=0;
+  x.fillText(ind.name,256,106);
+  const mat=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false});
+  hqSign=new THREE.Sprite(mat);
+  hqSign.scale.set(120,30,1);
+  const h=BUILDINGS.find(b=>b.id==='lot');
+  const cy=h.h3*(S.hqLevel>=2?1.5:1)+46;
+  hqSign.position.set(b.x+b.w/2,cy,b.y+b.d/2);
+  scene.add(hqSign);
+}
+
+
+/* =========================================================
+   STAGE UNLOCK BANNER — DOM overlay celebration
+   ========================================================= */
+function stageBanner(txt,sub){
+  const d=document.createElement('div');
+  d.style.cssText='position:fixed;left:50%;top:38%;transform:translate(-50%,-50%);'+
+    'z-index:35;text-align:center;pointer-events:none;animation:stageFly 3.2s ease forwards';
+  d.innerHTML='<div style="font-family:Archivo,sans-serif;font-weight:900;font-size:clamp(28px,8vw,52px);'+
+    'color:#E8C064;text-shadow:0 0 30px #E8C064,0 2px 0 #8a5a00;letter-spacing:.04em">'+txt+'</div>'+
+    '<div style="font-family:Inter,sans-serif;font-size:clamp(13px,3vw,18px);color:#F5EFE3;'+
+    'margin-top:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase">'+sub+'</div>';
+  if(!document.getElementById('stageKF')){
+    const s=document.createElement('style');
+    s.id='stageKF';
+    s.textContent='@keyframes stageFly{0%{opacity:0;transform:translate(-50%,-40%)}'+
+      '15%{opacity:1;transform:translate(-50%,-50%)}'+
+      '70%{opacity:1;transform:translate(-50%,-50%)}'+
+      '100%{opacity:0;transform:translate(-50%,-60%)}}';
+    document.head.appendChild(s);
+  }
+  document.body.appendChild(d);
+  setTimeout(()=>d.remove(),3400);
+}
+
+
+/* =========================================================
+   STOREFRONT POINT LIGHTS — warm pools at ground level
+   ========================================================= */
+const streetLights=[];
+function buildStreetLights(){
+  // Warm orange pools in front of major buildings, zones 1 & 2
+  [[255,1020],[530,1010],[940,1020],[1300,980]].forEach(([x,z])=>{
+    const pl=new THREE.PointLight(0xFFB060,0,140,2);
+    pl.position.set(x,14,z); pl.castShadow=false;
+    scene.add(pl); streetLights.push(pl);
+  });
+}
+
+
+/* =========================================================
+   AUTO PERFORMANCE MODE
+   ========================================================= */
+let perfSamples=0,perfTime=0,perfChecked=false,lowPower=false;
+function applyLowPower(){
+  if(lowPower)return; lowPower=true;
+  renderer.shadowMap.enabled=false;
+  sunLight.castShadow=false;
+  renderer.setPixelRatio(1);
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  scene.traverse(o=>{ if(o.isMesh){o.castShadow=false;o.receiveShadow=false;
+    if(o.material&&o.material.needsUpdate!==undefined)o.material.needsUpdate=true;} });
+  streetLights.forEach(l=>{l.intensity=0;l.visible=false;});
+  if(fillLight)fillLight.intensity=0;
+  if(rainPoints){scene.remove(rainPoints);rainPoints=null;}
+  if(grainEl)grainEl.style.display='none';
+  if(sunGlow)sunGlow.forEach(sp=>sp.visible=false);
+  toast('Performance mode on: smoother play on this device.','good');
+}
+function perfSample(DT){
+  if(perfChecked||!S)return;
+  perfSamples++; perfTime+=DT;
+  if(perfSamples>=240||perfTime>6){
+    perfChecked=true;
+    const avgFPS=perfSamples/perfTime;
+    if(avgFPS<38) applyLowPower();
+  }
+}
+
+
+/* ---- music mute button ---- */
+function initMuteBtn(){
+  const b=document.createElement('button');
+  b.id='muteBtn';
+  b.style.cssText='position:absolute;bottom:calc(98px + env(safe-area-inset-bottom));right:18px;'+
+    'width:44px;height:44px;border-radius:14px;background:rgba(34,30,24,.85);'+
+    'border:2px solid #4A4438;color:#F5EFE3;font-size:18px;pointer-events:auto;'+
+    'display:flex;align-items:center;justify-content:center;z-index:11';
+  b.innerHTML=(S&&S.muted)?'\uD83D\uDD07':'\uD83C\uDFB5';
+  b.onclick=()=>{
+    ac(); Music.init();
+    S.muted=!S.muted;
+    Music.setEnabled(!S.muted);
+    b.innerHTML=S.muted?'\uD83D\uDD07':'\uD83C\uDFB5';
+    sTap(); saveGame();
+  };
+  document.getElementById('hud').appendChild(b);
+}
+
+
+/* ---- sky gradient helpers ---- */
+function lerpHex(a,b,t){
+  const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);
+  const r=Math.round(lerp((pa>>16)&255,(pb>>16)&255,t)),
+        g=Math.round(lerp((pa>>8)&255,(pb>>8)&255,t)),
+        bl=Math.round(lerp(pa&255,pb&255,t));
+  return '#'+((r<<16)|(g<<8)|bl).toString(16).padStart(6,'0');
+}
+function paintSkyGrad(top,horizon){
+  if(!skyCanvas)return;
+  const x=skyCanvas.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,256);
+  g.addColorStop(0,top); g.addColorStop(0.62,horizon);
+  g.addColorStop(1,horizon);
+  x.fillStyle=g; x.fillRect(0,0,2,256);
+  skyTex.needsUpdate=true;
+}
+
+
+/* =========================================================
+   FOUNDER INSIGHTS — the "so what" feedback layer
+   Turns numbers the player already sees into a stated
+   cause -> effect -> next move. First occurrence of each
+   insight type gets a card; repeats go to the Insights tab
+   on the phone plus a toast.
+   ========================================================= */
+const INSIGHT_META={
+  loss_day:{icon:'\uD83D\uDCC9',color:'#D4513B',label:'Loss Day'},
+  churn_price:{icon:'\u2702\uFE0F',color:'#D4513B',label:'Price vs. Trust'},
+  churn_neglect:{icon:'\uD83D\uDC65',color:'#D4513B',label:'Service Gap'},
+  churn_manual:{icon:'\u2699\uFE0F',color:'#D4513B',label:'Capacity Ceiling'},
+  runway_critical:{icon:'\u23F3',color:'#D4513B',label:'Runway Warning'},
+  first_profit:{icon:'\uD83D\uDCC8',color:'#5FA86B',label:'First Profit'},
+  moat_active:{icon:'\uD83D\uDEE1\uFE0F',color:'#3FB8AF',label:'Community Moat'},
+  automation_on:{icon:'\u2699\uFE0F',color:'#52C7D9',label:'Systems Online'},
+  equity_sold:{icon:'\uD83E\uDD1D',color:'#E8C064',label:'Cap Table'},
+  sovereign_progress:{icon:'\uD83D\uDC51',color:'#E8C064',label:'Sovereignty'}
+};
+function insight(key,title,body,opts){
+  opts=opts||{};
+  const meta=INSIGHT_META[key]||{icon:'\uD83D\uDCA1',color:'#E8C064',label:'Insight'};
+  const entry={key,title,body,day:S.day,icon:meta.icon,color:meta.color,label:meta.label};
+  S.insights.unshift(entry); if(S.insights.length>30)S.insights.pop();
+  $('phoneDot').style.display='block';
+  const firstTime=!S.insightSeen[key];
+  if(firstTime){
+    S.insightSeen[key]=true;
+    showInsightCard(entry,opts.cta);
+  } else {
+    toast('<b style="color:'+meta.color+'">'+meta.icon+' '+title+'</b><br>'+body,
+      meta.color==='#5FA86B'?'good':(meta.color==='#D4513B'?'bad':'gold'));
+  }
+  saveGame();
+}
+function showInsightCard(entry,cta){
+  if(document.getElementById('insightCard'))return; // don't stack
+  const d=document.createElement('div');
+  d.id='insightCard';
+  d.style.cssText='position:fixed;left:50%;top:18%;transform:translate(-50%,-12px);'+
+    'z-index:36;width:min(360px,88vw);background:#1C1813;border:1px solid '+entry.color+';'+
+    'border-left:5px solid '+entry.color+';border-radius:14px;padding:16px 18px;'+
+    'box-shadow:0 10px 40px rgba(0,0,0,0.5);pointer-events:auto;'+
+    'font-family:Inter,sans-serif;color:#F5EFE3;opacity:0;'+
+    'transition:opacity .35s,transform .35s';
+  d.innerHTML=
+    '<div style="font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:'+entry.color+';font-weight:700;margin-bottom:6px">'+
+      entry.icon+' '+entry.label+'</div>'+
+    '<div style="font-family:Archivo,sans-serif;font-weight:900;font-size:17px;margin-bottom:6px">'+entry.title+'</div>'+
+    '<div style="font-size:13px;line-height:1.55;color:#CFC6B4;margin-bottom:12px">'+entry.body+'</div>'+
+    '<div style="display:flex;gap:8px">'+
+      '<button id="insightDismiss" style="flex:1;background:#262119;border:1px solid #3F392E;color:#F5EFE3;'+
+        'font-weight:700;font-size:12.5px;border-radius:9px;padding:10px;font-family:inherit">Got it</button>'+
+      (cta?'<button id="insightCTA" style="flex:1;background:'+entry.color+';border:none;color:#14120F;'+
+        'font-weight:700;font-size:12.5px;border-radius:9px;padding:10px;font-family:inherit">'+cta.label+'</button>':'')+
+    '</div>';
+  document.body.appendChild(d);
+  requestAnimationFrame(()=>{d.style.opacity='1';d.style.transform='translate(-50%,0)';});
+  const close=()=>{ d.style.opacity='0'; d.style.transform='translate(-50%,-12px)'; setTimeout(()=>d.remove(),350); };
+  document.getElementById('insightDismiss').onclick=()=>{sTap();close();};
+  if(cta){
+    document.getElementById('insightCTA').onclick=()=>{
+      sTap(); close();
+      if(cta.fn)cta.fn();
+    };
+  }
+  setTimeout(close,9000);
+}
+function openPhoneTo(tab){
+  $('phone').style.display='flex'; $('phoneDot').style.display='none';
+  document.querySelectorAll('.pTab').forEach(x=>x.classList.remove('sel'));
+  const t=document.querySelector('.pTab[data-tab="'+tab+'"]');
+  if(t)t.classList.add('sel');
+  pTab=tab; renderPhone();
+}
+
+
+/* =========================================================
+   CERTIFICATE OF SOVEREIGNTY — downloadable record
+   ========================================================= */
+function buildCertificate(){
+  const c=document.createElement('canvas');
+  c.width=1200; c.height=850;
+  const x=c.getContext('2d');
+  // background
+  const g=x.createLinearGradient(0,0,0,850);
+  g.addColorStop(0,'#1c1813'); g.addColorStop(1,'#0e0c09');
+  x.fillStyle=g; x.fillRect(0,0,1200,850);
+  // gold border
+  x.strokeStyle='#E8C064'; x.lineWidth=10;
+  x.strokeRect(28,28,1144,794);
+  x.strokeStyle='rgba(232,192,100,0.4)'; x.lineWidth=2;
+  x.strokeRect(50,50,1100,750);
+  // header
+  x.textAlign='center';
+  x.fillStyle='#E8C064';
+  x.font='700 22px Arial'; x.textBaseline='alphabetic';
+  x.fillText('S O V E R E I G N   C I T Y',600,118);
+  x.font='900 64px Arial';
+  x.fillStyle='#F5EFE3';
+  x.fillText('CERTIFICATE OF SOVEREIGNTY',600,200);
+  // divider
+  x.strokeStyle='#E8C064'; x.lineWidth=2;
+  x.beginPath();x.moveTo(360,232);x.lineTo(840,232);x.stroke();
+  // body
+  x.font='400 22px Arial'; x.fillStyle='#CFC6B4';
+  x.fillText('This certifies that',600,300);
+  x.font='900 56px Arial'; x.fillStyle='#E8C064';
+  x.fillText(S.founder.name,600,370);
+  x.font='400 22px Arial'; x.fillStyle='#CFC6B4';
+  x.fillText('founded and built',600,420);
+  x.font='900 48px Arial'; x.fillStyle='#F5EFE3';
+  x.fillText(S.biz.name,600,485);
+  const ind=INDUSTRIES.find(i=>i.id===S.biz.industry)||INDUSTRIES[INDUSTRIES.length-1];
+  x.font='600 20px Arial'; x.fillStyle='#9A917F';
+  x.fillText(ind.name.toUpperCase(),600,518);
+  x.font='400 22px Arial'; x.fillStyle='#CFC6B4';
+  x.fillText('into a business that runs without them',600,565);
+  x.font='700 26px Arial'; x.fillStyle='#3FB8AF';
+  x.fillText('BUILD WHAT YOU OWN',600,610);
+  // stats row
+  const you=S.equity.find(e=>e.who==='You');
+  const stats=[
+    ['DAY ACHIEVED',String(S.day)],
+    ['CUSTOMERS',String(S.customers)],
+    ['DAILY PROFIT',fmt(S.lastProfit)],
+    ['OWNERSHIP',you.pct+'%']
+  ];
+  const sw=1100/stats.length;
+  stats.forEach((s,i)=>{
+    const cx=70+sw*i+sw/2;
+    x.font='900 34px Arial'; x.fillStyle='#E8C064';
+    x.fillText(s[1],cx,690);
+    x.font='600 14px Arial'; x.fillStyle='#9A917F';
+    x.fillText(s[0],cx,716);
+  });
+  // footer
+  x.font='400 16px Arial'; x.fillStyle='#6B6354';
+  x.fillText('Sovereign Shield Technologies LLC  \u00B7  Ada, Oklahoma  \u00B7  Halito, Chokma, Yakoke',600,790);
+  return c;
+}
+function downloadCertificate(){
+  const c=buildCertificate();
+  const a=document.createElement('a');
+  a.download=(S.biz.name.replace(/[^a-z0-9]+/gi,'_')||'sovereign_city')+'_certificate.png';
+  a.href=c.toDataURL('image/png');
+  a.click();
+  sCash();
+  toast('Certificate downloaded. That\u2019s yours, forever.','gold');
+}
+
+
+/* ---- animated film grain (throttled to ~12fps for cheapness) ---- */
+let grainEl=null,grainTimer=0;
+function updateGrain(DT){
+  if(!grainEl)grainEl=document.getElementById('filmGrain');
+  if(!grainEl)return;
+  grainTimer+=DT;
+  if(grainTimer>0.08){
+    grainTimer=0;
+    grainEl.style.transform='translate('+rnd(-2,2)+'%,'+rnd(-2,2)+'%)';
+  }
+}
+
+function buildEnvMap(){
+  const pmrem=new THREE.PMREMGenerator(renderer);
+  pmrem.compileEquirectangularShader();
+  const ec=document.createElement('canvas'); ec.width=2; ec.height=512;
+  const ex=ec.getContext('2d');
+  const eg=ex.createLinearGradient(0,0,0,512);
+  eg.addColorStop(0,'#1a3a6a');
+  eg.addColorStop(0.42,'#2e6ab4');
+  eg.addColorStop(0.58,'#7ab4d8');
+  eg.addColorStop(1,'#2a1e10');
+  ex.fillStyle=eg; ex.fillRect(0,0,2,512);
+  const et=new THREE.CanvasTexture(ec);
+  et.mapping=THREE.EquirectangularReflectionMapping;
+  const envMap=pmrem.fromEquirectangular(et).texture;
+  et.dispose(); pmrem.dispose();
+  return envMap;
+}
+function initThree(){
+  renderer=new THREE.WebGLRenderer({canvas:$('game'),antialias:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.0;
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  window._maxAniso=renderer.capabilities.getMaxAnisotropy?renderer.capabilities.getMaxAnisotropy():4;
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x9bb8d4);
+  scene.fog=new THREE.Fog(0x5a8ec8,800,2800);
+  scene.environment=buildEnvMap();
+  camera=new THREE.PerspectiveCamera(62,window.innerWidth/window.innerHeight,1,4000);
+  hemiLight=new THREE.HemisphereLight(0xb8d4f0,0x3a2e1a,0.5);
+  scene.add(hemiLight);
+  sunLight=new THREE.DirectionalLight(0xffefd0,1.2);
+  sunLight.position.set(400,600,300);
+  sunLight.castShadow=true;
+  sunLight.shadow.mapSize.set(2048,2048);
+  sunLight.shadow.camera.left=-420; sunLight.shadow.camera.right=420;
+  sunLight.shadow.camera.top=420; sunLight.shadow.camera.bottom=-420;
+  sunLight.shadow.camera.near=50; sunLight.shadow.camera.far=1600;
+  sunLight.shadow.bias=-0.0008;
+  scene.add(sunLight); scene.add(sunLight.target);
+  // sun + moon discs
+  sunDisc=new THREE.Mesh(new THREE.CircleGeometry(46,24),
+    new THREE.MeshBasicMaterial({color:0xfff3c4,fog:false}));
+  scene.add(sunDisc);
+  moonDisc=new THREE.Mesh(new THREE.CircleGeometry(30,24),
+    new THREE.MeshBasicMaterial({color:0xdfe8ff,fog:false,transparent:true,opacity:0.9}));
+  scene.add(moonDisc);
+  // sun bloom: stacked additive glow sprites for a cinematic halo
+  const glowCanvas=document.createElement('canvas'); glowCanvas.width=glowCanvas.height=128;
+  const gctx=glowCanvas.getContext('2d');
+  const grad=gctx.createRadialGradient(64,64,0,64,64,64);
+  grad.addColorStop(0,'rgba(255,244,210,0.9)');
+  grad.addColorStop(0.4,'rgba(255,220,160,0.35)');
+  grad.addColorStop(1,'rgba(255,200,120,0)');
+  gctx.fillStyle=grad; gctx.fillRect(0,0,128,128);
+  const glowTex=new THREE.CanvasTexture(glowCanvas);
+  sunGlow=[];
+  [[260,0.9],[520,0.5],[900,0.28]].forEach(([scale,op])=>{
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({
+      map:glowTex,blending:THREE.AdditiveBlending,transparent:true,
+      depthWrite:false,depthTest:false,fog:false,opacity:op}));
+    sp.scale.set(scale,scale,1); sp.renderOrder=-5;
+    scene.add(sp); sunGlow.push(sp);
+  });
+  // drifting clouds
+  const cloudMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.5,fog:false,depthWrite:false});
+  for(let i=0;i<7;i++){
+    const g=new THREE.Group();
+    for(let p=0;p<3;p++){
+      const puff=new THREE.Mesh(new THREE.SphereGeometry(rnd(40,80),8,6),cloudMat);
+      puff.position.set(rnd(-70,70),rnd(-10,10),rnd(-40,40));
+      puff.scale.y=0.42; g.add(puff);
+    }
+    g.position.set(rnd(0,W),rnd(560,720),rnd(0,H));
+    g.userData.spd=rnd(3,7);
+    scene.add(g); clouds.push(g);
+  }
+  // stars
+  const starGeo=new THREE.BufferGeometry();
+  const pos=new Float32Array(900);
+  for(let i=0;i<300;i++){
+    const a=rnd(0,Math.PI*2),e=rnd(0.12,1.4),r=1900;
+    pos[i*3]=W/2+Math.cos(a)*Math.cos(e)*r;
+    pos[i*3+1]=Math.sin(e)*r*0.7+150;
+    pos[i*3+2]=H/2+Math.sin(a)*Math.cos(e)*r;
+  }
+  starGeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  stars=new THREE.Points(starGeo,new THREE.PointsMaterial({color:0xffffff,size:3.2,transparent:true,opacity:0,fog:false,sizeAttenuation:false}));
+  scene.add(stars);
+  // gradient sky dome (replaces flat background as the visible sky)
+  skyCanvas=document.createElement('canvas'); skyCanvas.width=2; skyCanvas.height=256;
+  skyTex=new THREE.CanvasTexture(skyCanvas);
+  paintSkyGrad('#6fa3d8','#cfe3ee');
+  skyDome=new THREE.Mesh(new THREE.SphereGeometry(2300,24,16),
+    new THREE.MeshBasicMaterial({map:skyTex,side:THREE.BackSide,fog:false,depthWrite:false}));
+  skyDome.renderOrder=-10;
+  scene.add(skyDome);
+  // cool fill light opposite the sun: makes characters pop
+  fillLight=new THREE.DirectionalLight(0x9ab8ff,0.22);
+  scene.add(fillLight); scene.add(fillLight.target);
+  // cinematic vignette overlay (pure CSS, zero GPU cost)
+  if(!document.getElementById('vignette')){
+    const v=document.createElement('div');
+    v.id='vignette';
+    v.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:5;'+
+      'background:radial-gradient(ellipse at center,transparent 52%,rgba(10,8,5,0.34) 100%)';
+    document.body.appendChild(v);
+  }
+  buildCity();
+  buildStreetLights();
+  initMinimap();
+  initTutorial();
+  window.addEventListener('resize',()=>{
+    renderer.setSize(window.innerWidth,window.innerHeight);
+    camera.aspect=window.innerWidth/window.innerHeight;
+    camera.updateProjectionMatrix();
+    if(composer) composer.setSize(window.innerWidth,window.innerHeight);
+  });
+  // EffectComposer: bloom only (sRGBEncoding handles gamma on final write)
+  composer=new THREE.EffectComposer(renderer);
+  composer.addPass(new THREE.RenderPass(scene,camera));
+  const bloom=new THREE.UnrealBloomPass(
+    new THREE.Vector2(window.innerWidth,window.innerHeight),
+    1.4,   // strength
+    0.5,   // radius
+    0.88   // threshold — only truly bright emissives/lights bloom in sRGB space
+  );
+  bloom.renderToScreen=true;
+  composer.addPass(bloom);
+}
+
+/* ---- procedural surface textures ---- */
+function noiseCanvas(base,grain,size){
+  const c=document.createElement('canvas'); c.width=c.height=size||128;
+  const x=c.getContext('2d');
+  x.fillStyle=base; x.fillRect(0,0,c.width,c.height);
+  const img=x.getImageData(0,0,c.width,c.height),d=img.data;
+  for(let i=0;i<d.length;i+=4){
+    const n=(Math.random()-0.5)*grain;
+    d[i]=clamp(d[i]+n,0,255); d[i+1]=clamp(d[i+1]+n,0,255); d[i+2]=clamp(d[i+2]+n,0,255);
+  }
+  x.putImageData(img,0,0);
+  return c;
+}
+function groundTexture(hexColor,kind){
+  const base='#'+hexColor.toString(16).padStart(6,'0');
+  const c=noiseCanvas(base,kind==='asphalt'?22:(kind==='grass'?14:28),128);
+  const x=c.getContext('2d');
+  if(kind==='grass'){
+    // light grass blades for texture variation
+    x.strokeStyle='rgba(255,255,255,0.12)'; x.lineWidth=1;
+    for(let i=0;i<90;i++){const px=rnd(0,128),pz=rnd(0,128);
+      x.beginPath();x.moveTo(px,pz);x.lineTo(px+rnd(-2,2),pz-rnd(3,7));x.stroke();}
+    x.strokeStyle='rgba(0,0,0,0.08)'; x.lineWidth=1;
+    for(let i=0;i<50;i++){const px=rnd(0,128),pz=rnd(0,128);
+      x.beginPath();x.moveTo(px,pz);x.lineTo(px+rnd(-1,1),pz-rnd(2,5));x.stroke();}
+  }
+  if(kind==='plaza'){
+    x.strokeStyle='rgba(0,0,0,0.16)'; x.lineWidth=1.5;
+    for(let i=0;i<=128;i+=32){x.beginPath();x.moveTo(i,0);x.lineTo(i,128);x.stroke();
+      x.beginPath();x.moveTo(0,i);x.lineTo(128,i);x.stroke();}
+  }
+  if(kind==='asphalt'){
+    x.strokeStyle='rgba(0,0,0,0.22)';
+    for(let i=0;i<8;i++){x.beginPath();x.moveTo(rnd(0,128),rnd(0,128));
+      x.lineTo(rnd(0,128),rnd(0,128));x.lineWidth=0.6;x.stroke();}
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=t.wrapT=THREE.RepeatWrapping;
+  t.anisotropy=Math.min(window._maxAniso||4,8);
+  return t;
+}
+
+function makeFacadeTexture(hex,litRatio){
+  const c=document.createElement('canvas'); c.width=256; c.height=512;
+  const x=c.getContext('2d');
+  const col='#'+hex.toString(16).padStart(6,'0');
+  x.fillStyle=col; x.fillRect(0,0,256,512);
+  // wall grain
+  const img=x.getImageData(0,0,256,512),d=img.data;
+  for(let i=0;i<d.length;i+=4){const n=(Math.random()-0.5)*16;
+    d[i]=clamp(d[i]+n,0,255);d[i+1]=clamp(d[i+1]+n,0,255);d[i+2]=clamp(d[i+2]+n,0,255);}
+  x.putImageData(img,0,0);
+  // vertical edge shading
+  const g=x.createLinearGradient(0,0,256,0);
+  g.addColorStop(0,'rgba(0,0,0,0.26)');g.addColorStop(.5,'rgba(255,255,255,0.06)');g.addColorStop(1,'rgba(0,0,0,0.30)');
+  x.fillStyle=g; x.fillRect(0,0,256,512);
+  // ground-floor storefront band
+  x.fillStyle='rgba(15,16,20,0.85)'; x.fillRect(8,448,240,56);
+  x.fillStyle='rgba(150,190,210,0.30)'; x.fillRect(16,454,150,44); // glass
+  x.fillStyle='rgba(255,214,140,0.5)'; x.fillRect(176,454,64,44);  // lit shop
+  x.fillStyle='rgba(0,0,0,0.4)'; x.fillRect(8,440,240,8);          // awning shadow
+  // window grid with mullions
+  for(let r=0;r<9;r++)for(let cl=0;cl<5;cl++){
+    const wx=16+cl*48, wy=18+r*46;
+    x.fillStyle='rgba(0,0,0,0.35)'; x.fillRect(wx-2,wy-2,36,32); // frame
+    const lit=Math.random()<litRatio;
+    x.fillStyle=lit?'rgba(255,214,140,0.95)':'rgba(26,32,46,0.92)';
+    x.fillRect(wx,wy,32,28);
+    x.fillStyle='rgba(0,0,0,0.45)';
+    x.fillRect(wx+15,wy,2,28); x.fillRect(wx,wy+13,32,2); // mullions
+    if(!lit){ x.fillStyle='rgba(180,210,235,0.18)'; x.fillRect(wx,wy,14,12); } // sky reflection
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.anisotropy=Math.min(window._maxAniso||4,8);
+  return t;
+}
+function makeLabelSprite(text,color){
+  const c=document.createElement('canvas'); c.width=512; c.height=96;
+  drawLabel(c,text,color);
+  const t=new THREE.CanvasTexture(c);
+  const m=new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false});
+  const sp=new THREE.Sprite(m);
+  sp.scale.set(140,26,1);
+  sp.userData.canvas=c;
+  return sp;
+}
+function drawLabel(c,text,color){
+  const x=c.getContext('2d');
+  x.clearRect(0,0,512,96);
+  x.font='700 44px Archivo, Inter, sans-serif';
+  x.textAlign='center'; x.textBaseline='middle';
+  x.fillStyle='rgba(12,10,8,0.55)';
+  const w=x.measureText(text).width+44;
+  roundRectPath(x,(512-w)/2,14,w,68,16); x.fill();
+  x.fillStyle=color||'#F5EFE3';
+  x.fillText(text,256,50);
+}
+function roundRectPath(x,a,b,w,h,r){
+  x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);
+  x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();
+}
+function updateLabelSprite(sp,text,color){
+  drawLabel(sp.userData.canvas,text,color);
+  sp.material.map.needsUpdate=true;
+}
+
+
+/* ---- ground-contact AO decals (cheap "grounded" realism) ---- */
+let aoTex=null;
+function getAOTexture(){
+  if(aoTex)return aoTex;
+  const c=document.createElement('canvas'); c.width=c.height=128;
+  const x=c.getContext('2d');
+  const g=x.createRadialGradient(64,64,8,64,64,64);
+  g.addColorStop(0,'rgba(0,0,0,0.50)');
+  g.addColorStop(0.65,'rgba(0,0,0,0.20)');
+  g.addColorStop(1,'rgba(0,0,0,0)');
+  x.fillStyle=g; x.fillRect(0,0,128,128);
+  aoTex=new THREE.CanvasTexture(c);
+  return aoTex;
+}
+function addAO(x,z,w,d){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(w,d),
+    new THREE.MeshBasicMaterial({map:getAOTexture(),transparent:true,depthWrite:false}));
+  m.rotation.x=-Math.PI/2; m.position.set(x,0.72,z);
+  scene.add(m);
+}
+
+
+/* ---- curbs: raised edge between road and sidewalk, gapped at intersections ---- */
+function buildCurbs(){
+  const curbMat=new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,color:0x9a958a});
+  function seg(x,y,z,w,h,d){
+    const c=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),curbMat);
+    c.position.set(x,y,z); c.castShadow=true; c.receiveShadow=true;
+    scene.add(c);
+  }
+  // horizontal road (z=800): curb runs along x, gaps at the two intersections
+  [765,835].forEach(zc=>{
+    [[0,760],[840,1560],[1640,2400]].forEach(([a,b])=>{
+      seg((a+b)/2,1.2,zc,b-a,2.4,2.2);
+    });
+  });
+  // vertical roads (x=800,1600): curb runs along z, gap at z=760..840
+  [800,1600].forEach(rx=>{
+    [-35,35].forEach(off=>{
+      [[0,760],[840,1600]].forEach(([a,b])=>{
+        seg(rx+off,1.2,(a+b)/2,2.2,2.4,b-a);
+      });
+    });
+  });
+}
+
+
+/* ---- power lines: sagging cable between two points ---- */
+function addPowerLine(x1,y1,z1,x2,y2,z2){
+  const mid=new THREE.Vector3((x1+x2)/2,Math.min(y1,y2)-7,(z1+z2)/2);
+  const curve=new THREE.QuadraticBezierCurve3(
+    new THREE.Vector3(x1,y1,z1),mid,new THREE.Vector3(x2,y2,z2));
+  const geo=new THREE.BufferGeometry().setFromPoints(curve.getPoints(10));
+  scene.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:0x1c1a16})));
+}
+
+
+/* ---- neon storefront signage (lit at night) ---- */
+const neonSigns=[];
+function addNeonSign(x,y,z,text,color){
+  const c=document.createElement('canvas'); c.width=256; c.height=96;
+  const cx=c.getContext('2d');
+  cx.font='900 50px Arial'; cx.textAlign='center'; cx.textBaseline='middle';
+  cx.shadowColor=color; cx.shadowBlur=26;
+  cx.fillStyle=color;
+  cx.fillText(text,128,50); cx.fillText(text,128,50);
+  const mat=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,opacity:0});
+  const sp=new THREE.Sprite(mat); sp.scale.set(40,15,1); sp.position.set(x,y,z);
+  scene.add(sp); neonSigns.push(sp);
+}
+
+
+/* ---- rain weather: particles + sky darkening during the 'rain' event ---- */
+let rainPoints=null,rainOpacity=0;
+const RAIN_N=420,RAIN_SPAN=180,RAIN_H=140;
+function buildRain(){
+  const g=new THREE.BufferGeometry();
+  const pos=new Float32Array(RAIN_N*3);
+  for(let i=0;i<RAIN_N;i++){
+    pos[i*3]=rnd(-RAIN_SPAN,RAIN_SPAN);
+    pos[i*3+1]=rnd(0,RAIN_H);
+    pos[i*3+2]=rnd(-RAIN_SPAN,RAIN_SPAN);
+  }
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  rainPoints=new THREE.Points(g,new THREE.PointsMaterial({
+    color:0xbcd4e8,size:1.8,transparent:true,opacity:0,depthWrite:false,sizeAttenuation:true}));
+  rainPoints.renderOrder=5;
+  scene.add(rainPoints);
+}
+function updateRain(DT){
+  if(!rainPoints)return;
+  const active=S&&S.event==='rain';
+  rainOpacity=lerp(rainOpacity,active?0.5:0,DT*2);
+  rainPoints.material.opacity=rainOpacity;
+  if(rainOpacity<0.01){ rainPoints.visible=false; return; }
+  rainPoints.visible=true;
+  rainPoints.position.set(playerPos.x,0,playerPos.z);
+  const pos=rainPoints.geometry.attributes.position.array;
+  const fall=220*DT;
+  for(let i=0;i<RAIN_N;i++){
+    pos[i*3+1]-=fall;
+    if(pos[i*3+1]<0){
+      pos[i*3+1]=RAIN_H;
+      pos[i*3]=rnd(-RAIN_SPAN,RAIN_SPAN);
+      pos[i*3+2]=rnd(-RAIN_SPAN,RAIN_SPAN);
+    }
+  }
+  rainPoints.geometry.attributes.position.needsUpdate=true;
+}
+
+function buildCity(){
+  // ground per zone (textured, receives shadows)
+  ZONES.forEach(zo=>{
+    const kind=zo.id===1||zo.id===4?'grass':(zo.id===5?'plaza':(zo.id===6?'grass':'plaza'));
+    const tex=groundTexture(zo.ground,kind);
+    tex.repeat.set(10,10);
+    const g=new THREE.Mesh(new THREE.PlaneGeometry(ZW,ZH),
+      new THREE.MeshStandardMaterial({roughness:kind==='grass'?0.95:0.88,metalness:0.0,map:tex,envMapIntensity:0.2}));
+    g.rotation.x=-Math.PI/2;
+    g.position.set(zo.x+ZW/2,0,zo.y+ZH/2);
+    g.receiveShadow=true;
+    scene.add(g); zo.groundMesh=g;
+    // zone name sprite at center, high
+    const sp=makeLabelSprite('ZONE '+zo.id+' \u00B7 '+zo.name.toUpperCase(),zo.accent);
+    sp.position.set(zo.x+ZW/2,120,zo.y+ZH/2);
+    sp.scale.set(190,34,1);
+    scene.add(sp); zo.labelSprite=sp;
+    zo.lockSprite=null;
+    if(zo.unlock>1){
+      const ls=makeLabelSprite('UNLOCKS AT STAGE '+zo.unlock,'#9A917F');
+      ls.position.set(zo.x+ZW/2,96,zo.y+ZH/2);
+      ls.scale.set(150,24,1);
+      scene.add(ls); zo.lockSprite=ls;
+    }
+  });
+  // roads (textured asphalt) + sidewalks + crosswalks
+  const asphalt=groundTexture(0x232019,'asphalt'); asphalt.repeat.set(24,1);
+  const asphaltV=groundTexture(0x232019,'asphalt'); asphaltV.repeat.set(1,16);
+  const roadMatH=new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,map:asphalt});
+  const roadMatV=new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,map:asphaltV});
+  const walkTex=groundTexture(0x6e6a60,'plaza'); walkTex.repeat.set(40,1);
+  const walkTexV=groundTexture(0x6e6a60,'plaza'); walkTexV.repeat.set(1,28);
+  const walkMatH=new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,map:walkTex});
+  const walkMatV=new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,map:walkTexV});
+  const r1=new THREE.Mesh(new THREE.PlaneGeometry(W,70),roadMatH);
+  r1.rotation.x=-Math.PI/2; r1.position.set(W/2,0.4,800); r1.receiveShadow=true; scene.add(r1);
+  [765,835].forEach(sz=>{
+    const sw=new THREE.Mesh(new THREE.PlaneGeometry(W,16),walkMatH);
+    sw.rotation.x=-Math.PI/2; sw.position.set(W/2,0.55,sz<800?sz-9:sz+9);
+    sw.receiveShadow=true; scene.add(sw);
+  });
+  [800,1600].forEach(rx=>{
+    const r=new THREE.Mesh(new THREE.PlaneGeometry(70,H),roadMatV);
+    r.rotation.x=-Math.PI/2; r.position.set(rx,0.4,H/2); r.receiveShadow=true; scene.add(r);
+    [-44,44].forEach(off=>{
+      const sw=new THREE.Mesh(new THREE.PlaneGeometry(16,H),walkMatV);
+      sw.rotation.x=-Math.PI/2; sw.position.set(rx+off,0.55,H/2);
+      sw.receiveShadow=true; scene.add(sw);
+    });
+  });
+  buildCurbs();
+  buildRain();
+  // crosswalk stripes at the two intersections
+  const cwMat=new THREE.MeshBasicMaterial({color:0xd8d2c4});
+  [800,1600].forEach(ix=>{
+    for(let s=-24;s<=24;s+=12){
+      const c1=new THREE.Mesh(new THREE.PlaneGeometry(7,26),cwMat);
+      c1.rotation.x=-Math.PI/2; c1.position.set(ix+s,0.62,800-52); scene.add(c1);
+      const c2=new THREE.Mesh(new THREE.PlaneGeometry(7,26),cwMat);
+      c2.rotation.x=-Math.PI/2; c2.position.set(ix+s,0.62,800+52); scene.add(c2);
+      const c3=new THREE.Mesh(new THREE.PlaneGeometry(26,7),cwMat);
+      c3.rotation.x=-Math.PI/2; c3.position.set(ix-52,0.62,800+s); scene.add(c3);
+      const c4=new THREE.Mesh(new THREE.PlaneGeometry(26,7),cwMat);
+      c4.rotation.x=-Math.PI/2; c4.position.set(ix+52,0.62,800+s); scene.add(c4);
+    }
+  });
+  // lane dashes
+  const dashMat=new THREE.MeshBasicMaterial({color:0xF2A33C});
+  for(let x=30;x<W;x+=70){
+    const d=new THREE.Mesh(new THREE.PlaneGeometry(34,4),dashMat);
+    d.rotation.x=-Math.PI/2; d.position.set(x,0.6,800); scene.add(d);
+  }
+  for(let z=30;z<H;z+=70){
+    [800,1600].forEach(rx=>{
+      const d=new THREE.Mesh(new THREE.PlaneGeometry(4,34),dashMat);
+      d.rotation.x=-Math.PI/2; d.position.set(rx,0.6,z); scene.add(d);
+    });
+  }
+  // buildings
+  BUILDINGS.forEach(b=>{
+    const zo=ZONES.find(z=>z.id===b.z);
+    let h;
+    if(b.small) h=26;
+    else if(b.id==='tower') h=520;
+    else h=rnd(zo.bh[0],zo.bh[1]);
+    b.h3=h;
+    addAO(b.x+b.w/2,b.y+b.d/2,b.w*1.4,b.d*1.4);
+    const tex=makeFacadeTexture(b.c,0.35);
+    const mat=new THREE.MeshStandardMaterial({map:tex,emissiveMap:tex,emissive:new THREE.Color(0xffc878),emissiveIntensity:0,roughness:0.72,metalness:0.04,envMapIntensity:0.6});
+    const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.w,h,b.d),mat);
+    mesh.position.set(b.x+b.w/2,h/2,b.y+b.d/2);
+    mesh.castShadow=true; mesh.receiveShadow=true;
+    scene.add(mesh);
+    // roof accent
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(b.w+4,4,b.d+4),
+      new THREE.MeshBasicMaterial({color:new THREE.Color(zo.accent)}));
+    roof.position.set(b.x+b.w/2,h+2,b.y+b.d/2);
+    scene.add(roof);
+    // storefront door + colored awning for street-level zones
+    if(!b.small&&!b.tower&&(b.z===1||b.z===2||b.z===4)){
+      const door=new THREE.Mesh(new THREE.PlaneGeometry(16,26),
+        new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x1c1813}));
+      door.position.set(b.x+b.w/2,13,b.y+b.d+0.6);
+      scene.add(door);
+      const awnCols=[0xC96F4A,0x3FB8AF,0xE8C064,0x5E7C99];
+      const awn=new THREE.Mesh(new THREE.BoxGeometry(Math.min(b.w*0.7,120),3,16),
+        new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:awnCols[(b.x+b.z)%4]}));
+      awn.position.set(b.x+b.w/2,34,b.y+b.d+8);
+      awn.rotation.x=0.28; awn.castShadow=true;
+      scene.add(awn);
+    }
+    // rooftop AC units (not on the small board or the tower)
+    if(!b.small&&!b.tower){
+      for(let u=0;u<ri(1,2);u++){
+        const acu=new THREE.Mesh(new THREE.BoxGeometry(rnd(14,24),8,rnd(12,18)),
+          new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x7e7a72}));
+        acu.position.set(b.x+rnd(20,b.w-20),h+8,b.y+rnd(16,b.d-16));
+        acu.castShadow=true;
+        scene.add(acu); b.acu=acu;
+      }
+    }
+    // Capital Row setback crowns: stacked narrower top for skyscraper feel
+    if(b.z===5){
+      const crownH=h*0.34;
+      const crown=new THREE.Mesh(new THREE.BoxGeometry(b.w*0.62,crownH,b.d*0.62),mat);
+      crown.position.set(b.x+b.w/2,h+crownH/2,b.y+b.d/2);
+      crown.castShadow=true;
+      scene.add(crown);
+      roof.position.y=h+crownH+2;
+    }
+    // label
+    const sp=makeLabelSprite(b.label,'#F5EFE3');
+    sp.position.set(b.x+b.w/2,h+22,b.y+b.d/2);
+    scene.add(sp);
+    b.mesh=mesh; b.roof=roof; b.labelSprite=sp; b.mat=mat;
+    buildingMeshes[b.id]={mesh,roof,sp};
+  });
+  // neon storefront signage on a handful of street-level buildings
+  [['corner','OPEN','#F2A33C'],['adagency','ADS','#3FB8AF'],['cowork','CO-WORK','#C96F4A'],
+   ['cmarket','MARKET','#E8C064'],['clinic','CLINIC','#5FA86B']].forEach(([id,txt,col])=>{
+    const b=BUILDINGS.find(b=>b.id===id); if(!b)return;
+    addNeonSign(b.x+b.w/2,b.h3+14,b.y+b.d+1,txt,col);
+  });
+  // empty lot starts flat: shrink it
+  setHQEmpty();
+  // tower starts as low construction (geometry is full 520, scaled down)
+  const tw=BUILDINGS.find(b=>b.id==='tower');
+  tw.mesh.scale.y=60/tw.h3; tw.mesh.position.y=30;
+  tw.roof.position.y=64;
+  tw.labelSprite.position.y=86;
+  // streetlamps along roads
+  const poleMat=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x3a352c});
+  let prevX1=null,prevX2=null;
+  for(let x=120;x<W;x+=260){
+    addLamp(x,770,poleMat); addLamp(x,830,poleMat);
+    if(prevX1!==null){
+      addPowerLine(prevX1,31,770,x,31,770);
+      addPowerLine(prevX2,31,830,x,31,830);
+    }
+    prevX1=x; prevX2=x;
+  }
+  let prevZA=null,prevZB=null,prevZC=null,prevZD=null;
+  for(let z=120;z<H;z+=260){
+    addLamp(770,z,poleMat); addLamp(830,z,poleMat);
+    addLamp(1570,z,poleMat); addLamp(1630,z,poleMat);
+    if(prevZA!==null){
+      addPowerLine(770,31,prevZA,770,31,z);
+      addPowerLine(830,31,prevZB,830,31,z);
+      addPowerLine(1570,31,prevZC,1570,31,z);
+      addPowerLine(1630,31,prevZD,1630,31,z);
+    }
+    prevZA=z;prevZB=z;prevZC=z;prevZD=z;
+  }
+  // trees in zones 1 & 4
+  [1,4].forEach(zid=>{
+    const zo=ZONES.find(z=>z.id===zid);
+    for(let i=0;i<10;i++) addTree(zo.x+rnd(60,ZW-60),zo.y+rnd(60,ZH-60));
+  });
+  // cars
+  const carCols=[0xC96F4A,0x5E7C99,0xD9D2C0,0x3FB8AF];
+  for(let i=0;i<5;i++){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(26,8,13),
+      new THREE.MeshStandardMaterial({roughness:0.35,metalness:0.55,color:carCols[i%carCols.length]}));
+    body.position.y=7;
+    const cab=new THREE.Mesh(new THREE.BoxGeometry(13,6,11),
+      new THREE.MeshStandardMaterial({roughness:0.4,metalness:0.3,color:0x222831}));
+    cab.position.set(-1,13,0);
+    body.castShadow=true; cab.castShadow=true;
+    g.add(body,cab);
+    scene.add(g);
+    const horiz=i%2===0;
+    cars.push({g,horiz,p:rnd(0,1),spd:rnd(0.018,0.03)*(Math.random()<.5?1:-1),
+      lane:horiz?(Math.random()<.5?786:814):(Math.random()<.5?786:814)+(i>2?800:0)});
+  }
+  // quest marker
+  questMarker=new THREE.Mesh(new THREE.ConeGeometry(9,20,4),
+    new THREE.MeshBasicMaterial({color:0xE8C064}));
+  questMarker.rotation.x=Math.PI;
+  scene.add(questMarker);
+  // the market goose (city legend)
+  buildGoose();
+  // founders commons plots
+  buildPlots();
+  // street furniture, stalls, fountain, flags, birds
+  buildProps();
+  // player + npcs
+  playerGroup=makePerson(SKINS[2],FITS[0]); scene.add(playerGroup.group);
+  playerParts=playerGroup;
+}
+let goose=null;
+function buildGoose(){
+  const g=new THREE.Group();
+  const white=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0xf2efe6});
+  const body=new THREE.Mesh(new THREE.SphereGeometry(5,10,8),white);
+  body.position.y=6; body.scale.set(1.25,1,0.9);
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.8,8,8),white);
+  neck.position.set(4.5,11,0); neck.rotation.z=-0.3;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(2.4,8,8),white);
+  head.position.set(6.2,15.2,0);
+  const beak=new THREE.Mesh(new THREE.ConeGeometry(1.2,3.4,6),
+    new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0xe8862c}));
+  beak.rotation.z=-Math.PI/2; beak.position.set(9.2,15.2,0);
+  const eye=new THREE.Mesh(new THREE.SphereGeometry(0.6,6,6),
+    new THREE.MeshBasicMaterial({color:0x111111}));
+  eye.position.set(6.8,16,1.6);
+  g.add(body,neck,head,beak,eye);
+  g.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+  scene.add(g);
+  goose={g,x:1050,z:1030,tx:1050,tz:1030,wait:1,spd:46,dash:0,honked:0};
+}
+function gooseDash(){ if(goose){ goose.dash=4; } }
+
+/* =========================================================
+   FOUNDERS COMMONS - shared co-op town (Zone 6)
+   Plots claimed here are stored in SHARED space: every founder
+   playing this demo sees the same town. Build it together.
+   ========================================================= */
+const TALENTS=['Builder','Artist','Musician','Coder','Organizer','Healer','Storyteller'];
+const PLOTS=[
+ {x:1660,z:860},{x:1820,z:860},{x:1980,z:860},{x:2140,z:860},
+ {x:1660,z:1060},{x:1660,z:1230},{x:2210,z:1060},{x:2210,z:1230}
+].map((p,i)=>({idx:i,x:p.x,z:p.z,w:120,d:120,data:null,mesh:null,pad:null,sp:null}));
+const TOWN_KEY='sc-town-v1', FAME_KEY='sc-fame-v1';
+let townTalentBonus=0, fameCache=[];
+
+function buildPlots(){
+  PLOTS.forEach(p=>{
+    const pad=new THREE.Mesh(new THREE.BoxGeometry(p.w,2,p.d),
+      new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x4a452f}));
+    pad.position.set(p.x+p.w/2,1,p.z+p.d/2); pad.receiveShadow=true;
+    scene.add(pad); p.pad=pad;
+    const sp=makeLabelSprite('OPEN PLOT \u00B7 Founders Commons','#9A917F');
+    sp.scale.set(120,20,1); sp.position.set(p.x+p.w/2,26,p.z+p.d/2);
+    scene.add(sp); p.sp=sp;
+  });
+}
+async function loadTown(){
+  let town=null;
+  try{
+    if(window.storage){
+      const r=await window.storage.get(TOWN_KEY,true);
+      if(r&&r.value) town=JSON.parse(r.value);
+    }
+  }catch(e){}
+  renderTown(town||{plots:{}});
+  try{
+    if(window.storage){
+      const f=await window.storage.get(FAME_KEY,true);
+      if(f&&f.value) fameCache=JSON.parse(f.value);
+    }
+  }catch(e){}
+}
+function renderTown(town){
+  const talents=new Set();
+  PLOTS.forEach(p=>{
+    const d=town.plots[p.idx];
+    p.data=d||null;
+    if(d) talents.add(d.talent);
+    if(d&&!p.mesh){
+      const ind=INDUSTRIES.find(i=>i.id===d.industry)||INDUSTRIES[INDUSTRIES.length-1];
+      const tex=makeFacadeTexture(ind.col,0.4);
+      const h=70+((d.name||'').length%5)*14;
+      const m=new THREE.Mesh(new THREE.BoxGeometry(p.w-14,h,p.d-14),
+        new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,map:tex,emissiveMap:tex,emissive:new THREE.Color(0xffc878),emissiveIntensity:0}));
+      m.position.set(p.x+p.w/2,h/2+2,p.z+p.d/2);
+      m.castShadow=true; scene.add(m); p.mesh=m; p.h=h;
+      const roof=new THREE.Mesh(new THREE.BoxGeometry(p.w-10,4,p.d-10),
+        new THREE.MeshBasicMaterial({color:ind.col}));
+      roof.position.set(p.x+p.w/2,h+4,p.z+p.d/2); scene.add(roof); p.roof=roof;
+      updateLabelSprite(p.sp,d.name+' \u00B7 '+d.biz,'#E8C064');
+      p.sp.position.y=h+22; p.sp.scale.set(150,24,1);
+    }
+    if(d&&p.mesh&&S) p.mesh.material.emissiveIntensity=0; // sky pass will set
+  });
+  townTalentBonus=Math.min(talents.size,7)*0.01;
+}
+async function claimPlot(p,talent){
+  const entry={name:S.founder.name,biz:S.biz.name,industry:S.biz.industry,talent,ts:Date.now()};
+  try{
+    let town={plots:{}};
+    if(window.storage){
+      try{ const r=await window.storage.get(TOWN_KEY,true);
+        if(r&&r.value) town=JSON.parse(r.value); }catch(e){}
+      if(town.plots[p.idx]){ toast('Another founder just claimed that plot. Pick a different one.','bad');
+        renderTown(town); return; }
+      town.plots[p.idx]=entry;
+      await window.storage.set(TOWN_KEY,JSON.stringify(town),true);
+    } else { town.plots[p.idx]=entry; }
+    S.townPlot=p.idx; S.talent=talent;
+    renderTown(town);
+    sBig(); spawnBurst(p.x+p.w/2,40,p.z+p.d/2,0xE8C064);
+    feed('You claimed a plot in Founders Commons as a '+talent+'. Every founder in this city can see it.');
+    toast('<b>Plot claimed.</b> Your '+talent+' talent strengthens the whole town: every distinct talent adds +1% revenue for all members.','gold');
+    learn('Collective Ownership','A town where every founder brings a different talent grows faster than any founder alone.');
+    saveGame();
+  }catch(e){ toast('The town ledger is busy. Try again in a moment.','bad'); }
+}
+function openPlot(p){
+  if(p.data){
+    showDialog(p.data.name+'\u2019s Place','Founders Commons \u00B7 '+p.data.talent,'#E8C064',
+      '<b>'+p.data.biz+'</b>, founded by '+p.data.name+', bringing '+p.data.talent+' talent to the town. '+
+      'Distinct talents in town: '+Math.round(townTalentBonus*100)+'% revenue bonus for every member.',
+      [{label:'Respect.'}]);
+    return;
+  }
+  if(!S.biz||S.stage<3){
+    showDialog('Open Plot','Founders Commons','#9A917F',
+      'Founders Commons: a town built by every player of this demo, together. Reach Stage 3 with a business to claim a plot.',
+      [{label:'I\u2019ll be back.'}]);
+    return;
+  }
+  if(S.townPlot!=null){
+    showDialog('Open Plot','Founders Commons','#9A917F',
+      'You\u2019ve already got a plot in the Commons. Leave some land for the next founder.',[{label:'Fair.'}]);
+    return;
+  }
+  showDialog('Claim This Plot','Founders Commons \u00B7 shared with all founders','#E8C064',
+    'Your building rises here with your name on it, visible to <b>every other founder playing this demo</b>. '+
+    'What talent do you bring to the town? Each distinct talent in the Commons adds +1% revenue for every member.',
+    TALENTS.map(t=>({label:t,fn:()=>claimPlot(p,t)})).concat([{label:'Not yet.'}]));
+}
+async function recordFame(){
+  try{
+    if(window.storage){
+      let fame=[];
+      try{ const r=await window.storage.get(FAME_KEY,true);
+        if(r&&r.value) fame=JSON.parse(r.value); }catch(e){}
+      fame.unshift({name:S.founder.name,biz:S.biz.name,industry:S.biz.industry,day:S.day,ts:Date.now()});
+      if(fame.length>50)fame.length=50;
+      await window.storage.set(FAME_KEY,JSON.stringify(fame),true);
+      fameCache=fame;
+    }
+  }catch(e){}
+}
+
+let lampGlows=[];
+function addLamp(x,z,poleMat){
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,30,6),poleMat);
+  pole.position.set(x,15,z); pole.castShadow=true;
+  const bulbMat=new THREE.MeshBasicMaterial({color:0x554a30});
+  const bulb=new THREE.Mesh(new THREE.SphereGeometry(3.2,8,8),bulbMat);
+  bulb.position.set(x,31,z);
+  // warm glow halo (sprite)
+  const gc=document.createElement('canvas'); gc.width=gc.height=64;
+  const gx=gc.getContext('2d');
+  const grad=gx.createRadialGradient(32,32,2,32,32,30);
+  grad.addColorStop(0,'rgba(255,208,128,0.9)');grad.addColorStop(1,'rgba(255,208,128,0)');
+  gx.fillStyle=grad; gx.fillRect(0,0,64,64);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(gc),transparent:true,opacity:0,depthWrite:false}));
+  glow.scale.set(42,42,1); glow.position.set(x,31,z);
+  scene.add(pole,bulb,glow);
+  streetLampMats.push(bulbMat); lampGlows.push(glow.material);
+}
+function addTree(x,z){
+  const s=rnd(0.8,1.3);
+  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(2.2*s,3*s,15*s,6),
+    new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x5a4630}));
+  trunk.position.set(x,7.5*s,z); trunk.castShadow=true;
+  scene.add(trunk);
+  // clustered canopy: 3 spheres, slight hue variance per tree
+  const greens=[0x4e6b3a,0x5a7a42,0x46613a,0x6b8248];
+  const base=greens[ri(0,greens.length-1)];
+  [[0,21,0,11],[6,17,3,7.5],[-5,18,-3,8]].forEach(([ox,oy,oz,r])=>{
+    const c=new THREE.Mesh(new THREE.SphereGeometry(r*s,7,7),
+      new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:base}));
+    c.position.set(x+ox*s,oy*s,z+oz*s); c.castShadow=true;
+    scene.add(c);
+  });
+}
+function addBush(x,z){
+  const b=new THREE.Mesh(new THREE.SphereGeometry(rnd(4,7),6,6),
+    new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x55703e}));
+  b.position.set(x,3.5,z); b.scale.y=0.7;
+  scene.add(b);
+}
+
+/* =========================================================
+   STREET PROPS — the lived-in layer
+   ========================================================= */
+function buildProps(){
+  const wood=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x6a5436});
+  const dark=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x2a2620});
+  // benches along the main horizontal road sidewalks
+  [[300,745],[640,745],[1050,745],[1380,745],[300,856],[980,856],[1340,856],[1900,856]].forEach(([x,z])=>{
+    const seat=new THREE.Mesh(new THREE.BoxGeometry(26,2.5,8),wood);
+    seat.position.set(x,8,z); seat.castShadow=true;
+    const back=new THREE.Mesh(new THREE.BoxGeometry(26,8,2),wood);
+    back.position.set(x,13,z+(z<800?-3:3));
+    const l1=new THREE.Mesh(new THREE.BoxGeometry(2.5,8,7),dark); l1.position.set(x-10,4,z);
+    const l2=new THREE.Mesh(new THREE.BoxGeometry(2.5,8,7),dark); l2.position.set(x+10,4,z);
+    scene.add(seat,back,l1,l2);
+  });
+  // fire hydrants — small, red, charming
+  const red=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0xb33a2a});
+  [[150,860],[700,742],[1180,860],[1700,742],[2080,860]].forEach(([x,z])=>{
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(2.6,3,8,8),red);
+    body.position.set(x,4,z);
+    const cap=new THREE.Mesh(new THREE.SphereGeometry(2.7,8,6),red);
+    cap.position.set(x,8.4,z);
+    scene.add(body,cap);
+  });
+  // trash cans
+  const can=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x3a4046});
+  [[420,742],[880,858],[1480,742],[1820,858],[760,1500],[1660,300]].forEach(([x,z])=>{
+    const c=new THREE.Mesh(new THREE.CylinderGeometry(4,3.4,10,8),can);
+    c.position.set(x,5,z); scene.add(c);
+  });
+  // planters with greenery — Main Street + Capital Row polish
+  const stone=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x7a756a});
+  [[900,920],[1200,920],[1500,920],[940,250],[1180,420],[1430,250]].forEach(([x,z])=>{
+    const p=new THREE.Mesh(new THREE.BoxGeometry(16,8,16),stone);
+    p.position.set(x,4,z);
+    const g=new THREE.Mesh(new THREE.SphereGeometry(7,7,6),
+      new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x5a7a42}));
+    g.position.set(x,11,z); g.scale.y=0.75;
+    scene.add(p,g);
+  });
+  // bushes scattered through The Grind, Sovereign District, Skyline
+  for(let i=0;i<8;i++)addBush(rnd(80,720),rnd(880,1540));
+  for(let i=0;i<8;i++)addBush(rnd(80,720),rnd(80,720));
+  for(let i=0;i<5;i++)addBush(rnd(1680,2340),rnd(880,1540));
+  // MARKET STALLS — striped canopies in front of City Market
+  const stripeCols=[[0xC96F4A,0xF5EFE3],[0x3FB8AF,0xF5EFE3],[0xE8C064,0x14120F]];
+  [[960,1150],[1050,1150],[1140,1150]].forEach(([x,z],i)=>{
+    const post=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x5a4a32});
+    [[-14,-10],[14,-10],[-14,10],[14,10]].forEach(([ox,oz])=>{
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(1,1,18,5),post);
+      p.position.set(x+ox,9,z+oz); scene.add(p);
+    });
+    // striped canopy texture
+    const cc=document.createElement('canvas'); cc.width=64; cc.height=32;
+    const cx2=cc.getContext('2d');
+    const [a,b2]=stripeCols[i];
+    for(let s2=0;s2<8;s2++){
+      cx2.fillStyle='#'+(s2%2?a:b2).toString(16).padStart(6,'0');
+      cx2.fillRect(s2*8,0,8,32);
+    }
+    const canopy=new THREE.Mesh(new THREE.BoxGeometry(36,2.5,26),
+      new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,map:new THREE.CanvasTexture(cc)}));
+    canopy.position.set(x,19,z); canopy.rotation.x=0.08; canopy.castShadow=true;
+    scene.add(canopy);
+    // crates of goods
+    const crate=new THREE.Mesh(new THREE.BoxGeometry(10,7,8),
+      new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x8a6a3a}));
+    crate.position.set(x+rnd(-8,8),3.5,z+rnd(-4,4)); scene.add(crate);
+  });
+  // FLAGS on the Council Hall and the Tower
+  [[255,18,140],[2000,18,1000]].forEach(([x,zoff,z],fi)=>{
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(1,1,56,6),
+      new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x9a958a}));
+    pole.position.set(x,28,z-6);
+    const flag=new THREE.Mesh(new THREE.PlaneGeometry(24,14),
+      new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:fi===0?0x3FB8AF:0xE8C064,side:THREE.DoubleSide}));
+    flag.position.set(x+12,48,z-6);
+    scene.add(pole,flag);
+    flags.push({m:flag,phase:rnd(0,6)});
+  });
+  // FOUNTAIN PLAZA — Sovereign District centerpiece
+  const basin=new THREE.Mesh(new THREE.CylinderGeometry(30,32,8,18),
+    new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x8a8378}));
+  basin.position.set(395,4,345); basin.castShadow=true;
+  // rippled water surface (rotating)
+  const wc=document.createElement('canvas'); wc.width=wc.height=128;
+  const wx=wc.getContext('2d');
+  wx.fillStyle='#2E8B84'; wx.fillRect(0,0,128,128);
+  wx.strokeStyle='rgba(255,255,255,0.35)'; wx.lineWidth=2;
+  for(let r2=12;r2<70;r2+=14){wx.beginPath();wx.arc(64,64,r2,0,Math.PI*2);wx.stroke();}
+  fountainWater=new THREE.Mesh(new THREE.CircleGeometry(27,20),
+    new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(wc),transparent:true,opacity:0.85}));
+  fountainWater.rotation.x=-Math.PI/2; fountainWater.position.set(395,8.4,345);
+  const column=new THREE.Mesh(new THREE.CylinderGeometry(3.4,4.4,16,8),
+    new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x9a958a}));
+  column.position.set(395,16,345);
+  const orb=new THREE.Mesh(new THREE.SphereGeometry(5,10,8),
+    new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0x3FB8AF,emissive:0x1a4f4a,emissiveIntensity:0.5}));
+  orb.position.set(395,27,345);
+  scene.add(basin,fountainWater,column,orb);
+  // BIRDS — small flocks crossing the sky
+  for(let i=0;i<3;i++){
+    const bc=document.createElement('canvas'); bc.width=64; bc.height=32;
+    const bx=bc.getContext('2d');
+    bx.strokeStyle='rgba(20,18,15,0.8)'; bx.lineWidth=3; bx.lineCap='round';
+    [[16,16],[34,12],[50,18]].forEach(([px,py])=>{
+      bx.beginPath(); bx.moveTo(px-7,py); bx.quadraticCurveTo(px-2,py-6,px,py);
+      bx.quadraticCurveTo(px+2,py-6,px+7,py); bx.stroke();
+    });
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({
+      map:new THREE.CanvasTexture(bc),transparent:true,depthWrite:false}));
+    sp.scale.set(46,23,1);
+    sp.position.set(rnd(0,W),rnd(220,330),rnd(0,H));
+    scene.add(sp);
+    birds.push({sp,vx:rnd(14,26)*(Math.random()<0.5?1:-1),vz:rnd(-6,6)});
+  }
+}
+
+function addMurals(){
+  if(muralsAdded)return; muralsAdded=true;
+  const cols=[0x3FB8AF,0xC96F4A,0xE8C064,0x8FA98B];
+  for(let i=0;i<4;i++){
+    const m=new THREE.Mesh(new THREE.PlaneGeometry(42,22),
+      new THREE.MeshBasicMaterial({color:cols[i]}));
+    m.position.set(150+i*160,18,700);
+    scene.add(m);
+  }
+}
+function setHQEmpty(){
+  const b=BUILDINGS.find(b=>b.id==='lot');
+  const bm=buildingMeshes['lot'];
+  bm.mesh.scale.y=0.06; bm.mesh.position.y=b.h3*0.03;
+  bm.roof.visible=false;
+  bm.sp.position.y=24;
+  updateLabelSprite(bm.sp,'Empty Lot \u00B7 $1,500','#9A917F');
+}
+function setHQBuilt(){
+  const b=BUILDINGS.find(b=>b.id==='lot');
+  const bm=buildingMeshes['lot'];
+  const sc=S.hqLevel>=2?1.5:1;
+  bm.mesh.scale.y=sc; bm.mesh.position.y=b.h3*sc/2;
+  bm.roof.visible=true; bm.roof.position.y=b.h3*sc+2;
+  bm.sp.position.y=b.h3*sc+22;
+  b.label=(S.biz?S.biz.name:'Your')+' HQ';
+  updateLabelSprite(bm.sp,b.label,'#F2A33C');
+}
+
+function drawSCFace(x){
+  // Sovereign City signature face: rounded-square eyes with spark highlights,
+  // confident brows, open grin. Ownable, not the classic oval-and-arc.
+  x.fillStyle='#1a1a1a';
+  // eyes: rounded squares
+  roundRectPath(x,32,42,20,20,6); x.fill();
+  roundRectPath(x,76,42,20,20,6); x.fill();
+  // eye sparks
+  x.fillStyle='#ffffff';
+  x.fillRect(38,46,6,6); x.fillRect(82,46,6,6);
+  // brows: slight confident tilt
+  x.fillStyle='#1a1a1a';
+  x.save(); x.translate(42,34); x.rotate(-0.12); x.fillRect(-12,-3,24,6); x.restore();
+  x.save(); x.translate(86,34); x.rotate(0.12); x.fillRect(-12,-3,24,6); x.restore();
+  // open grin with tongue of color
+  x.beginPath(); x.moveTo(40,78);
+  x.quadraticCurveTo(64,104,88,78);
+  x.quadraticCurveTo(64,88,40,78); x.closePath();
+  x.fillStyle='#1a1a1a'; x.fill();
+  x.beginPath(); x.moveTo(50,84); x.quadraticCurveTo(64,96,78,84);
+  x.quadraticCurveTo(64,90,50,84); x.closePath();
+  x.fillStyle='#E8C064'; x.fill();
+}
+function makeFaceTexture(skinHex){
+  const c=document.createElement('canvas'); c.width=128; c.height=128;
+  const x=c.getContext('2d');
+  x.fillStyle=skinHex; x.fillRect(0,0,128,128);
+  drawSCFace(x);
+  const t=new THREE.CanvasTexture(c);
+  t.userData={canvas:c};
+  return t;
+}
+function paintFace(tex,skinHex){
+  const c=tex.userData.canvas, x=c.getContext('2d');
+  x.fillStyle=skinHex; x.fillRect(0,0,128,128);
+  drawSCFace(x);
+  tex.needsUpdate=true;
+}
+function makePerson(skinHex,fitHex){
+  // Blocky R6-style avatar: box head + face decal, shirt torso, skin arms, dark pants
+  const group=new THREE.Group();
+  const skin=new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,color:new THREE.Color(skinHex)});
+  const fit=new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,color:new THREE.Color(fitHex)});
+  const pants=new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,color:0x2e3440});
+  const shoeMat=new THREE.MeshStandardMaterial({roughness:0.8,metalness:0.02,color:0xF5EFE3});
+  // torso: 8 wide x 8 tall x 4 deep, top of legs at y=8
+  const torso=new THREE.Mesh(new THREE.BoxGeometry(8,8,4),fit);
+  torso.position.y=12;
+  // head: box with face decal on front (+z)
+  const faceTex=makeFaceTexture(skinHex);
+  const faceMat=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,map:faceTex});
+  const headMats=[skin,skin,skin,skin,faceMat,skin]; // +x,-x,+y,-y,+z,-z
+  const head=new THREE.Mesh(new THREE.BoxGeometry(5.6,5.6,5.6),headMats);
+  head.position.y=19.2;
+  // limbs swing from joints (pivot groups), Roblox-style
+  function limb(mat,isLeg){
+    const pivot=new THREE.Group();
+    const m=new THREE.Mesh(new THREE.BoxGeometry(3.4,8,3.4),mat);
+    m.position.y=-4; pivot.add(m);
+    if(isLeg){
+      const shoe=new THREE.Mesh(new THREE.BoxGeometry(3.9,2.6,5.4),shoeMat);
+      shoe.position.set(0,-7.6,1.0); pivot.add(shoe);
+    }
+    return pivot;
+  }
+  const lArm=limb(skin,false); lArm.position.set(-5.7,16,0);
+  const rArm=limb(skin,false); rArm.position.set(5.7,16,0);
+  const lLeg=limb(pants,true); lLeg.position.set(-2.1,8,0);
+  const rLeg=limb(pants,true); rLeg.position.set(2.1,8,0);
+  const shadow=new THREE.Mesh(new THREE.CircleGeometry(7.5,16),
+    new THREE.MeshBasicMaterial({map:getAOTexture(),color:0x000000,transparent:true,opacity:0.55,depthWrite:false}));
+  shadow.rotation.x=-Math.PI/2; shadow.position.y=0.32;
+  // skateboard (hidden until skating)
+  const board=new THREE.Group();
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(13,1.2,5),
+    new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0xC96F4A}));
+  deck.position.y=2.6;
+  const wMat=new THREE.MeshStandardMaterial({roughness:0.82,metalness:0.04,color:0xE8C064});
+  [[-4.6,-1.8],[4.6,-1.8],[-4.6,1.8],[4.6,1.8]].forEach(([wx,wz])=>{
+    const wh=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,1.2,8),wMat);
+    wh.rotation.x=Math.PI/2; wh.position.set(wx,1.1,wz); board.add(wh);
+  });
+  board.add(deck); board.visible=false; board.rotation.y=Math.PI/2;
+  // gold founder chain (Stage 3+ flex)
+  const chain=new THREE.Mesh(new THREE.TorusGeometry(3.4,0.55,6,14),
+    new THREE.MeshStandardMaterial({roughness:0.3,metalness:0.6,color:0xE8C064,emissive:0x6a5210,emissiveIntensity:0.4}));
+  chain.position.set(0,14.6,2.1); chain.rotation.x=Math.PI/2.4; chain.visible=false;
+  group.add(torso,head,lArm,rArm,lLeg,rLeg,shadow,board,chain);
+  group.traverse(o=>{ if(o.isMesh&&o!==shadow) o.castShadow=true; });
+  return {group,lLeg,rLeg,lArm,rArm,fitMat:fit,skinMat:skin,faceTex,board,chain};
+}
+function buildNPCMeshes(){
+  Object.values(npcMeshes).forEach(m=>scene.remove(m.group));
+  for(const k in npcMeshes) delete npcMeshes[k];
+  NPCS.forEach(n=>{
+    const p=makePerson(SKINS[n.skin],n.fit);
+    p.group.position.set(n.x,0,n.z);
+    scene.add(p.group);
+    npcMeshes[n.id]=p;
+    if(n.key){
+      const sp=makeLabelSprite(n.name,n.pc||'#F5EFE3');
+      sp.scale.set(86,16,1);
+      sp.position.y=30;
+      p.group.add(sp);
+      // relation ring
+      const ring=new THREE.Mesh(new THREE.RingGeometry(6.5,8,20),
+        new THREE.MeshBasicMaterial({color:0xE8C064,transparent:true,opacity:0.85,side:THREE.DoubleSide}));
+      ring.rotation.x=-Math.PI/2; ring.position.y=0.5;
+      p.group.add(ring); p.ring=ring;
+    }
+  });
+}
+const PARTICLE_CAP=130;
+function trimParticles(){
+  while(particles.length>PARTICLE_CAP){
+    const old=particles.shift(); scene.remove(old.m);
+  }
+}
+function spawnBurst(x,y,z,colHex){
+  for(let i=0;i<16;i++){
+    const m=new THREE.Mesh(new THREE.BoxGeometry(2.4,2.4,2.4),
+      new THREE.MeshBasicMaterial({color:colHex,transparent:true}));
+    m.position.set(x,y,z);
+    const a=rnd(0,Math.PI*2);
+    scene.add(m);
+    particles.push({m,vx:Math.cos(a)*rnd(20,70),vy:rnd(40,110),vz:Math.sin(a)*rnd(20,70),life:rnd(.7,1.3)});
+  }
+  trimParticles();
+}
+
+/* ---------------- DAY/NIGHT ---------------- */
+const SKY_DAY=new THREE.Color(0x5a8ec8), SKY_DAWN=new THREE.Color(0xe8904a),
+      SKY_DUSK=new THREE.Color(0xc45a32), SKY_NIGHT=new THREE.Color(0x0a1020),
+      SKY_GOLD=new THREE.Color(0xe8a030);
+const tmpC=new THREE.Color();
+function updateSky(){
+  const h=S?S.hour+S.min/60:12;
+  let sky,sun,hemi,night=false;
+  if(S&&(S.won||goldenHour>0)){
+    sky=SKY_GOLD; sun=1.1; hemi=0.6;
+  } else if(h>=6&&h<8){ tmpC.copy(SKY_DAWN).lerp(SKY_DAY,(h-6)/2); sky=tmpC; sun=lerp(0.5,1.2,(h-6)/2); hemi=0.5; }
+  else if(h>=8&&h<17){ sky=SKY_DAY; sun=1.2; hemi=0.5; }
+  else if(h>=17&&h<20){ tmpC.copy(SKY_DAY).lerp(SKY_DUSK,(h-17)/3); sky=tmpC; sun=lerp(1.2,0.35,(h-17)/3); hemi=0.38; }
+  else if(h>=20&&h<21){ tmpC.copy(SKY_DUSK).lerp(SKY_NIGHT,h-20); sky=tmpC; sun=lerp(0.35,0.05,h-20); hemi=0.25; night=true; }
+  else { sky=SKY_NIGHT; sun=0.05; hemi=0.18; night=true; }
+  scene.background=sky instanceof THREE.Color?sky:tmpC;
+  scene.fog.color.copy(scene.background);
+  sunLight.intensity=sun;
+  hemiLight.intensity=hemi;
+  // sun orbits around the PLAYER so the shadow frustum stays tight and useful
+  const ang=(h/24)*Math.PI*2-Math.PI/2;
+  const sdx=Math.cos(ang),sdy=Math.max(Math.sin(ang),0.12);
+  sunLight.position.set(playerPos.x+sdx*700,sdy*700,playerPos.z+360);
+  sunLight.target.position.set(playerPos.x,0,playerPos.z);
+  sunLight.target.updateMatrixWorld();
+  // visible sun + moon discs on the sky
+  sunDisc.position.set(playerPos.x+sdx*1800,Math.sin(ang)*1500+100,playerPos.z+900);
+  sunDisc.lookAt(camera.position);
+  const sunVisible=Math.sin(ang)>-0.05&&!night;
+  sunDisc.visible=sunVisible;
+  if(sunGlow){
+    const lowAngle=clamp(1-Math.sin(ang)/0.5,0,1); // brighter halo near horizon
+    sunGlow.forEach((sp,i)=>{
+      sp.position.copy(sunDisc.position);
+      sp.visible=sunVisible;
+      sp.material.opacity=[0.9,0.5,0.28][i]*(0.55+lowAngle*0.7)*(S&&(S.won||goldenHour>0)?1.4:1);
+    });
+  }
+  moonDisc.position.set(playerPos.x-sdx*1800,-Math.sin(ang)*1300+260,playerPos.z+860);
+  moonDisc.lookAt(camera.position);
+  moonDisc.visible=night;
+  // stars
+  if(stars) stars.material.opacity=night?0.9:(h>=20&&h<21?(h-20)*0.9:0);
+  // windows + lamps + halos
+  const winGlow=night?1.2:(h>=17&&h<21?lerp(0,1.2,(h-17)/4):0);
+  BUILDINGS.forEach(b=>{ if(b.mat) b.mat.emissiveIntensity=winGlow; });
+  PLOTS.forEach(p=>{ if(p.mesh) p.mesh.material.emissiveIntensity=winGlow; });
+  const lampOn=night||h>=19;
+  streetLampMats.forEach(m=>m.color.setHex(lampOn?0xFFD080:0x554a30));
+  lampGlows.forEach(m=>m.opacity=lampOn?0.85:0);
+  streetLights.forEach(l=>l.intensity=lampOn?1.4:0);
+  neonSigns.forEach(s=>s.material.opacity=lampOn?0.95:0);
+  // gradient sky dome colors per phase
+  let topC,horC;
+  if(S&&(S.won||goldenHour>0)){topC='#8a5a16';horC='#e8c064';}
+  else if(h>=6&&h<8){const k=(h-6)/2;topC=lerpHex('#1a2c5a','#2e6ab4',k);horC=lerpHex('#f08050','#7ab4d8',k);}
+  else if(h>=8&&h<17){topC='#2e6ab4';horC='#7ab4d8';}
+  else if(h>=17&&h<20){const k=(h-17)/3;topC=lerpHex('#6fa3d8','#3a2c52',k);horC=lerpHex('#cfe3ee','#e2784a',k);}
+  else if(h>=20&&h<21){const k=h-20;topC=lerpHex('#3a2c52','#0a0f24',k);horC=lerpHex('#e2784a','#1c2742',k);}
+  else {topC='#0a0f24';horC='#1c2742';}
+  const skKey=topC+horC;
+  if(skKey!==lastSkyKey){lastSkyKey=skKey;paintSkyGrad(topC,horC);}
+  if(skyDome)skyDome.position.set(playerPos.x,0,playerPos.z);
+  scene.fog.color.set(horC); // horizon blends seamlessly into the dome
+  if(S&&S.event==='rain'){
+    sunLight.intensity*=0.55; hemiLight.intensity*=0.8;
+    horC=lerpHex(horC,'#5a6a78',0.45); topC=lerpHex(topC,'#3a4450',0.45);
+    if(skyDome){const k2=topC+horC; if(k2!==lastSkyKey){lastSkyKey=k2;paintSkyGrad(topC,horC);} scene.fog.color.set(horC);}
+  }
+  if(fillLight){
+    fillLight.intensity=night?0.10:0.22;
+    fillLight.position.set(playerPos.x-sdx*500,320,playerPos.z-320);
+    fillLight.target.position.set(playerPos.x,0,playerPos.z);
+    fillLight.target.updateMatrixWorld(); }
+}
+
+/* ---------------- INPUT ---------------- */
+const keys={};
+window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;
+  if((e.key==='e'||e.key==='Enter')&&$('interactBtn').style.display==='block') doInteract();});
+window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+let joyVec={x:0,y:0},joyId=null;
+const joyEl=$('joy'),knob=$('joyKnob');
+function joyHandle(e){
+  const t=[...e.touches].find(t=>t.identifier===joyId); if(!t) return;
+  const r=joyEl.getBoundingClientRect();
+  let dx=t.clientX-(r.left+r.width/2), dy=t.clientY-(r.top+r.height/2);
+  const m=Math.hypot(dx,dy),max=r.width/2-10;
+  if(m>max){dx=dx/m*max;dy=dy/m*max;}
+  joyVec.x=dx/max; joyVec.y=dy/max;
+  knob.style.transform=`translate(calc(-50% + ${dx}px),calc(-50% + ${dy}px))`;
+}
+joyEl.addEventListener('touchstart',e=>{e.preventDefault();joyId=e.changedTouches[0].identifier;joyHandle(e);ac();},{passive:false});
+joyEl.addEventListener('touchmove',e=>{e.preventDefault();joyHandle(e);},{passive:false});
+joyEl.addEventListener('touchend',e=>{
+  if([...e.changedTouches].some(t=>t.identifier===joyId)){
+    joyId=null;joyVec={x:0,y:0};knob.style.transform='translate(-50%,-50%)';}
+},{passive:false});
+// camera orbit: drag on right pad (touch) or mouse drag anywhere on canvas
+let camDrag=null;
+const camPad=$('camPad');
+camPad.addEventListener('touchstart',e=>{ const t=e.changedTouches[0];
+  camDrag={id:t.identifier,x:t.clientX,y:t.clientY}; },{passive:true});
+camPad.addEventListener('touchmove',e=>{
+  if(!camDrag)return;
+  const t=[...e.touches].find(t=>t.identifier===camDrag.id); if(!t)return;
+  camYaw-=(t.clientX-camDrag.x)*0.0062;
+  camPitch=clamp(camPitch+(t.clientY-camDrag.y)*0.0035,0.18,0.9);
+  camDrag.x=t.clientX; camDrag.y=t.clientY;
+},{passive:true});
+camPad.addEventListener('touchend',e=>{
+  if(camDrag&&[...e.changedTouches].some(t=>t.identifier===camDrag.id)) camDrag=null;
+},{passive:true});
+let mouseDrag=null;
+$('game').addEventListener('mousedown',e=>{mouseDrag={x:e.clientX,y:e.clientY};});
+window.addEventListener('mousemove',e=>{
+  if(!mouseDrag)return;
+  camYaw-=(e.clientX-mouseDrag.x)*0.0055;
+  camPitch=clamp(camPitch+(e.clientY-mouseDrag.y)*0.0032,0.18,0.9);
+  mouseDrag={x:e.clientX,y:e.clientY};
+});
+window.addEventListener('mouseup',()=>mouseDrag=null);
+
+/* ---------------- INTERACTION ---------------- */
+let nearTarget=null;
+function findNear(){
+  let best=null,bd=42;
+  for(const n of NPCS){
+    const d=dist2(playerPos.x,playerPos.z,n.x,n.z);
+    if(d<bd){bd=d;best={type:'npc',o:n};}
+  }
+  let bbd=60;
+  for(const p of PLOTS){
+    const cx=clamp(playerPos.x,p.x,p.x+p.w), cz=clamp(playerPos.z,p.z,p.z+p.d);
+    const d=dist2(playerPos.x,playerPos.z,cx,cz);
+    if(d<bbd&&(!best||d<bd)){bbd=d;best={type:'plot',o:p};}
+  }
+  for(const b of BUILDINGS){
+    const zo=ZONES.find(z=>z.id===b.z);
+    if(S.stage<zo.unlock) continue;
+    const cx=clamp(playerPos.x,b.x,b.x+b.w), cz=clamp(playerPos.z,b.y,b.y+b.d);
+    const d=dist2(playerPos.x,playerPos.z,cx,cz);
+    if(d<bbd&&(!best||d<bd)){bbd=d;best={type:'bld',o:b};}
+  }
+  return best;
+}
+function doInteract(){
+  if(!nearTarget||dialogOpen) return;
+  ac();
+  if(nearTarget.type==='npc') talkTo(nearTarget.o);
+  else if(nearTarget.type==='plot') openPlot(nearTarget.o);
+  else {
+    const b=nearTarget.o;
+    if(b.id==='board') openBoard();
+    else if(b.id==='lot') openLot();
+    else if(b.id==='market') openMarket();
+    else if(b.id==='techhub') openTechHub();
+    else if(b.id==='tower') openTower();
+    else genericBuilding(b);
+  }
+}
+$('interactBtn').onclick=doInteract;
+$('dialog').addEventListener('click',e=>{ if(e.target.id==='dialog') closeDialog(); });
+$('phone').addEventListener('click',e=>{ if(e.target.id==='phone') $('phone').style.display='none'; });
+
+/* ---------------- COLLISION ---------------- */
+function collide(nx,nz){
+  for(const b of BUILDINGS){
+    if(b.id==='lot'&&!S.hq) continue; // walk over empty lot
+    if(nx>b.x-6&&nx<b.x+b.w+6&&nz>b.y-6&&nz<b.y+b.d+6) return true;
+  }
+  return false;
+}
+
+/* ---------------- MAIN LOOP ---------------- */
+let last=performance.now(),minAcc=0;
+const lockNotice={};
+function loop(now){
+  const DT=Math.min((now-last)/1000,0.05); last=now;
+  const uiOpen=dialogOpen||$('phone').style.display==='flex'||$('bigModal').style.display==='flex';
+  if(S&&Trailer.active){Trailer.update(DT,now);}
+  if(S&&!uiOpen&&!Trailer.active){
+    // camera-relative movement
+    let mx=joyVec.x,my=joyVec.y;
+    if(keys['w']||keys['arrowup'])my-=1; if(keys['s']||keys['arrowdown'])my+=1;
+    if(keys['a']||keys['arrowleft'])mx-=1; if(keys['d']||keys['arrowright'])mx+=1;
+    let mlen=Math.hypot(mx,my); if(mlen>1){mx/=mlen;my/=mlen;}
+    const fx=-Math.sin(camYaw),fz=-Math.cos(camYaw);     // forward = away from camera, into the screen
+    const rx=Math.sin(camYaw+Math.PI/2),rz=Math.cos(camYaw+Math.PI/2);
+    const vx=(fx*-my+rx*mx),vz=(fz*-my+rz*mx);
+    // skateboard: unlocked at Stage 2. Full joystick push or Shift = ride.
+    const pushHard=Math.hypot(joyVec.x,joyVec.y)>0.88||keys['shift'];
+    window._skating=!!(S.stage>=2&&pushHard&&Math.hypot(vx,vz)>0.05);
+    const skating=S.stage>=2&&pushHard&&Math.hypot(vx,vz)>0.05;
+    const spd=skating?145:(keys['shift']?100:72);
+    const moving=Math.hypot(vx,vz)>0.05;
+    if(moving){
+      const _pz=zoneAt(playerPos.x,playerPos.z); if(_pz&&_pz.id!==ambientZone&&AC)setZoneAmbient(_pz.id);
+      // skate trail — tiny puffs
+      if(skating&&Math.random()<0.45){
+        const m=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,1.2),
+          new THREE.MeshBasicMaterial({color:0xE8C064,transparent:true}));
+        m.position.set(playerPos.x+rnd(-2,2),2,playerPos.z+rnd(-2,2));
+        scene.add(m); particles.push({m,vx:rnd(-8,8),vy:rnd(6,18),vz:rnd(-8,8),life:rnd(.3,.6)});
+        trimParticles();
+      }
+      let nx=clamp(playerPos.x+vx*spd*DT,12,W-12);
+      let nz=clamp(playerPos.z+vz*spd*DT,12,H-12);
+      const zo=zoneAt(nx,nz);
+      if(zo&&S.stage<zo.unlock){
+        if(!lockNotice[zo.id]||now-lockNotice[zo.id]>4000){
+          lockNotice[zo.id]=now;
+          toast(zo.name+' unlocks at Stage '+zo.unlock+'.','bad');
+        }
+      } else if(!collide(nx,nz)){
+        playerPos.x=nx; playerPos.z=nz;
+      } else if(!collide(nx,playerPos.z)){ playerPos.x=nx; }
+      else if(!collide(playerPos.x,nz)){ playerPos.z=nz; }
+      playerYaw=Math.atan2(vx,vz);
+      S.px=playerPos.x; S.py=playerPos.z;
+      if(S.daily&&!S.daily.done&&S.daily.type==='zone'){
+        const cz=zoneAt(playerPos.x,playerPos.z);
+        if(cz&&cz.id===S.daily.zone) dailyProgress('zone');
+      }
+    }
+    // animate player
+    const t=now/1000;
+    const idleBobP=moving?0:Math.sin(t*2.1)*0.34;
+    playerGroup.group.position.set(playerPos.x,(skating?2.2:0)+idleBobP,playerPos.z);
+    playerGroup.group.rotation.y=playerYaw;
+    playerGroup.group.rotation.x=skating?0.06:0;
+    playerParts.board.visible=skating;
+    playerParts.chain.visible=S.stage>=3;
+    if(skating){
+      // skate stance: legs planted wide, slight crouch, arms out
+      playerGroup.lLeg.rotation.x=0.25; playerGroup.rLeg.rotation.x=-0.25;
+      playerGroup.lArm.rotation.x=0; playerGroup.rArm.rotation.x=0;
+      playerGroup.lArm.rotation.z=0.5; playerGroup.rArm.rotation.z=-0.5;
+      playerGroup.group.rotation.z=Math.sin(t*2.2)*0.04; // carve sway
+    } else {
+      playerGroup.lArm.rotation.z=0; playerGroup.rArm.rotation.z=0;
+      playerGroup.group.rotation.z=0;
+      const swing=moving?Math.sin(t*(keys['shift']?13:9))*0.6:0;
+      playerGroup.lLeg.rotation.x=swing; playerGroup.rLeg.rotation.x=-swing;
+      playerGroup.lArm.rotation.x=-swing*0.8; playerGroup.rArm.rotation.x=swing*0.8;
+    }
+    // time
+    minAcc+=DT;
+    while(minAcc>=0.1){
+      minAcc-=0.1; S.min++;
+      if(S.min>=60){ S.min=0; S.hour++;
+        if(S.hour===8) assignDaily();
+        if(S.hour===9) dailySettle();
+        if(S.hour>=9&&S.hour<=21) maybeChaos();
+        if(S.hour>=24){ S.hour=0; S.day++; }
+        updateHUDChips();
+      }
+    }
+    // NPC wander + animate
+    for(const n of NPCS){
+      const pm=npcMeshes[n.id]; if(!pm) continue;
+      const d=dist2(n.x,n.z,n.tx,n.tz);
+      let nmoving=false;
+      if(n.wander||n.key){
+        if(d<3){ n.wait-=DT;
+          if(n.wait<=0){ n.wait=rnd(2,6);
+            const r=n.key?45:140;
+            n.tx=clamp(n.hx+rnd(-r,r),12,W-12);
+            n.tz=clamp(n.hz+rnd(-r,r),12,H-12);
+          }
+        } else {
+          const sx=(n.tx-n.x)/d*n.spd*DT,sz=(n.tz-n.z)/d*n.spd*DT;
+          if(!collide(n.x+sx,n.z+sz)){ n.x+=sx;n.z+=sz;nmoving=true;
+            pm.group.rotation.y=Math.atan2(sx,sz); }
+          else { n.tx=n.hx; n.tz=n.hz; }
+        }
+      }
+      const idleBobN=nmoving?0:Math.sin(t*2.0+n.hx*0.07+n.hz*0.05)*0.3;
+      pm.group.position.set(n.x,idleBobN,n.z);
+      // key NPCs idle-face player when close
+      if(n.key&&!nmoving){
+        const dpx=playerPos.x-n.x,dpz=playerPos.z-n.z;
+        const dd=Math.hypot(dpx,dpz);
+        if(dd<160) pm.group.rotation.y=Math.atan2(dpx,dpz);
+      }
+      const sw=nmoving?Math.sin(t*8+n.hx)*0.5:0;
+      pm.lLeg.rotation.x=sw; pm.rLeg.rotation.x=-sw;
+      if(pm.ring){
+        const r=rel(n.id);
+        pm.ring.material.color.setHex(r>=2?0x5FA86B:(r<0?0xD4513B:0xE8C064));
+      }
+    }
+    // cars
+    cars.forEach(c=>{
+      c.p+=c.spd*DT; if(c.p>1)c.p-=1; if(c.p<0)c.p+=1;
+      if(c.horiz){ c.g.position.set(c.p*W,0,c.lane); c.g.rotation.y=c.spd>0?Math.PI/2:-Math.PI/2; }
+      else { const rx=c.lane>1200?1600:800; c.g.position.set(rx+(c.lane%2?16:-16),0,c.p*H); c.g.rotation.y=c.spd>0?0:Math.PI; }
+    });
+    // clouds drift
+    clouds.forEach(cl=>{
+      cl.position.x+=cl.userData.spd*DT;
+      if(cl.position.x>W+200) cl.position.x=-200;
+    });
+    // flags flutter
+    flags.forEach(f=>{
+      f.phase+=DT*5;
+      f.m.rotation.y=Math.sin(f.phase)*0.22;
+      f.m.scale.x=1+Math.sin(f.phase*1.7)*0.08;
+    });
+    // fountain water spins, occasional sparkle drip
+    if(fountainWater){
+      fountainWater.rotation.z+=DT*0.4;
+      if(Math.random()<DT*1.6){
+        const m=new THREE.Mesh(new THREE.BoxGeometry(1.2,1.2,1.2),
+          new THREE.MeshBasicMaterial({color:0x7FDBD4,transparent:true}));
+        m.position.set(395+rnd(-4,4),28,345+rnd(-4,4));
+        scene.add(m);
+        particles.push({m,vx:rnd(-10,10),vy:rnd(10,26),vz:rnd(-10,10),life:rnd(.5,.9)});
+        trimParticles();
+      }
+    }
+    // birds cross the sky
+    birds.forEach(b2=>{
+      b2.sp.position.x+=b2.vx*DT; b2.sp.position.z+=b2.vz*DT;
+      if(b2.sp.position.x>W+120)b2.sp.position.x=-120;
+      if(b2.sp.position.x<-120)b2.sp.position.x=W+120;
+      if(b2.sp.position.z>H+120)b2.sp.position.z=-120;
+      if(b2.sp.position.z<-120)b2.sp.position.z=H+120;
+    });
+    // the goose
+    if(goose){
+      if(goose.dash>0) goose.dash-=DT;
+      const gspd=goose.dash>0?150:goose.spd;
+      const gd=dist2(goose.x,goose.z,goose.tx,goose.tz);
+      if(gd<5){ goose.wait-=DT;
+        if(goose.wait<=0){ goose.wait=rnd(1,3);
+          // roams the Main Street market block, wider when dashing
+          const r=goose.dash>0?340:160;
+          goose.tx=clamp(1050+rnd(-r,r),850,1550);
+          goose.tz=clamp(1030+rnd(-r,r),850,1550);
+        }
+      } else {
+        const sx=(goose.tx-goose.x)/gd*gspd*DT, sz=(goose.tz-goose.z)/gd*gspd*DT;
+        if(!collide(goose.x+sx,goose.z+sz)){ goose.x+=sx; goose.z+=sz;
+          goose.g.rotation.y=Math.atan2(sx,sz)-Math.PI/2; }
+        else { goose.tx=1050; goose.tz=1030; }
+      }
+      goose.g.position.set(goose.x,Math.abs(Math.sin(now/110))*(goose.dash>0?3:1.2),goose.z);
+      // honk at the player
+      if(dist2(goose.x,goose.z,playerPos.x,playerPos.z)<40&&now-goose.honked>6000){
+        goose.honked=now;
+        tone(310,.13,'sawtooth',.10); tone(255,.18,'sawtooth',.09,.14);
+        toast('HONK.');
+      }
+    }
+    // quest marker
+    const q=QUESTS[S.quest];
+    if(q&&q.target){
+      const tg=q.target();
+      if(tg){ questMarker.visible=true;
+        questMarker.position.set(tg.x,46+Math.sin(now/240)*5,tg.z);
+        questMarker.rotation.y=now/600; }
+      else questMarker.visible=false;
+    } else questMarker.visible=false;
+    // tower growth
+    const tw=BUILDINGS.find(b=>b.id==='tower');
+    const targetH=S.won?520:60+clamp((progressPct()-50)/49,0,1)*300;
+    const curH=tw.mesh.scale.y*tw.h3;
+    if(Math.abs(curH-targetH)>1){
+      const nh=lerp(curH,targetH,DT*0.8);
+      tw.mesh.scale.y=nh/tw.h3; tw.mesh.position.y=nh/2;
+      tw.roof.position.y=nh+2; tw.labelSprite.position.y=nh+22;
+    }
+    // interact prompt
+    nearTarget=findNear();
+    const ib=$('interactBtn');
+    if(nearTarget){
+      ib.style.display='block';
+      ib.textContent=nearTarget.type==='npc'
+        ? 'Talk \u00B7 '+nearTarget.o.name.split(' ')[0]
+        : (nearTarget.type==='plot'
+          ? (nearTarget.o.data?'Visit \u00B7 '+nearTarget.o.data.name:'Claim Plot')
+          : 'Enter \u00B7 '+nearTarget.o.label);
+    } else ib.style.display='none';
+  }
+  perfSample(DT);
+  updateFloats(DT);
+  updateRain(DT);
+  updateGrain(DT);
+  // particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i]; p.life-=DT;
+    if(p.life<=0){ scene.remove(p.m); particles.splice(i,1); continue; }
+    p.m.position.x+=p.vx*DT; p.m.position.y+=p.vy*DT; p.m.position.z+=p.vz*DT;
+    p.vy-=160*DT; p.m.material.opacity=clamp(p.life,0,1);
+  }
+  if(goldenHour>0&&goldenHour<1.2) goldenHour+=DT*0.2;
+  // camera
+  if(S){
+    const skating=window._skating||false;
+    const targetFOV=skating?72:62;
+    camera.fov=lerp(camera.fov,targetFOV,0.06);
+    camera.updateProjectionMatrix();
+    const cd=skating?130:110,ch=38+camPitch*70;
+    const cx=playerPos.x+Math.sin(camYaw)*cd*Math.cos(camPitch);
+    const cz=playerPos.z+Math.cos(camYaw)*cd*Math.cos(camPitch);
+    camera.position.lerp(new THREE.Vector3(cx,ch,cz),0.14);
+    camera.lookAt(playerPos.x,16,playerPos.z);
+    updateSky();
+    // hide lock sprites once unlocked
+    ZONES.forEach(zo=>{ if(zo.lockSprite) zo.lockSprite.visible=S.stage<zo.unlock; });
+    composer?composer.render():renderer.render(scene,camera);
+  drawMinimap();
+  drawTutorial();
+  }
+  requestAnimationFrame(loop);
+}
+
+function updateHUDChips(){
+  if(!S)return;
+  const stages=['','Ideator','Hustler','Builder','Scaler','Sovereign'];
+  $('stageChip').textContent='Stage '+S.stage+' \u00B7 '+stages[S.stage]+(S.streak>0?' \u00B7 \uD83D\uDD25'+S.streak:'');
+  const h12=S.hour%12===0?12:S.hour%12, ap=S.hour<12?'AM':'PM';
+  $('clockTime').textContent='Day '+S.day+' \u00B7 '+h12+':'+String(S.min).padStart(2,'0')+' '+ap;
+  $('clockCash').textContent=fmt(S.cash)+(S.debt>0?' (-'+fmt(S.debt)+')':'');
+  const q=QUESTS[S.quest];
+  $('questBar').innerHTML=(q?q.hint:'')+(q&&q.prog?' <b>'+q.prog()+'</b>':'');
+}
+setInterval(()=>{ if(S&&$('hud').style.display==='block')updateHUDChips(); },500);
+
+/* ---------------- SAVE / LOAD ---------------- */
+const SAVE_SLOTS=3;
+function slotKey(i){ return SAVE_KEY+'-slot'+i; }
+let currentSlot=0;
+let memSave={};
+// migrate a pre-multi-slot save into slot 0
+(function migrateOldSave(){
+  try{
+    const old=localStorage.getItem(SAVE_KEY);
+    if(old&&!localStorage.getItem(slotKey(0))){
+      localStorage.setItem(slotKey(0),old);
+      localStorage.removeItem(SAVE_KEY);
+    }
+  }catch(e){}
+})();
+async function saveGame(){
+  if(!S)return;
+  const data=JSON.stringify(S);
+  memSave[currentSlot]=data;
+  try{ localStorage.setItem(slotKey(currentSlot),data); }catch(e){}
+}
+function loadSlotSync(i){
+  try{
+    const r=localStorage.getItem(slotKey(i));
+    if(r) return JSON.parse(r);
+  }catch(e){}
+  return memSave[i]?JSON.parse(memSave[i]):null;
+}
+async function loadGame(slot){
+  return loadSlotSync(slot==null?currentSlot:slot);
+}
+
+/* ---------------- TITLE / CREATOR / BOOT ---------------- */
+(function(){
+  const c=$('skylineCv'),x=c.getContext('2d');
+  const bars=[]; for(let i=0;i<16;i++)bars.push({x:i*27+6,h:rnd(20,90),t:rnd(0,6)});
+  function draw(){
+    x.clearRect(0,0,420,110);
+    bars.forEach((b,i)=>{
+      b.t+=0.013; const h=b.h+Math.sin(b.t)*4;
+      x.fillStyle=i===11?'#E8C064':'#3A342A';
+      x.fillRect(b.x,110-h,20,h);
+      x.fillStyle=i===11?'#F2A33C':'rgba(245,239,227,0.12)';
+      for(let w=0;w<Math.floor(h/14);w++)x.fillRect(b.x+5,110-h+6+w*13,10,6);
+    });
+    requestAnimationFrame(draw);
+  } draw();
+})();
+
+const creatorState={name:'',skin:2,fit:0,voice:'Warm'};
+function buildCreator(){
+  const sk=$('cSkin');sk.innerHTML='';
+  SKINS.forEach((s,i)=>{const d=document.createElement('div');d.className='sw'+(i===creatorState.skin?' sel':'');
+    d.style.background=s;d.onclick=()=>{creatorState.skin=i;buildCreator();drawPreview();sTap();};sk.appendChild(d);});
+  const ft=$('cFit');ft.innerHTML='';
+  FITS.forEach((f,i)=>{const d=document.createElement('div');d.className='sw'+(i===creatorState.fit?' sel':'');
+    d.style.background=f;d.onclick=()=>{creatorState.fit=i;buildCreator();drawPreview();sTap();};ft.appendChild(d);});
+  const vc=$('cVoice');vc.innerHTML='';
+  ['Sharp','Smooth','Warm','Commanding'].forEach(v=>{const b=document.createElement('button');
+    b.className='pill'+(v===creatorState.voice?' sel':'');b.textContent=v;
+    b.onclick=()=>{creatorState.voice=v;buildCreator();sTap();};vc.appendChild(b);});
+}
+function drawPreview(){
+  const c=$('preview'),x=c.getContext('2d');
+  x.clearRect(0,0,96,120);
+  const skin=SKINS[creatorState.skin], fit=FITS[creatorState.fit];
+  // shadow
+  x.fillStyle='rgba(0,0,0,0.3)';x.beginPath();x.ellipse(48,112,24,6,0,0,Math.PI*2);x.fill();
+  // legs (pants)
+  x.fillStyle='#2e3440';x.fillRect(34,78,12,28);x.fillRect(50,78,12,28);
+  // arms (skin)
+  x.fillStyle=skin;x.fillRect(18,46,12,30);x.fillRect(66,46,12,30);
+  // torso (shirt)
+  x.fillStyle=fit;x.fillRect(32,44,32,34);
+  // head (skin block)
+  x.fillStyle=skin;x.fillRect(33,10,30,30);
+  // face
+  x.fillStyle='#1a1a1a';
+  x.beginPath();x.ellipse(42,23,2.6,3.6,0,0,Math.PI*2);x.fill();
+  x.beginPath();x.ellipse(54,23,2.6,3.6,0,0,Math.PI*2);x.fill();
+  x.strokeStyle='#1a1a1a';x.lineWidth=2.4;x.lineCap='round';
+  x.beginPath();x.arc(48,28,6.5,Math.PI*0.15,Math.PI*0.85);x.stroke();
+}
+
+function applyFounderLook(){
+  playerParts.skinMat.color.set(SKINS[S.founder.skin]);
+  playerParts.fitMat.color.set(FITS[S.founder.fit]);
+  paintFace(playerParts.faceTex,SKINS[S.founder.skin]);
+  // overhead username tag
+  if(playerParts.nameTag){ playerParts.group.remove(playerParts.nameTag); }
+  const tag=makeLabelSprite(S.founder.name,'#E8C064');
+  tag.scale.set(86,16,1); tag.position.y=30;
+  playerParts.group.add(tag);
+  playerParts.nameTag=tag;
+}
+function startWorld(){
+  S.streak=S.streak||0;
+  if(S.daily===undefined)S.daily=null;
+  if(S.townPlot===undefined)S.townPlot=null;
+  if(S.muted===undefined)S.muted=false;
+  if(!S.insights)S.insights=[];
+  if(!S.insightSeen)S.insightSeen={};
+  if(S.biz&&!S.biz.industry)S.biz.industry='services';
+  buildNPCData(); buildNPCMeshes();
+  applyFounderLook();
+  playerPos.x=S.px; playerPos.z=S.py;
+  camYaw=Math.PI; // look north into the city
+  if(S.hq){ setHQBuilt(); buildHQSign(); } else setHQEmpty();
+  // Safety: if saved position is inside a building, push player in front of it
+  for(const b of BUILDINGS){
+    if(b.id==='lot'&&!S.hq) continue;
+    if(playerPos.x>b.x-6&&playerPos.x<b.x+b.w+6&&
+       playerPos.z>b.y-6&&playerPos.z<b.y+b.d+6){
+      playerPos.x=clamp(playerPos.x,b.x,b.x+b.w);
+      playerPos.z=b.y-80;
+      S.px=playerPos.x; S.py=playerPos.z; break;
+    }
+  }
+  if(S.communityInvested) addMurals();
+  const hq=BUILDINGS.find(b=>b.id==='lot');
+  if(S.bankrupt&&S.hq){ hq.label='FOR LEASE'; updateLabelSprite(hq.labelSprite,'FOR LEASE','#D4513B'); }
+  if(S.won){ const tw=BUILDINGS.find(b=>b.id==='tower');
+    tw.label=S.biz.name+' Tower'; updateLabelSprite(tw.labelSprite,tw.label,'#E8C064'); }
+  if(S.event){ const eb=$('eventBanner'); eb.textContent=String(S.event).toUpperCase(); eb.style.display='block'; }
+  if(!document.getElementById('muteBtn'))initMuteBtn();
+  Music.setEnabled(!S.muted);
+  loadTown();
+  if(!startWorld.townPoll){
+    startWorld.townPoll=setInterval(()=>{ if(S) loadTown(); },60000);
+  }
+  $('title').style.display='none'; $('creator').style.display='none';
+  $('hud').style.display='block';
+  if(!('ontouchstart' in window)) $('hintKeys').style.display='block';
+  updateHUDChips();
+}
+
+function renderSlots(){
+  const list=$('slotList'); list.innerHTML='';
+  for(let i=0;i<SAVE_SLOTS;i++){
+    const data=loadSlotSync(i);
+    const row=document.createElement('div');
+    row.className='slotRow'+(data?' filled':'');
+    const main=document.createElement('button');
+    main.className='slotMain';
+    if(data){
+      main.innerHTML='<div class="slotTitle">'+data.founder.name+'</div>'+
+        '<div class="slotMeta">Day '+data.day+' · Stage '+data.stage+' · '+fmt(data.cash)+'</div>';
+      main.onclick=()=>continueSlot(i);
+    } else {
+      main.innerHTML='<div class="slotTitle">Slot '+(i+1)+' — New Founder</div>'+
+        '<div class="slotMeta">Start a new game in this slot</div>';
+      main.onclick=()=>newGameSlot(i);
+    }
+    row.appendChild(main);
+    if(data){
+      const del=document.createElement('button');
+      del.className='slotDel'; del.textContent='✕';
+      del.onclick=(e)=>{ e.stopPropagation();
+        if(confirm('Delete this save? This cannot be undone.')){
+          try{ localStorage.removeItem(slotKey(i)); }catch(err){}
+          delete memSave[i]; renderSlots();
+        } };
+      row.appendChild(del);
+    }
+    list.appendChild(row);
+  }
+}
+function newGameSlot(i){
+  ac(); sTap(); currentSlot=i;
+  $('title').style.display='none'; $('creator').style.display='flex';
+  buildCreator(); drawPreview();
+}
+async function continueSlot(i){
+  ac(); Music.init(); sTap();
+  const loaded=await loadGame(i);
+  if(!loaded){ toast('No save found.','bad'); return; }
+  currentSlot=i;
+  S=loaded;
+  startWorld();
+  toast('Welcome back, '+S.founder.name+'. Day '+S.day+'.','gold');
+}
+$('startBtn').onclick=()=>{
+  ac(); Music.init(); Music.setZone(1);
+  creatorState.name=($('cName').value||'Founder').trim().slice(0,16)||'Founder';
+  S=freshState();
+  S.founder={name:creatorState.name,skin:creatorState.skin,fit:creatorState.fit,voice:creatorState.voice};
+  startWorld();
+  sBig();
+  toast('<b>Halito, '+S.founder.name+'.</b> Welcome to The Grind. Find Marcus Webb.','gold');
+  feed('Day 1. A founder steps into Sovereign City with $5,000 and a dream.');
+  saveGame();
+};
+/* =========================================================
+   SOVEREIGN CITY — CINEMATIC TRAILER ENGINE
+   Run Trailer.start() from the browser console.
+   Record with OBS Studio (desktop, 1080p 60fps).
+   ========================================================= */
+const Trailer={
+  active:false, clock:0, wasWon:false, wasMuted:false,
+  orbitAngle:0,
+
+  start(){
+    if(!S){ toast('Start a game first, then run Trailer.start()','bad'); return; }
+    this.active=true; this.clock=0; this.orbitAngle=0;
+    this.wasWon=S.won; this.wasMuted=S.muted;
+    // disable user input
+    joyVec={x:0,y:0};
+    Object.keys(keys).forEach(k=>keys[k]=false);
+    // position founder at Zone 1 lot for act 1
+    playerPos.x=560; playerPos.z=1330;
+    playerYaw=Math.PI;
+    window._skating=false;
+    // night, moody
+    S.hour=23; S.min=0;
+    S.muted=false; Music.init(); Music.setZone(1); Music.setEnabled(true);
+    closeDialog();
+    if(document.getElementById('phone')) document.getElementById('phone').style.display='none';
+    toast('\uD83C\uDFAC CINEMATIC MODE — 30 seconds','gold');
+  },
+
+  end(){
+    this.active=false;
+    window._skating=false;
+    S.won=this.wasWon; S.muted=this.wasMuted;
+    Music.setEnabled(!S.muted);
+    // restore hour to midday so sky looks normal
+    S.hour=12; S.min=0; goldenHour=0;
+    // reset player to grind spawn
+    playerPos.x=560; playerPos.z=1200;
+    playerYaw=Math.PI;
+    toast('\uD83C\uDFAC Trailer complete. Check your recording.','good');
+  },
+
+  update(DT,now){
+    if(!this.active)return;
+    this.clock+=DT;
+    const c=this.clock;
+
+    /* ---- ACT 1: THE CRACKED SLAB (0–5s) ----
+       Night, moody. Slow orbit around the founder. */
+    if(c<5){
+      S.hour=23; S.min=0;
+      window._skating=false;
+      playerPos.x=560; playerPos.z=1330;
+      this.orbitAngle+=DT*0.30;
+      const r=85;
+      camera.position.set(
+        playerPos.x+Math.sin(this.orbitAngle)*r,
+        20+Math.sin(now*0.4)*3,
+        playerPos.z+Math.cos(this.orbitAngle)*r
+      );
+      camera.lookAt(playerPos.x,14,playerPos.z);
+      camera.fov=58; camera.updateProjectionMatrix();
+    }
+
+    /* ---- TRANSITION: PRE-DAWN (5–6.5s) ---- */
+    else if(c<6.5){
+      S.hour=6; S.min=30;
+      playerPos.x=560; playerPos.z=1330;
+      camera.fov=58; camera.updateProjectionMatrix();
+    }
+
+    /* ---- ACT 2: DAWN HUSTLE (6.5–13s) ----
+       Golden dawn. Founder walks toward Marcus.
+       First customer burst at 10s. */
+    else if(c<13){
+      S.hour=7; S.min=0;
+      window._skating=false;
+      // walk north
+      playerPos.z-=28*DT;
+      playerYaw=Math.PI;
+      // low-angle side profile push-in
+      camera.position.set(playerPos.x-60,14,playerPos.z+18);
+      camera.lookAt(playerPos.x,14,playerPos.z);
+      camera.fov=55; camera.updateProjectionMatrix();
+      // first customer burst at exactly 10s
+      if(c>=10&&c<10.06){
+        spawnBurst(playerPos.x,14,playerPos.z,0xE8C064);
+        floatText(playerPos.x,32,playerPos.z,'+1 CUSTOMER','#5FA86B');
+        sCash();
+      }
+      if(c>=11&&c<11.06){
+        spawnBurst(playerPos.x+20,14,playerPos.z,0x5FA86B);
+        floatText(playerPos.x,38,playerPos.z-20,'+1 CUSTOMER','#5FA86B');
+        sCash();
+      }
+    }
+
+    /* ---- ACT 3: SKATEBOARD VELOCITY (13–21s) ----
+       Music shifts to Innovation Row.
+       Founder skates fast south down Main Street.
+       Camera tight behind the wheels. */
+    else if(c<21){
+      if(Music.zone!==3){Music.setZone(3);}
+      S.stage=Math.max(S.stage||1,3);
+      window._skating=true;
+      S.hour=10; S.min=0;
+      playerPos.z-=130*DT;
+      // keep in-bounds
+      if(playerPos.z<820)playerPos.z=820;
+      playerYaw=Math.PI;
+      // FIXED follow cam: behind = south of northward-moving player = higher Z
+      // player faces PI (north), behind = opposite = south = +Z
+      const cd=110;
+      camera.position.set(
+        playerPos.x+4,                    // slight right offset for character
+        28+Math.sin(now*2.2)*1.8,         // rhythmic carve sway
+        playerPos.z+cd                    // behind the player (south)
+      );
+      camera.lookAt(playerPos.x,16,playerPos.z);
+      camera.fov=72; camera.updateProjectionMatrix();
+      // skate dust
+      if(Math.random()<0.55)particles.push(()=>{
+        const m=new THREE.Mesh(new THREE.BoxGeometry(1.4,1.4,1.4),
+          new THREE.MeshBasicMaterial({color:0xF2A33C,transparent:true}));
+        m.position.set(playerPos.x+rnd(-3,3),2,playerPos.z+rnd(-3,3));
+        scene.add(m);
+        particles.push({m,vx:rnd(-10,10),vy:rnd(8,22),vz:rnd(-10,10),life:rnd(.3,.7)});
+      });
+      // milestone float at 17s
+      if(c>=17&&c<17.06){
+        stageBanner('STAGE 3','Builder · Innovation Row open');
+        spawnBurst(playerPos.x,20,playerPos.z,0xF2A33C);
+      }
+    }
+
+    /* ---- ACT 4: THE TOWER RISE (21–28s) ----
+       Teleport to Skyline. Golden hour.
+       Helicopter crane shot rising on the tower. */
+    else if(c<28){
+      playerPos.x=2000; playerPos.z=1120;
+      window._skating=false;
+      S.won=true; goldenHour=1.1;
+      if(Music.zone!==6)Music.setZone(6);
+      const elapsed=c-21;
+      const hOff=50+elapsed*44;          // crane rises 0→280px over 7s
+      camera.position.set(
+        playerPos.x+180,
+        hOff,
+        playerPos.z+200
+      );
+      camera.lookAt(playerPos.x,hOff*0.30,playerPos.z);
+      camera.fov=58; camera.updateProjectionMatrix();
+      // fireworks
+      if(Math.random()<0.18)
+        spawnBurst(
+          playerPos.x+rnd(-100,100),
+          hOff*rnd(0.3,0.7),
+          playerPos.z+rnd(-100,100),
+          [0xE8C064,0xF2A33C,0x3FB8AF][ri(0,2)]
+        );
+    }
+
+    /* ---- ACT 5: TITLE CARD (28–30s) ---- */
+    else if(c<30){
+      // hold the crane shot
+      camera.position.set(2180,300,1320);
+      camera.lookAt(2000,180,1120);
+      if(c>=29&&c<29.06)
+        stageBanner('SOVEREIGN CITY','Build What You Own');
+    }
+
+    else{ this.end(); }
+  }
+};
+window.Trailer=Trailer;
+
+(async function boot(){
+  // visible loading state so a slow CDN never looks frozen
+  const ld=document.createElement('div');
+  ld.id='bootLoad';
+  ld.style.cssText='position:fixed;inset:0;z-index:60;background:#14120F;display:flex;'+
+    'flex-direction:column;align-items:center;justify-content:center;gap:14px;'+
+    'font-family:Archivo,Inter,sans-serif;color:#E8C064';
+  ld.innerHTML='<div style="font-weight:900;font-size:26px;letter-spacing:.06em">SOVEREIGN CITY</div>'+
+    '<div style="width:160px;height:6px;background:#2a261e;border-radius:99px;overflow:hidden">'+
+    '<div id="bootBar" style="width:20%;height:100%;background:#E8C064;border-radius:99px;transition:width .4s"></div></div>'+
+    '<div style="font-size:11px;letter-spacing:.24em;color:#9A917F">BUILDING THE CITY</div>';
+  document.body.appendChild(ld);
+  const bar=()=>document.getElementById('bootBar');
+  await new Promise(r=>setTimeout(r,30)); if(bar())bar().style.width='45%';
+  initThree();
+  if(bar())bar().style.width='85%';
+  await new Promise(r=>setTimeout(r,60));
+  renderSlots();
+  if(document.getElementById('bootBar'))document.getElementById('bootBar').style.width='100%';
+  setTimeout(()=>{const l=document.getElementById('bootLoad');if(l)l.remove();},260);
+  requestAnimationFrame(loop);
+})();
+
+</script>
+</body>
+</html>
