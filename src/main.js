@@ -145,7 +145,7 @@ function loop(now){
     if(keys['w']||keys['arrowup'])my-=1; if(keys['s']||keys['arrowdown'])my+=1;
     if(keys['a']||keys['arrowleft'])mx-=1; if(keys['d']||keys['arrowright'])mx+=1;
     let mlen=Math.hypot(mx,my); if(mlen>1){mx/=mlen;my/=mlen;}
-    const fw=camYaw+Math.PI;                               // player faces opposite the camera orbit
+    const fw=camYaw;
     const fx=Math.sin(fw),fz=Math.cos(fw);
     const rx=Math.sin(fw+Math.PI/2),rz=Math.cos(fw+Math.PI/2);
     const vx=(fx*-my+rx*mx),vz=(fz*-my+rz*mx);
