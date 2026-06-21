@@ -3,12 +3,12 @@ import { rnd, ri } from './util.js';
 /* ---------------- WORLD DATA ---------------- */
 export const W = 2400, H = 1600, ZW = 800, ZH = 800;
 export const ZONES = [
- {id:1,name:'The Grind',x:0,y:800,ground:0x5C4A32,buildingColor:0xD4703A,accent:'#F2A33C',unlock:1,bh:[55,95]},
- {id:2,name:'Main Street',x:800,y:800,ground:0x3A4A5C,buildingColor:0x4A78A0,accent:'#7FB2D9',unlock:1,bh:[90,150]},
- {id:3,name:'Innovation Row',x:1600,y:0,ground:0x2A4A50,buildingColor:0x2AADA6,accent:'#52C7D9',unlock:3,bh:[150,230]},
- {id:4,name:'Sovereign District',x:0,y:0,ground:0x5C3E28,buildingColor:0xC07838,accent:'#3FB8AF',unlock:1,bh:[60,110]},
- {id:5,name:'Capital Row',x:800,y:0,ground:0x2A2E38,buildingColor:0x485060,accent:'#C9CFD9',unlock:4,bh:[260,400]},
- {id:6,name:'The Skyline',x:1600,y:800,ground:0x3A3020,buildingColor:0xD4A020,accent:'#E8C064',unlock:3,bh:[80,120]}
+ {id:1,name:'The Grind',x:0,y:800,ground:0x5C3D28,buildingColor:0xD4703A,accent:'#F2A33C',unlock:1,bh:[55,95]},
+ {id:2,name:'Main Street',x:800,y:800,ground:0x2E3D50,buildingColor:0x4A78A0,accent:'#7FB2D9',unlock:1,bh:[90,150]},
+ {id:3,name:'Innovation Row',x:1600,y:0,ground:0x1E3038,buildingColor:0x2AADA6,accent:'#52C7D9',unlock:3,bh:[150,230]},
+ {id:4,name:'Sovereign District',x:0,y:0,ground:0x4A3020,buildingColor:0xC07838,accent:'#3FB8AF',unlock:1,bh:[60,110]},
+ {id:5,name:'Capital Row',x:800,y:0,ground:0x222630,buildingColor:0x485060,accent:'#C9CFD9',unlock:4,bh:[260,400]},
+ {id:6,name:'The Skyline',x:1600,y:800,ground:0x2A2418,buildingColor:0xD4A020,accent:'#E8C064',unlock:3,bh:[80,120]}
 ];
 export function zoneAt(x,z){ return ZONES.find(zo=>x>=zo.x&&x<zo.x+ZW&&z>=zo.y&&z<zo.y+ZH); }
 

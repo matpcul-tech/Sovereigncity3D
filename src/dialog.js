@@ -2,7 +2,7 @@ import { $, clamp, fmt, rnd, ri } from './util.js';
 import { sCash, sBig, sBad, sTap, tone, ac } from './audio.js';
 import { S, IND, sweetSpot, rel, bumpRel, remember, lastMem, DAILY_TYPES, dailyProgress, checkProgression, progressPct, saveGame, comebackScene, victoryScene, insight } from './state.js';
 import { W, H, ZONES, INDUSTRIES, BUILDINGS, npcById, TALENTS } from './worldData.js';
-import { spawnBurst, floatText, playerPos, setHQBuilt, buildHQSign, addMurals, fameCache, townTalentBonus, claimPlot, unsubscribeTownPlots } from './graphics.js';
+import { spawnBurst, floatText, playerPos, setHQBuilt, buildHQSign, addMurals, fameCache, townTalentBonus, claimPlot, unsubscribeTownPlots, Cutscene } from './graphics.js';
 
 /* ---------------- TOASTS / FEED / LEARN ---------------- */
 export function toast(msg,kind){
@@ -177,11 +177,13 @@ function pitchResult(npc,base){
   dailyProgress('pitch');
   const odds=clamp(base+S.stats.hustle*0.006+S.stats.reputation*0.004+rel(npc.id)*0.08,0.1,0.95);
   if(Math.random()<odds){
+    const wasFirst = S.customers === 0;
     S.customers++; S.stats.hustle=clamp(S.stats.hustle+2,0,100);
     S.stats.reputation=clamp(S.stats.reputation+1,0,100);
     bumpRel(npc.id,2); remember(npc.id,'I signed up as your customer.');
     sCash(); spawnBurst(playerPos.x,14,playerPos.z,0xE8C064);
     toast('<b>'+npc.name+'</b> is in! Customer #'+S.customers,'good');
+    if(wasFirst) Cutscene.play('first_customer');
     if(S.customers===1) learn('Customer Discovery','Talking to real people to find out what they’ll actually pay for.');
     checkProgression();
   } else {
@@ -205,6 +207,7 @@ export function openLot(){
       'This lot becomes your headquarters. Rent is $50/day after purchase. Every empire starts on a cracked slab.',
       [{label:'Buy the lot ($1,500)',locked:S.cash<1500,lockMsg:'Not enough cash.',fn:()=>{
         S.cash-=1500; S.hq=true; S.hqLevel=1;
+        Cutscene.play('hq_built');
         setHQBuilt(); buildHQSign(); S.quest=4; sBig();
         // Step player out front of lot so save position isn't inside the new building
         const lotB=BUILDINGS.find(b=>b.id==='lot');
@@ -353,6 +356,7 @@ function sovereignFund(){
     'We invest in businesses rooted in community. $8,000 for 5%. No board seat taken, one condition given: you mentor a young founder when your time comes.',
     [{label:'Accept the Sovereign Fund ($8,000 for 5%)',fn:()=>{
       S.cash+=8000; S.investors.sovereignFund=true; takeEquity('Sovereign Fund',5,'#3FB8AF');
+      Cutscene.play('funded');
       sBig(); feed('The Sovereign Fund invested $8,000. Terms a VC would never offer.');
       toast('<b>+$8,000.</b> Sovereign Fund holds 5%. Sovereignty-first terms.','gold'); saveGame();}},
      {label:'Let me think on it.'}]);
@@ -430,6 +434,7 @@ function talkPark(){
     if(score>=2){
       const amt=score===3?15000:10000;
       S.cash+=amt; S.investors.park=true; takeEquity('David Park',15,'#5E7C99');
+      Cutscene.play('funded');
       S.quest=8; S.stage=Math.max(S.stage,4); sBig();
       learn('Equity Dilution','You sold 15%. You own less, but of something bigger.');
       learn('Cap Table','The list of everyone who owns a piece of your company. Check your phone.');
@@ -486,6 +491,7 @@ function talkChase(){
     if(score>=3){
       const amt=score===4?100000:50000;
       S.cash+=amt; S.investors.chase=true; takeEquity('Victoria Chase',20,'#9AA4B5');
+      Cutscene.play('funded');
       S.quest=10; sBig();
       learn('Valuation','What your whole company is worth, implied by what investors pay for their slice.');
       feed('Victoria Chase wired '+fmt(amt)+' for 20%. Cold until you prove traction. Warm now.');

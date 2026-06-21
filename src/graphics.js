@@ -324,7 +324,7 @@ export function initMuteBtn() {
 }
 
 export function initThree() {
-  renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: true });
+  renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
@@ -334,7 +334,6 @@ export function initThree() {
   renderer.outputEncoding = THREE.sRGBEncoding;
   window._maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 4;
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x2266CC);
   scene.fog = new THREE.Fog(0x88CCFF, 1800, 4500);
   scene.environment = buildEnvMap();
   // toon gradient: 3 discrete bands (shadow / midtone / highlight)
@@ -392,14 +391,7 @@ export function initThree() {
   starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 3.2, transparent: true, opacity: 0, fog: false, sizeAttenuation: false }));
   scene.add(stars);
-  // gradient sky dome (replaces flat background as the visible sky)
-  skyCanvas = document.createElement('canvas'); skyCanvas.width = 2; skyCanvas.height = 256;
-  skyTex = new THREE.CanvasTexture(skyCanvas);
   paintSkyGrad('#2266CC', '#88CCFF');
-  skyDome = new THREE.Mesh(new THREE.SphereGeometry(2300, 24, 16),
-    new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }));
-  skyDome.renderOrder = -10;
-  scene.add(skyDome);
   // cool fill light opposite the sun: makes characters pop
   fillLight = new THREE.DirectionalLight(0x9ab8ff, 0.22);
   scene.add(fillLight); scene.add(fillLight.target);
@@ -462,13 +454,9 @@ function lerpHex(a, b, t) {
   return '#' + ((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0');
 }
 function paintSkyGrad(top, horizon) {
-  if (!skyCanvas) return;
-  const x = skyCanvas.getContext('2d');
-  const g = x.createLinearGradient(0, 0, 0, 256);
-  g.addColorStop(0, top); g.addColorStop(0.62, horizon);
-  g.addColorStop(1, horizon);
-  x.fillStyle = g; x.fillRect(0, 0, 2, 256);
-  skyTex.needsUpdate = true;
+  document.body.style.background =
+    'linear-gradient(180deg, ' + top + ' 0%, ' + horizon + ' 100%)';
+  if (renderer) renderer.setClearColor(horizon, 0);
 }
 /* ---- cinematic vignette: cool edges deepen and a faint warm core
    bleeds in as the city's neon lights take over at dusk/night ---- */
@@ -676,20 +664,15 @@ function buildCity() {
     const zo = ZONES.find(z => z.id === zid);
     for (let i = 0; i < 10; i++) addTree(zo.x + rnd(60, ZW - 60), zo.y + rnd(60, ZH - 60));
   });
-  // cars
-  const carCols = [0xC96F4A, 0x5E7C99, 0xD9D2C0, 0x3FB8AF];
-  for (let i = 0; i < 5; i++) {
-    const g = new THREE.Group();
-    const body = new THREE.Mesh(new THREE.BoxGeometry(26, 8, 13), toon(carCols[i % carCols.length]));
-    body.position.y = 7;
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(13, 6, 11), toon(0x222831));
-    cab.position.set(-1, 13, 0);
-    body.castShadow = true; cab.castShadow = true;
-    g.add(body, cab);
+  // cars — proper blocky models
+  const carCols = [0xD4401A, 0x2A6AB0, 0xE8C030, 0x2AACA6, 0xC82870, 0xD4703A, 0x485060];
+  for (let i = 0; i < 7; i++) {
+    const { g, wheelMeshes } = makeCarMesh(carCols[i % carCols.length]);
     scene.add(g);
     const horiz = i % 2 === 0;
-    cars.push({ g, horiz, p: rnd(0, 1), spd: rnd(0.018, 0.03) * (Math.random() < .5 ? 1 : -1),
-      lane: horiz ? (Math.random() < .5 ? 786 : 814) : (Math.random() < .5 ? 786 : 814) + (i > 2 ? 800 : 0) });
+    cars.push({ g, horiz, p: rnd(0, 1), spd: rnd(0.015, 0.028) * (Math.random() < .5 ? 1 : -1),
+      lane: horiz ? (Math.random() < .5 ? 783 : 817) : (Math.random() < .5 ? 783 : 817) + (i > 3 ? 800 : 0),
+      wheelMeshes });
   }
   // quest marker
   questMarker = new THREE.Mesh(new THREE.ConeGeometry(9, 20, 4),
@@ -705,6 +688,47 @@ function buildCity() {
   // player + npcs
   playerGroup = makePerson(SKINS[2], FITS[0]); scene.add(playerGroup.group);
   playerParts = playerGroup;
+}
+function makeCarMesh(color) {
+  const g = new THREE.Group();
+  const bodyMat = toon(color);
+  // Main body — lower, wide
+  const body = new THREE.Mesh(new THREE.BoxGeometry(32, 9, 16), bodyMat);
+  body.position.y = 7; g.add(body);
+  // Cabin
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(18, 8, 14), bodyMat);
+  cabin.position.set(-2, 14, 0); g.add(cabin);
+  // Glass
+  const glassMat = toon(0x2A3848);
+  const windshield = new THREE.Mesh(new THREE.BoxGeometry(1, 6, 12), glassMat);
+  windshield.position.set(7, 14, 0); g.add(windshield);
+  const rearWindow = new THREE.Mesh(new THREE.BoxGeometry(1, 6, 12), glassMat);
+  rearWindow.position.set(-11, 14, 0); g.add(rearWindow);
+  // Wheels
+  const wheelMat = toon(0x1A1A1A);
+  const hubMat = toon(0xCCCCCC);
+  const wheelMeshes = [];
+  [[-10, -9], [-10, 9], [10, -9], [10, 9]].forEach(([wx, wz]) => {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 4, 10), wheelMat);
+    wheel.rotation.z = Math.PI / 2; wheel.position.set(wx, 4, wz);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(2, 2, 4.2, 6), hubMat);
+    hub.rotation.z = Math.PI / 2; hub.position.set(wx, 4, wz);
+    g.add(wheel, hub); wheelMeshes.push(wheel);
+  });
+  // Headlights
+  const lightMat = new THREE.MeshBasicMaterial({ color: 0xFFFFCC });
+  [-5, 5].forEach(lz => {
+    const light = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3, 4), lightMat);
+    light.position.set(16, 7, lz); g.add(light);
+  });
+  // Taillights
+  const tailMat = new THREE.MeshBasicMaterial({ color: 0xFF2020 });
+  [-5, 5].forEach(lz => {
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(1.5, 3, 4), tailMat);
+    tail.position.set(-16, 7, lz); g.add(tail);
+  });
+  g.traverse(o => { if (o.isMesh) o.castShadow = true; });
+  return { g, wheelMeshes };
 }
 export let goose = null;
 function buildGoose() {
@@ -1324,8 +1348,7 @@ export function updateSky() {
   else if (h >= 17 && h < 20) { tmpC.copy(SKY_DAY).lerp(SKY_DUSK, (h - 17) / 3); sky = tmpC; sun = lerp(1.15, .4, (h - 17) / 3); hemi = .45; }
   else if (h >= 20 && h < 21) { tmpC.copy(SKY_DUSK).lerp(SKY_NIGHT, h - 20); sky = tmpC; sun = lerp(.4, .06, h - 20); hemi = .3; night = true; }
   else { sky = SKY_NIGHT; sun = .06; hemi = .22; night = true; }
-  scene.background = sky instanceof THREE.Color ? sky : tmpC;
-  scene.fog.color.copy(scene.background);
+  scene.fog.color.copy(sky instanceof THREE.Color ? sky : tmpC);
   sunLight.intensity = sun;
   hemiLight.intensity = hemi;
   // sun orbits around the PLAYER so the shadow frustum stays tight and useful
@@ -1367,7 +1390,6 @@ export function updateSky() {
   else { topC = '#080c1f'; horC = '#241a38'; }
   const skKey = topC + horC;
   if (skKey !== lastSkyKey) { lastSkyKey = skKey; paintSkyGrad(topC, horC); }
-  if (skyDome) skyDome.position.set(playerPos.x, 0, playerPos.z);
   scene.fog.color.set(horC); // horizon blends seamlessly into the dome
   if (fillLight) {
     fillLight.intensity = night ? 0.10 : 0.22;
@@ -1376,3 +1398,134 @@ export function updateSky() {
     fillLight.target.updateMatrixWorld();
   }
 }
+
+/* =========================================================
+   CUTSCENE ENGINE
+   ========================================================= */
+export const Cutscene = {
+  active: false,
+  clock: 0,
+  current: null,
+  onEnd: null,
+
+  play(name, onEnd) {
+    if (!S) return;
+    if (!S.cutscenesSeen) S.cutscenesSeen = {};
+    if (S.cutscenesSeen[name]) return;
+    S.cutscenesSeen[name] = true;
+    this.active = true;
+    this.clock = 0;
+    this.current = name;
+    this.onEnd = onEnd || null;
+  },
+
+  end() {
+    this.active = false;
+    this.current = null;
+    if (this.onEnd) { this.onEnd(); this.onEnd = null; }
+  },
+
+  update(DT, now, pg, pp) {
+    if (!this.active || !this.current) return;
+    this.clock += DT;
+    const fn = this[this.current + 'Frame'];
+    if (fn) fn.call(this, this.clock, now, pg, pp);
+  },
+
+  skateboard_unlockFrame(t, now, pg, pp) {
+    if (!pg || !pp) { if (t > 3) this.end(); return; }
+    if (t < 0.5) {
+      // zoom to feet
+      const tx = pp.x, tz = pp.z;
+      camera.position.lerp(new THREE.Vector3(tx, 12, tz + 20), 0.12);
+      camera.lookAt(tx, 4, tz);
+      camera.fov = THREE.MathUtils.lerp(camera.fov, 40, 0.1);
+      camera.updateProjectionMatrix();
+    } else if (t < 1.5) {
+      // board rises
+      const k = Math.min(1, (t - 0.5) / 0.6);
+      pg.board.visible = true;
+      pg.board.position.y = THREE.MathUtils.lerp(-8, 0, k < 0.7 ? k / 0.7 : 1 + (k - 0.7) * 0.3);
+    } else if (t < 2.5) {
+      // pull back + skate stance
+      pg.lLeg.rotation.x = 0.25; pg.rLeg.rotation.x = -0.25;
+      pg.lArm.rotation.z = 0.5; pg.rArm.rotation.z = -0.5;
+      camera.fov = THREE.MathUtils.lerp(camera.fov, 62, 0.08);
+      camera.updateProjectionMatrix();
+      if (t > 2.0 && t < 2.1) spawnBurst(pp.x, 14, pp.z, 0xE8C064);
+    } else {
+      camera.fov = THREE.MathUtils.lerp(camera.fov, 62, 0.15);
+      camera.updateProjectionMatrix();
+      if (t >= 3.0) this.end();
+    }
+  },
+
+  hq_builtFrame(t, now, pg, pp) {
+    if (!pp) { if (t > 4) this.end(); return; }
+    const hqBldg = BUILDINGS.find(b => b.id === 'lot');
+    const hqX = hqBldg ? hqBldg.x + hqBldg.w / 2 : pp.x;
+    const hqZ = hqBldg ? hqBldg.y + hqBldg.d / 2 : pp.z;
+    if (t < 0.5) {
+      camera.position.lerp(new THREE.Vector3(hqX, 80, hqZ + 120), 0.12);
+      camera.lookAt(hqX, 20, hqZ);
+    } else if (t < 2.5) {
+      const k = Math.min(1, (t - 0.5) / 2.0);
+      const ease = k < 0.8 ? k / 0.8 : 1 - (k - 0.8) * 0.1;
+      if (hqBldg && hqBldg.mesh) {
+        hqBldg.mesh.scale.y = ease;
+        hqBldg.mesh.position.y = (hqBldg.h3 / 2) * ease;
+      }
+      if (Math.random() < DT * 3) spawnBurst(hqX + rnd(-30, 30), 2, hqZ + rnd(-20, 20), 0xB5A08A);
+    } else if (t < 3.5) {
+      const ang = ((t - 2.5) / 1.0) * Math.PI;
+      camera.position.set(hqX + Math.cos(ang) * 80, 40, hqZ + Math.sin(ang) * 80);
+      camera.lookAt(hqX, 20, hqZ);
+    } else {
+      if (t >= 4.0) this.end();
+    }
+  },
+
+  fundedFrame(t, now, pg, pp) {
+    if (!pp) { if (t > 3) this.end(); return; }
+    if (t < 0.5) {
+      camera.position.lerp(new THREE.Vector3(pp.x, 80, pp.z + 60), 0.08);
+      camera.lookAt(pp.x, 16, pp.z);
+    } else if (t < 2.0) {
+      if (Math.random() < DT * 18) {
+        spawnBurst(pp.x + rnd(-40, 40), rnd(60, 120), pp.z + rnd(-30, 30), 0xE8C064);
+      }
+    } else {
+      if (t >= 3.0) this.end();
+    }
+  },
+
+  first_customerFrame(t, now, pg, pp) {
+    if (!pp) { if (t > 2) this.end(); return; }
+    if (t < 0.5) {
+      camera.position.lerp(new THREE.Vector3(pp.x + 20, 30, pp.z - 30), 0.14);
+      camera.lookAt(pp.x, 16, pp.z);
+    } else if (t < 1.5) {
+      if (t > 0.9 && t < 1.1) {
+        floatText(pp.x, 40, pp.z, '+1 CUSTOMER', '#5FA86B');
+        spawnBurst(pp.x, 20, pp.z, 0x5FA86B);
+        spawnBurst(pp.x, 20, pp.z, 0xE8C064);
+      }
+    } else {
+      if (t >= 2.0) this.end();
+    }
+  },
+
+  stage_unlockFrame(t, now, pg, pp) {
+    if (!pp) { if (t > 2.5) this.end(); return; }
+    if (t < 0.5) {
+      camera.position.lerp(new THREE.Vector3(pp.x, 200, pp.z + 200), 0.1);
+      camera.lookAt(pp.x, 0, pp.z);
+    } else if (t < 1.5) {
+      // banner plays via stageBanner() called externally; just hold wide shot
+    } else {
+      camera.fov = THREE.MathUtils.lerp(camera.fov, 62, 0.1);
+      camera.updateProjectionMatrix();
+      if (t >= 2.5) this.end();
+    }
+  }
+};
