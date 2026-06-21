@@ -329,13 +329,13 @@ export function initThree() {
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMapping = THREE.LinearToneMapping;
+  renderer.toneMappingExposure = 1.0;
   renderer.outputEncoding = THREE.sRGBEncoding;
   window._maxAniso = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 4;
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x9bb8d4);
-  scene.fog = new THREE.Fog(0x9bb8d4, 500, 2300);
+  scene.background = new THREE.Color(0x2266CC);
+  scene.fog = new THREE.Fog(0x88CCFF, 1800, 4500);
   scene.environment = buildEnvMap();
   // toon gradient: 3 discrete bands (shadow / midtone / highlight)
   const tgc = document.createElement('canvas'); tgc.width = 3; tgc.height = 1;
@@ -347,9 +347,9 @@ export function initThree() {
   toonGrad.minFilter = THREE.NearestFilter;
   toonGrad.magFilter = THREE.NearestFilter;
   camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 1, 4000);
-  hemiLight = new THREE.HemisphereLight(0xFFE8C0, 0x3A2A1A, 0.55);
+  hemiLight = new THREE.HemisphereLight(0xFFE8C0, 0x3A2A1A, 0.25);
   scene.add(hemiLight);
-  sunLight = new THREE.DirectionalLight(0xfff2dc, 1.15);
+  sunLight = new THREE.DirectionalLight(0xFFF5DC, 3.2);
   sunLight.position.set(400, 600, 300);
   sunLight.castShadow = true;
   sunLight.shadow.mapSize.set(1024, 1024);
@@ -393,7 +393,7 @@ export function initThree() {
   // gradient sky dome (replaces flat background as the visible sky)
   skyCanvas = document.createElement('canvas'); skyCanvas.width = 2; skyCanvas.height = 256;
   skyTex = new THREE.CanvasTexture(skyCanvas);
-  paintSkyGrad('#6fa3d8', '#cfe3ee');
+  paintSkyGrad('#2266CC', '#88CCFF');
   skyDome = new THREE.Mesh(new THREE.SphereGeometry(2300, 24, 16),
     new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false, depthWrite: false }));
   skyDome.renderOrder = -10;
@@ -414,7 +414,7 @@ export function initThree() {
   // already applies sRGB encoding — no extra gamma-correction pass needed.
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.45, 0.85);
+  bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.1, 0.4, 0.95);
   composer.addPass(bloomPass);
   buildCity();
   buildStreetLights();
@@ -1031,7 +1031,7 @@ function addTree(x, z) {
   trunk.position.set(x, 7.5 * s, z); trunk.castShadow = true;
   scene.add(trunk);
   // clustered canopy: 3 spheres, slight hue variance per tree
-  const greens = [0x4e6b3a, 0x5a7a42, 0x46613a, 0x6b8248];
+  const greens = [0x2E8B3A, 0x3AA846, 0x26A040, 0x4EC452];
   const base = greens[ri(0, greens.length - 1)];
   [[0, 21, 0, 11], [6, 17, 3, 7.5], [-5, 18, -3, 8]].forEach(([ox, oy, oz, r]) => {
     const c = new THREE.Mesh(new THREE.SphereGeometry(r * s, 7, 7), toon(base));
@@ -1040,7 +1040,7 @@ function addTree(x, z) {
   });
 }
 function addBush(x, z) {
-  const b = new THREE.Mesh(new THREE.SphereGeometry(rnd(4, 7), 6, 6), toon(0x55703e));
+  const b = new THREE.Mesh(new THREE.SphereGeometry(rnd(4, 7), 6, 6), toon(0x28A03A));
   b.position.set(x, 3.5, z); b.scale.y = 0.7;
   scene.add(b);
 }
@@ -1420,9 +1420,9 @@ export function updateSky() {
   // gradient sky dome colors per phase
   let topC, horC;
   if (S && (S.won || goldenHour > 0)) { topC = '#8a5a16'; horC = '#e8c064'; }
-  else if (h >= 6 && h < 8) { const k = (h - 6) / 2; topC = lerpHex('#23306a', '#6fa3d8', k); horC = lerpHex('#e8956a', '#cfe3ee', k); }
-  else if (h >= 8 && h < 17) { topC = '#6fa3d8'; horC = '#cfe3ee'; }
-  else if (h >= 17 && h < 20) { const k = (h - 17) / 3; topC = lerpHex('#6fa3d8', '#2e1f4a', k); horC = lerpHex('#cfe3ee', '#ff7a4a', k); }
+  else if (h >= 6 && h < 8) { const k = (h - 6) / 2; topC = lerpHex('#23306a', '#2266CC', k); horC = lerpHex('#e8956a', '#88CCFF', k); }
+  else if (h >= 8 && h < 17) { topC = '#2266CC'; horC = '#88CCFF'; }
+  else if (h >= 17 && h < 20) { const k = (h - 17) / 3; topC = lerpHex('#2266CC', '#2e1f4a', k); horC = lerpHex('#88CCFF', '#ff7a4a', k); }
   else if (h >= 20 && h < 21) { const k = h - 20; topC = lerpHex('#2e1f4a', '#080c1f', k); horC = lerpHex('#ff7a4a', '#241a38', k); }
   else { topC = '#080c1f'; horC = '#241a38'; }
   const skKey = topC + horC;
