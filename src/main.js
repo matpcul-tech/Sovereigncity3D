@@ -300,8 +300,8 @@ function loop(now){
     // cars
     cars.forEach(c=>{
       c.p+=c.spd*DT; if(c.p>1)c.p-=1; if(c.p<0)c.p+=1;
-      if(c.horiz){ c.g.position.set(c.p*W,0,c.lane); c.g.rotation.y=c.spd>0?Math.PI/2:-Math.PI/2; }
-      else { const rx=c.lane>1200?1600:800; c.g.position.set(rx+(c.lane%2?16:-16),0,c.p*H); c.g.rotation.y=c.spd>0?0:Math.PI; }
+      if(c.horiz){ c.g.position.set(c.p*W,0,c.lane); c.g.rotation.y=c.spd>0?0:Math.PI; }
+      else { const rx=c.lane>1200?1600:800; c.g.position.set(rx+(c.lane%2?16:-16),0,c.p*H); c.g.rotation.y=c.spd>0?-Math.PI/2:Math.PI/2; }
       if(c.wheelMeshes) c.wheelMeshes.forEach(w=>{ w.rotation.x+=c.spd*DT*80; });
     });
     // clouds drift
