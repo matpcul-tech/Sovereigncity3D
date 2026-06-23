@@ -11,17 +11,21 @@ import {
   spawnBurst, floatText, updateFloats, drawMinimap, drawTutorial, perfSample, updateSky,
   initThree, initMuteBtn, buildHQSign, setHQBuilt, setHQEmpty, addMurals, buildNPCMeshes,
   paintFace, makeLabelSprite, updateLabelSprite, loadTown, stageBanner, trimParticles, updateProps,
-  subscribeTownPlots, unsubscribeTownPlots
+  subscribeTownPlots, unsubscribeTownPlots, Cutscene
 } from './graphics.js';
 import { subscribeTown, sendPresenceUpdate, updateRemotePlayers } from './presence.js';
 
 /* ---------------- CAMERA / PLAYER ORIENTATION ---------------- */
 let playerYaw=0, camYaw=Math.PI, camPitch=0.42;
+let jumpVel=0, jumpActive=false, landSquash=0;
 
 /* ---------------- INPUT ---------------- */
 const keys={};
 window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;
-  if((e.key==='e'||e.key==='Enter')&&$('interactBtn').style.display==='block') doInteract();});
+  if((e.key==='e'||e.key==='Enter')&&$('interactBtn').style.display==='block') doInteract();
+  if(e.code==='Space'&&!jumpActive&&document.pointerLockElement===$('game')){e.preventDefault();jumpVel=9.5;jumpActive=true;}
+  if(e.key==='Escape'&&document.pointerLockElement) document.exitPointerLock();
+});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 let joyVec={x:0,y:0},joyId=null;
 const joyEl=$('joy'),knob=$('joyKnob');
@@ -40,6 +44,10 @@ joyEl.addEventListener('touchend',e=>{
   if([...e.changedTouches].some(t=>t.identifier===joyId)){
     joyId=null;joyVec={x:0,y:0};knob.style.transform='translate(-50%,-50%)';}
 },{passive:false});
+// jump button
+const jumpBtn=document.getElementById('jumpBtn');
+if(jumpBtn) jumpBtn.addEventListener('touchstart',e=>{e.preventDefault();if(!jumpActive){jumpVel=9.5;jumpActive=true;}},{passive:false});
+if(jumpBtn) jumpBtn.addEventListener('click',()=>{if(!jumpActive){jumpVel=9.5;jumpActive=true;}});
 // camera orbit: drag on right pad (touch) or mouse drag anywhere on canvas
 let camDrag=null;
 const camPad=$('camPad');
@@ -55,13 +63,27 @@ camPad.addEventListener('touchmove',e=>{
 camPad.addEventListener('touchend',e=>{
   if(camDrag&&[...e.changedTouches].some(t=>t.identifier===camDrag.id)) camDrag=null;
 },{passive:true});
+// Pointer lock (Minecraft/Roblox-style): click canvas → mouse directly controls camera
+$('game').addEventListener('click',()=>{
+  if(!dialogOpen&&$('phone').style.display!=='flex'&&$('bigModal').style.display!=='flex'&&!document.pointerLockElement){
+    $('game').requestPointerLock();
+  }
+});
+document.addEventListener('pointerlockchange',()=>{
+  const locked=document.pointerLockElement===$('game');
+  const hint=$('lockHint'); if(hint) hint.style.display=locked?'none':'block';
+});
 let mouseDrag=null;
-$('game').addEventListener('mousedown',e=>{mouseDrag={x:e.clientX,y:e.clientY};});
+$('game').addEventListener('mousedown',e=>{if(!document.pointerLockElement)mouseDrag={x:e.clientX,y:e.clientY};});
 window.addEventListener('mousemove',e=>{
-  if(!mouseDrag)return;
-  camYaw-=(e.clientX-mouseDrag.x)*0.0055;
-  camPitch=clamp(camPitch+(e.clientY-mouseDrag.y)*0.0032,0.18,0.9);
-  mouseDrag={x:e.clientX,y:e.clientY};
+  if(document.pointerLockElement===$('game')){
+    camYaw-=e.movementX*0.002;
+    camPitch=clamp(camPitch+e.movementY*0.002,0.18,0.9);
+  } else if(mouseDrag){
+    camYaw-=(e.clientX-mouseDrag.x)*0.0055;
+    camPitch=clamp(camPitch+(e.clientY-mouseDrag.y)*0.0032,0.18,0.9);
+    mouseDrag={x:e.clientX,y:e.clientY};
+  }
 });
 window.addEventListener('mouseup',()=>mouseDrag=null);
 
@@ -139,6 +161,8 @@ function loop(now){
   const DT=Math.min((now-last)/1000,0.05); last=now;
   const uiOpen=dialogOpen||$('phone').style.display==='flex'||$('bigModal').style.display==='flex';
   if(S&&Trailer.active){Trailer.update(DT,now);}
+  if(S){ Cutscene.update(DT, now, playerGroup, playerPos); }
+  if(S&&Cutscene.active){ composer.render(); drawMinimap(); requestAnimationFrame(loop); return; }
   if(S&&!uiOpen&&!Trailer.active){
     // camera-relative movement
     let mx=joyVec.x,my=joyVec.y;
@@ -187,25 +211,51 @@ function loop(now){
     }
     // animate player
     const t=now/1000;
+    // jump physics
+    if(jumpActive){ jumpVel-=28*DT; }
+    const jumpH=jumpActive?Math.max(0,jumpVel*DT*60):0;
+    if(jumpActive&&jumpVel<=0&&jumpH===0){ jumpActive=false; landSquash=1; }
+    if(landSquash>0){ landSquash=Math.max(0,landSquash-DT*8); }
+    const squashY=landSquash>0?0.7+landSquash*0.3:1;
     let playerY=skating?2.2:0;
-    if(!moving&&!skating) playerY+=Math.sin(t*2.1)*0.34;
+    playerY+=jumpH;
+    if(!moving&&!skating&&!jumpActive) playerY+=Math.sin(t*2.1)*0.18;
     playerGroup.group.position.set(playerPos.x,playerY,playerPos.z);
     playerGroup.group.rotation.y=playerYaw;
     playerGroup.group.rotation.x=skating?0.06:0;
+    playerGroup.group.scale.y=squashY;
     playerParts.board.visible=skating;
     playerParts.chain.visible=S.stage>=3;
-    if(skating){
+    if(jumpActive){
+      playerGroup.lLeg.rotation.x=-0.6; playerGroup.rLeg.rotation.x=-0.6;
+      playerGroup.lArm.rotation.x=0.4; playerGroup.rArm.rotation.x=0.4;
+      playerGroup.lArm.rotation.z=0; playerGroup.rArm.rotation.z=0;
+      playerGroup.group.rotation.z=0;
+    } else if(skating){
       // skate stance: legs planted wide, slight crouch, arms out
       playerGroup.lLeg.rotation.x=0.25; playerGroup.rLeg.rotation.x=-0.25;
       playerGroup.lArm.rotation.x=0; playerGroup.rArm.rotation.x=0;
       playerGroup.lArm.rotation.z=0.5; playerGroup.rArm.rotation.z=-0.5;
-      playerGroup.group.rotation.z=Math.sin(t*2.2)*0.04; // carve sway
-    } else {
+      playerGroup.group.rotation.z=Math.sin(t*2.2)*0.04;
+    } else if(moving){
+      const run=keys['shift']||Math.hypot(joyVec.x,joyVec.y)>0.88;
+      const freq=run?14:8, amp=run?0.91:0.7;
+      playerGroup.lLeg.rotation.x=Math.sin(t*freq)*amp;
+      playerGroup.rLeg.rotation.x=Math.sin(t*freq+Math.PI)*amp;
+      playerGroup.lArm.rotation.x=Math.sin(t*freq+Math.PI)*amp*0.7;
+      playerGroup.rArm.rotation.x=Math.sin(t*freq)*amp*0.7;
       playerGroup.lArm.rotation.z=0; playerGroup.rArm.rotation.z=0;
       playerGroup.group.rotation.z=0;
-      const swing=moving?Math.sin(t*(keys['shift']?13:9))*0.6:0;
-      playerGroup.lLeg.rotation.x=swing; playerGroup.rLeg.rotation.x=-swing;
-      playerGroup.lArm.rotation.x=-swing*0.8; playerGroup.rArm.rotation.x=swing*0.8;
+      const bob=run?Math.abs(Math.sin(t*28))*2.0:Math.abs(Math.sin(t*16))*1.2;
+      playerGroup.group.position.y=playerY+bob;
+    } else {
+      // idle
+      playerGroup.lLeg.rotation.x=0; playerGroup.rLeg.rotation.x=0;
+      playerGroup.lArm.rotation.x=Math.sin(t*1.4)*0.06;
+      playerGroup.rArm.rotation.x=Math.sin(t*1.4+Math.PI)*0.06;
+      playerGroup.lArm.rotation.z=0; playerGroup.rArm.rotation.z=0;
+      playerGroup.group.rotation.z=Math.sin(t*0.8)*0.008;
+      if(playerGroup.head) playerGroup.head.rotation.x=Math.sin(t*1.2)*0.04;
     }
     // Founders Commons: broadcast position to the town channel (no-op if solo)
     sendPresenceUpdate(now,playerPos.x,playerPos.z,playerYaw,window._skating,moving);
@@ -240,7 +290,8 @@ function loop(now){
           else { n.tx=n.hx; n.tz=n.hz; }
         }
       }
-      const npcY=nmoving?0:Math.sin(t*2.0+n.hx*0.07+n.hz*0.05)*0.3;
+      const ph=n.hx*0.07;
+      const npcY=nmoving?Math.abs(Math.sin(t*16+ph))*1.0:Math.sin(t*2.0+ph)*0.3;
       pm.group.position.set(n.x,npcY,n.z);
       // key NPCs idle-face player when close
       if(n.key&&!nmoving){
@@ -248,8 +299,14 @@ function loop(now){
         const dd=Math.hypot(dpx,dpz);
         if(dd<160) pm.group.rotation.y=Math.atan2(dpx,dpz);
       }
-      const sw=nmoving?Math.sin(t*8+n.hx)*0.5:0;
-      pm.lLeg.rotation.x=sw; pm.rLeg.rotation.x=-sw;
+      if(nmoving){
+        const sw=Math.sin(t*8+ph)*0.7;
+        pm.lLeg.rotation.x=sw; pm.rLeg.rotation.x=-sw;
+        pm.lArm.rotation.x=-sw*0.7; pm.rArm.rotation.x=sw*0.7;
+      } else {
+        pm.lLeg.rotation.x=0; pm.rLeg.rotation.x=0;
+        pm.lArm.rotation.x=Math.sin(t*1.3+ph)*0.06; pm.rArm.rotation.x=Math.sin(t*1.3+ph+Math.PI)*0.06;
+      }
       if(pm.ring){
         const r=rel(n.id);
         pm.ring.material.color.setHex(r>=2?0x5FA86B:(r<0?0xD4513B:0xE8C064));
@@ -260,8 +317,9 @@ function loop(now){
     // cars
     cars.forEach(c=>{
       c.p+=c.spd*DT; if(c.p>1)c.p-=1; if(c.p<0)c.p+=1;
-      if(c.horiz){ c.g.position.set(c.p*W,0,c.lane); c.g.rotation.y=c.spd>0?Math.PI/2:-Math.PI/2; }
-      else { const rx=c.lane>1200?1600:800; c.g.position.set(rx+(c.lane%2?16:-16),0,c.p*H); c.g.rotation.y=c.spd>0?0:Math.PI; }
+      if(c.horiz){ c.g.position.set(c.p*W,0,c.lane); c.g.rotation.y=c.spd>0?0:Math.PI; }
+      else { const rx=c.lane>1200?1600:800; c.g.position.set(rx+(c.lane%2?16:-16),0,c.p*H); c.g.rotation.y=c.spd>0?-Math.PI/2:Math.PI/2; }
+      if(c.wheelMeshes) c.wheelMeshes.forEach(w=>{ w.rotation.x+=c.spd*DT*80; });
     });
     // clouds drift
     clouds.forEach(cl=>{
@@ -363,9 +421,11 @@ export function updateHUDChips(){
   $('stageChip').textContent='Stage '+S.stage+' · '+stages[S.stage]+(S.streak>0?' · 🔥'+S.streak:'');
   const h12=S.hour%12===0?12:S.hour%12, ap=S.hour<12?'AM':'PM';
   $('clockTime').textContent='Day '+S.day+' · '+h12+':'+String(S.min).padStart(2,'0')+' '+ap;
-  $('clockCash').textContent=fmt(S.cash)+(S.debt>0?' (-'+fmt(S.debt)+')':'');
+  const dailyRev=S.biz?Math.round(S.customers*S.biz.price*0.16):0;
+  $('clockCash').textContent=fmt(S.cash)+(S.biz&&dailyRev>0?' · +'+fmt(dailyRev)+'/day':'')+(S.debt>0?' (-'+fmt(S.debt)+')':'');
   const q=QUESTS[S.quest];
-  $('questBar').innerHTML=(q?q.hint:'')+(q&&q.prog?' <b>'+q.prog()+'</b>':'');
+  $('questBar').innerHTML=(q?q.hint:'')+(q&&q.prog?' <b>'+q.prog()+'</b>':'')
+    +(S.biz&&S.customers>0?'<br><span style="color:#5AAE2A;font-size:11px">'+S.customers+' customers → ~'+fmt(dailyRev)+' earned each day at 9 AM</span>':'');
 }
 setInterval(()=>{ if(S&&$('hud').style.display==='block')updateHUDChips(); },500);
 
