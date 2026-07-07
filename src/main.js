@@ -22,7 +22,10 @@ let jumpVel=0, jumpActive=false, landSquash=0;
 /* ---------------- INPUT ---------------- */
 const keys={};
 window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;
-  if((e.key==='e'||e.key==='Enter')&&$('interactBtn').style.display==='block') doInteract();});
+  if((e.key==='e'||e.key==='Enter')&&$('interactBtn').style.display==='block') doInteract();
+  if(e.code==='Space'&&!jumpActive&&document.pointerLockElement===$('game')){e.preventDefault();jumpVel=9.5;jumpActive=true;}
+  if(e.key==='Escape'&&document.pointerLockElement) document.exitPointerLock();
+});
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
 let joyVec={x:0,y:0},joyId=null;
 const joyEl=$('joy'),knob=$('joyKnob');
@@ -60,13 +63,27 @@ camPad.addEventListener('touchmove',e=>{
 camPad.addEventListener('touchend',e=>{
   if(camDrag&&[...e.changedTouches].some(t=>t.identifier===camDrag.id)) camDrag=null;
 },{passive:true});
+// Pointer lock (Minecraft/Roblox-style): click canvas → mouse directly controls camera
+$('game').addEventListener('click',()=>{
+  if(!dialogOpen&&$('phone').style.display!=='flex'&&$('bigModal').style.display!=='flex'&&!document.pointerLockElement){
+    $('game').requestPointerLock();
+  }
+});
+document.addEventListener('pointerlockchange',()=>{
+  const locked=document.pointerLockElement===$('game');
+  const hint=$('lockHint'); if(hint) hint.style.display=locked?'none':'block';
+});
 let mouseDrag=null;
-$('game').addEventListener('mousedown',e=>{mouseDrag={x:e.clientX,y:e.clientY};});
+$('game').addEventListener('mousedown',e=>{if(!document.pointerLockElement)mouseDrag={x:e.clientX,y:e.clientY};});
 window.addEventListener('mousemove',e=>{
-  if(!mouseDrag)return;
-  camYaw-=(e.clientX-mouseDrag.x)*0.0055;
-  camPitch=clamp(camPitch+(e.clientY-mouseDrag.y)*0.0032,0.18,0.9);
-  mouseDrag={x:e.clientX,y:e.clientY};
+  if(document.pointerLockElement===$('game')){
+    camYaw-=e.movementX*0.002;
+    camPitch=clamp(camPitch+e.movementY*0.002,0.18,0.9);
+  } else if(mouseDrag){
+    camYaw-=(e.clientX-mouseDrag.x)*0.0055;
+    camPitch=clamp(camPitch+(e.clientY-mouseDrag.y)*0.0032,0.18,0.9);
+    mouseDrag={x:e.clientX,y:e.clientY};
+  }
 });
 window.addEventListener('mouseup',()=>mouseDrag=null);
 
@@ -404,9 +421,11 @@ export function updateHUDChips(){
   $('stageChip').textContent='Stage '+S.stage+' · '+stages[S.stage]+(S.streak>0?' · 🔥'+S.streak:'');
   const h12=S.hour%12===0?12:S.hour%12, ap=S.hour<12?'AM':'PM';
   $('clockTime').textContent='Day '+S.day+' · '+h12+':'+String(S.min).padStart(2,'0')+' '+ap;
-  $('clockCash').textContent=fmt(S.cash)+(S.debt>0?' (-'+fmt(S.debt)+')':'');
+  const dailyRev=S.biz?Math.round(S.customers*S.biz.price*0.16):0;
+  $('clockCash').textContent=fmt(S.cash)+(S.biz&&dailyRev>0?' · +'+fmt(dailyRev)+'/day':'')+(S.debt>0?' (-'+fmt(S.debt)+')':'');
   const q=QUESTS[S.quest];
-  $('questBar').innerHTML=(q?q.hint:'')+(q&&q.prog?' <b>'+q.prog()+'</b>':'');
+  $('questBar').innerHTML=(q?q.hint:'')+(q&&q.prog?' <b>'+q.prog()+'</b>':'')
+    +(S.biz&&S.customers>0?'<br><span style="color:#5AAE2A;font-size:11px">'+S.customers+' customers → ~'+fmt(dailyRev)+' earned each day at 9 AM</span>':'');
 }
 setInterval(()=>{ if(S&&$('hud').style.display==='block')updateHUDChips(); },500);
 
