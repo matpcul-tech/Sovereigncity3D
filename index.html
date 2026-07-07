@@ -2100,9 +2100,70 @@ function initThree(){
 }
 
 /* ---- procedural surface textures ---- */
-
-
-
+let _grassTex=null,_stoneTex=null,_techTex=null;
+function getGrassTex(){
+  if(_grassTex)return _grassTex;
+  const c=document.createElement('canvas'); c.width=c.height=512;
+  const x=c.getContext('2d');
+  // vivid Roblox-green base
+  x.fillStyle='#4ED640'; x.fillRect(0,0,512,512);
+  // checker pattern for visual interest (subtle darker green squares)
+  x.fillStyle='rgba(0,120,0,0.18)';
+  for(let i=0;i<512;i+=64)for(let j=0;j<512;j+=64)if((i+j)/64%2===0)x.fillRect(i,j,64,64);
+  // highlight squares
+  x.fillStyle='rgba(100,255,60,0.14)';
+  for(let i=32;i<512;i+=64)for(let j=32;j<512;j+=64)x.fillRect(i,j,32,32);
+  // grass blade strokes
+  x.fillStyle='rgba(20,160,0,0.4)';
+  for(let i=0;i<600;i++){x.fillRect(rnd(0,511),rnd(0,511),2,rnd(5,14));}
+  x.fillStyle='rgba(120,255,80,0.3)';
+  for(let i=0;i<400;i++){x.fillRect(rnd(0,511),rnd(0,511),2,rnd(4,10));}
+  _grassTex=new THREE.CanvasTexture(c);
+  _grassTex.wrapS=_grassTex.wrapT=THREE.RepeatWrapping;
+  _grassTex.repeat.set(10,10);
+  return _grassTex;
+}
+function getStoneTex(){
+  if(_stoneTex)return _stoneTex;
+  const c=document.createElement('canvas'); c.width=c.height=512;
+  const x=c.getContext('2d');
+  x.fillStyle='#C0CCDD'; x.fillRect(0,0,512,512);
+  // large tile joints
+  x.strokeStyle='rgba(70,90,120,0.4)'; x.lineWidth=3;
+  for(let i=0;i<512;i+=128){
+    x.beginPath();x.moveTo(i,0);x.lineTo(i,512);x.stroke();
+    x.beginPath();x.moveTo(0,i);x.lineTo(512,i);x.stroke();
+  }
+  // per-tile slight color variation
+  for(let i=0;i<4;i++)for(let j=0;j<4;j++){
+    const v=rnd(-12,12)|0;
+    x.fillStyle=`rgba(${v<0?0:-v},${v<0?0:v},${Math.abs(v)*2},0.06)`;
+    x.fillRect(i*128+2,j*128+2,124,124);
+  }
+  _stoneTex=new THREE.CanvasTexture(c);
+  _stoneTex.wrapS=_stoneTex.wrapT=THREE.RepeatWrapping;
+  _stoneTex.repeat.set(8,8);
+  return _stoneTex;
+}
+function getTechTex(){
+  if(_techTex)return _techTex;
+  const c=document.createElement('canvas'); c.width=c.height=512;
+  const x=c.getContext('2d');
+  x.fillStyle='#33BBCC'; x.fillRect(0,0,512,512);
+  // bright grid
+  x.strokeStyle='rgba(0,60,80,0.35)'; x.lineWidth=2;
+  for(let i=0;i<512;i+=64){x.beginPath();x.moveTo(i,0);x.lineTo(i,512);x.stroke();x.beginPath();x.moveTo(0,i);x.lineTo(512,i);x.stroke();}
+  // dots at intersections
+  x.fillStyle='rgba(0,220,255,0.6)';
+  for(let i=0;i<512;i+=64)for(let j=0;j<512;j+=64){x.beginPath();x.arc(i,j,4,0,Math.PI*2);x.fill();}
+  // diagonal accent lines
+  x.strokeStyle='rgba(0,180,220,0.15)'; x.lineWidth=1;
+  for(let i=-512;i<512;i+=80){x.beginPath();x.moveTo(i,0);x.lineTo(i+512,512);x.stroke();}
+  _techTex=new THREE.CanvasTexture(c);
+  _techTex.wrapS=_techTex.wrapT=THREE.RepeatWrapping;
+  _techTex.repeat.set(9,9);
+  return _techTex;
+}
 
 function makeLabelSprite(text,color){
   const c=document.createElement('canvas'); c.width=512; c.height=96;
@@ -2351,29 +2412,18 @@ function buildCity(){
   ZONES.forEach(zo=>{
     let groundMat;
     if(zo.id===1||zo.id===4||zo.id===6){
-      groundMat=new THREE.MeshLambertMaterial({map:getGrassTex(),color:0x55DD44});
+      groundMat=new THREE.MeshBasicMaterial({map:getGrassTex()});
     }else if(zo.id===3){
-      groundMat=new THREE.MeshLambertMaterial({map:getTechTex(),color:0x44CCDD});
+      groundMat=new THREE.MeshBasicMaterial({map:getTechTex()});
     }else{
-      groundMat=new THREE.MeshLambertMaterial({map:getStoneTex(),color:0xAABBCC});
+      groundMat=new THREE.MeshBasicMaterial({map:getStoneTex()});
     }
     const g=new THREE.Mesh(new THREE.PlaneGeometry(ZW,ZH),groundMat);
     g.rotation.x=-Math.PI/2;
     g.position.set(zo.x+ZW/2,0,zo.y+ZH/2);
     g.receiveShadow=true;
     scene.add(g); zo.groundMesh=g;
-    // zone name sprite at center, high
-    const sp=makeLabelSprite('ZONE '+zo.id+' \u00B7 '+zo.name.toUpperCase(),zo.accent);
-    sp.position.set(zo.x+ZW/2,120,zo.y+ZH/2);
-    sp.scale.set(190,34,1);
-    scene.add(sp); zo.labelSprite=sp;
-    zo.lockSprite=null;
-    if(zo.unlock>1){
-      const ls=makeLabelSprite('UNLOCKS AT STAGE '+zo.unlock,'#9A917F');
-      ls.position.set(zo.x+ZW/2,96,zo.y+ZH/2);
-      ls.scale.set(150,24,1);
-      scene.add(ls); zo.lockSprite=ls;
-    }
+    zo.labelSprite=null; zo.lockSprite=null;
   });
   // roads (textured asphalt) + sidewalks + crosswalks
   const roadMatH=toon(0x4A4A5A);
@@ -2611,8 +2661,8 @@ function buildPlots(){
       toon(0x5A5238));
     pad.position.set(p.x+p.w/2,1,p.z+p.d/2); pad.receiveShadow=true;
     scene.add(pad); p.pad=pad;
-    const sp=makeLabelSprite('OPEN PLOT \u00B7 Founders Commons','#9A917F');
-    sp.scale.set(120,20,1); sp.position.set(p.x+p.w/2,26,p.z+p.d/2);
+    const sp=makeLabelSprite('OPEN PLOT','#B0A888');
+    sp.scale.set(60,12,1); sp.position.set(p.x+p.w/2,18,p.z+p.d/2);
     scene.add(sp); p.sp=sp;
   });
 }

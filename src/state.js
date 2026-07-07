@@ -3,7 +3,7 @@ import { ZONES, BUILDINGS, INDUSTRIES, zoneAt, npcById } from './worldData.js';
 import { getSupabase } from './supabase.js';
 import { sCash, sBig, sBad, sWin, Music } from './audio.js';
 import { toast, feed, learn, showDialog, showInsightCard, openPhoneTo } from './dialog.js';
-import { spawnBurst, floatText, updateLabelSprite, stageBanner, gooseDash, setHQEmpty, playerPos, setGoldenHour, recordFame, townTalentBonus, getTownDailyChallenge } from './graphics.js';
+import { spawnBurst, floatText, updateLabelSprite, stageBanner, gooseDash, setHQEmpty, playerPos, setGoldenHour, recordFame, townTalentBonus, getTownDailyChallenge, Cutscene } from './graphics.js';
 import { updateHUDChips } from './main.js';
 
 /* ---------------- STATE ---------------- */
@@ -285,12 +285,15 @@ export function checkProgression(){
   if(S.quest===2&&S.customers>=5){
     S.quest=3; S.stage=Math.max(S.stage,2);
     stageBanner('STAGE 2','Hustler · The city acknowledges you');
+    Cutscene.play('skateboard_unlock');
+    Cutscene.play('stage_unlock');
     toast('<b>Stage 2: Hustler.</b> The city acknowledges you. An empty lot just hit the market.','gold'); sBig();
     feed('You hit 5 customers. First media mention in the neighborhood paper.');
   }
   if(S.quest===4&&S.customers>=15){
     S.quest=5; S.stage=Math.max(S.stage,3);
     stageBanner('STAGE 3','Builder · Innovation Row open');
+    Cutscene.play('stage_unlock');
     toast('<b>Stage 3: Builder.</b> Innovation Row unlocked. Time to hire.','gold'); sBig();
     feed('15 customers. Competitors started watching you. Innovation Row gates opened.');
   }
@@ -300,6 +303,7 @@ export function achieveSovereignty(){
   S.won=true; S.stage=5; S.quest=12;
   S.stats.sovereignty=100;
   stageBanner('SOVEREIGN','Build What You Own');
+  Cutscene.play('stage_unlock');
   Music.setZone(6);
   const tb=BUILDINGS.find(b=>b.id==='tower');
   tb.label=S.biz.name+' Tower';

@@ -2,18 +2,8 @@
 Thumbs.db
 *.log
 node_modules/
-.claude/
+dist/
+.env
 .env.local
 .env*.local
-dist/
-
-# Capacitor native build artifacts (project source is committed; compiled outputs are not)
-android/.gradle/
-android/app/build/
-android/build/
-android/.idea/
-ios/App/build/
-ios/App/Pods/
-ios/App/App.xcworkspace/xcuserdata/
-ios/App/DerivedData/
-*.xcuserstate
+.claude/
