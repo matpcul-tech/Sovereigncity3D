@@ -23,6 +23,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Inject Supabase configuration (classroom / group play)
+        env:
+          SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          sed -i "s|%%SUPABASE_URL%%|${SUPABASE_URL}|g" index.html facilitator.html
+          sed -i "s|%%SUPABASE_ANON_KEY%%|${SUPABASE_ANON_KEY}|g" index.html facilitator.html
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact

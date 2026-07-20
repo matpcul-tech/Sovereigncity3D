@@ -183,6 +183,12 @@ button{font-family:inherit;cursor:pointer;border:none}
   <div><h1>SOVEREIGN<br><span>CITY</span></h1>
     <div class="tag" style="margin-top:10px">Build What You Own</div></div>
   <p class="sub">Third-person founder simulation. You have a dream and $5,000. Walk the city, solve a real problem, and raise a tower with your name on it.</p>
+  <div class="cRow" style="width:min(320px,88vw)">
+    <label for="townCodeInput" style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9A917F;font-weight:600">Class Code <span style="color:#6B6354;text-transform:none;letter-spacing:0">— join your class town (optional)</span></label>
+    <input type="text" id="townCodeInput" maxlength="6" autocomplete="off" autocapitalize="characters"
+      placeholder="LEAVE BLANK FOR SOLO PLAY"
+      style="text-align:center;letter-spacing:.3em;text-transform:uppercase;font-weight:700">
+  </div>
   <button class="btn" id="newGameBtn">New Founder</button>
   <button class="btn ghost" id="continueBtn" style="display:none">Continue</button>
   <div class="foot">Sovereign Shield Technologies LLC &middot; Ada, Oklahoma &middot; V2 Real World Update</div>
@@ -252,6 +258,14 @@ if(window.caches){
   caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});
 }
 </script>
+<script>
+/* Classroom backend configuration — the deploy workflow replaces these
+   placeholders with the repo's Supabase secrets. Left unreplaced (local
+   dev, or secrets not set) the game runs fully in solo mode. */
+window.SC_SUPABASE_URL='%%SUPABASE_URL%%';
+window.SC_SUPABASE_ANON_KEY='%%SUPABASE_ANON_KEY%%';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* =========================================================
@@ -382,6 +396,35 @@ function IND(){ return INDUSTRIES.find(i=>i.id===(S.biz&&S.biz.industry))||INDUS
 /* ---------------- STATE ---------------- */
 const SAVE_KEY='sovereign-city-save-v2';
 let S=null;
+
+/* =========================================================
+   CLASSROOM / GROUP PLAY — Supabase backend
+   A 6-character Class Code puts a whole class in one shared
+   town: everyone sees each other live in the city, Founders
+   Commons plots are shared, saves sync to the cloud, and the
+   teacher watches progress on facilitator.html?code=XXXXXX.
+   Without a code (or without Supabase configured) the game
+   runs exactly as before in solo mode.
+   ========================================================= */
+let _sb=null;
+function getSupabase(){
+  if(_sb) return _sb;
+  const url=window.SC_SUPABASE_URL||'', key=window.SC_SUPABASE_ANON_KEY||'';
+  if(!url||url.indexOf('%%')>=0||!key||key.indexOf('%%')>=0) return null;
+  if(!window.supabase||!window.supabase.createClient) return null;
+  _sb=window.supabase.createClient(url,key);
+  return _sb;
+}
+function normalizeTownCode(v){
+  const code=(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+  return code||null;
+}
+/* Session mode — teachers share one URL with the whole class:
+   ?session=true&code=ABC123&duration=40  (duration in minutes) */
+const _urlParams=new URLSearchParams(location.search);
+const _sessionMode=_urlParams.get('session')==='true';
+const _sessionDuration=Math.max(1,parseInt(_urlParams.get('duration')||'40'))*60*1000;
+const _sessionCode=normalizeTownCode(_urlParams.get('code'));
 function freshState(){
   return {
     founder:{name:'Founder',skin:2,fit:0,voice:'Warm'},
@@ -1499,6 +1542,14 @@ function drawMinimap(){
       x.lineWidth=3; x.beginPath();
       x.arc(t.x*MM_SCALE_X*2,t.z*MM_SCALE_Y*2,6+pulse*4,0,Math.PI*2); x.stroke();
     }
+  }
+  // classmates — light blue dots
+  x.fillStyle='#9FD8FF';
+  for(const k in remotePlayers){
+    const rp=remotePlayers[k];
+    const px=rp.overflow?rp.x:rp.group.position.x;
+    const pz=rp.overflow?rp.z:rp.group.position.z;
+    x.beginPath(); x.arc(px*MM_SCALE_X*2,pz*MM_SCALE_Y*2,4,0,Math.PI*2); x.fill();
   }
   // player — gold dot, larger
   x.fillStyle='#E8C064'; x.beginPath();
@@ -2827,8 +2878,21 @@ const PLOTS=[
  {x:1660,z:860},{x:1820,z:860},{x:1980,z:860},{x:2140,z:860},
  {x:1660,z:1060},{x:1660,z:1230},{x:2210,z:1060},{x:2210,z:1230}
 ].map((p,i)=>({idx:i,x:p.x,z:p.z,w:120,d:120,data:null,mesh:null,pad:null,sp:null}));
-const TOWN_KEY='sc-town-v1', FAME_KEY='sc-fame-v1';
 let townTalentBonus=0, fameCache=[];
+let currentTownId=null, currentTownCode=null, townDailyChallenge=null, _lastHustleShown=null;
+async function resolveTownId(sb){
+  if(!S||!S.townCode) return null;
+  if(currentTownId&&currentTownCode===S.townCode) return currentTownId;
+  currentTownCode=S.townCode;
+  currentTownId=null;
+  try{
+    const {data}=await sb.from('towns').select('id').eq('code',S.townCode).maybeSingle();
+    if(data){ currentTownId=data.id; return currentTownId; }
+    const {data:created}=await sb.from('towns').insert({code:S.townCode,name:S.townCode}).select('id').single();
+    if(created) currentTownId=created.id;
+  }catch(e){}
+  return currentTownId;
+}
 
 function buildPlots(){
   PLOTS.forEach(p=>{
@@ -2843,20 +2907,59 @@ function buildPlots(){
   });
 }
 async function loadTown(){
-  let town=null;
-  try{
-    if(window.storage){
-      const r=await window.storage.get(TOWN_KEY,true);
-      if(r&&r.value) town=JSON.parse(r.value);
-    }
-  }catch(e){}
-  renderTown(town||{plots:{}});
-  try{
-    if(window.storage){
-      const f=await window.storage.get(FAME_KEY,true);
-      if(f&&f.value) fameCache=JSON.parse(f.value);
-    }
-  }catch(e){}
+  const town={plots:{}};
+  const sb=getSupabase();
+  if(sb&&S&&S.townCode){
+    try{
+      const townId=await resolveTownId(sb);
+      if(townId){
+        const {data}=await sb.from('plots').select('*').eq('town_id',townId);
+        (data||[]).forEach(row=>{
+          town.plots[row.plot_index]={name:row.founder_name,biz:row.biz_name,industry:row.industry,talent:row.talent};
+        });
+        // teacher's "Today's Hustle" override, set from the facilitator dashboard
+        try{
+          const {data:tr}=await sb.from('towns').select('daily_challenge').eq('id',townId).maybeSingle();
+          townDailyChallenge=(tr&&tr.daily_challenge)?tr.daily_challenge:null;
+          if(townDailyChallenge&&townDailyChallenge!==_lastHustleShown){
+            _lastHustleShown=townDailyChallenge;
+            toast('<b>📌 Today’s Hustle from your teacher:</b> '+townDailyChallenge,'gold');
+            feed('Teacher’s challenge: '+townDailyChallenge);
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+  }
+  renderTown(town);
+  // Hall of Fame — top 20 fastest to Sovereignty across all towns
+  if(sb){
+    try{
+      const {data:fameData}=await sb.from('fame').select('*').order('day_achieved',{ascending:true}).limit(20);
+      fameCache=(fameData||[]).map(f=>({name:f.founder_name,biz:f.biz_name,day:f.day_achieved}));
+    }catch(e){}
+  }
+}
+let plotsChannel=null;
+function subscribeTownPlots(){
+  const sb=getSupabase();
+  if(!sb||!S||!S.townCode) return;
+  if(plotsChannel){ try{ sb.removeChannel(plotsChannel); }catch(e){} }
+  plotsChannel=sb.channel('db-plots:'+S.townCode)
+    .on('postgres_changes',{event:'INSERT',schema:'public',table:'plots'},(payload)=>{
+      const row=payload.new;
+      if(row.town_id!==currentTownId) return;
+      const plotsMap={};
+      PLOTS.forEach(p=>{ if(p.data) plotsMap[p.idx]=p.data; });
+      plotsMap[row.plot_index]={name:row.founder_name,biz:row.biz_name,industry:row.industry,talent:row.talent};
+      renderTown({plots:plotsMap});
+      if(S&&S.founder&&row.founder_name!==S.founder.name)
+        toast('<b>'+row.founder_name+'</b> built in Founders Commons as a '+row.talent+'!','gold');
+    })
+    .subscribe();
+}
+function unsubscribeTownPlots(){
+  const sb=getSupabase();
+  if(plotsChannel&&sb){ try{ sb.removeChannel(plotsChannel); }catch(e){} plotsChannel=null; }
 }
 function renderTown(town){
   const talents=new Set();
@@ -2884,18 +2987,24 @@ function renderTown(town){
 }
 async function claimPlot(p,talent){
   const entry={name:S.founder.name,biz:S.biz.name,industry:S.biz.industry,talent,ts:Date.now()};
+  const sb=getSupabase();
   try{
-    let town={plots:{}};
-    if(window.storage){
-      try{ const r=await window.storage.get(TOWN_KEY,true);
-        if(r&&r.value) town=JSON.parse(r.value); }catch(e){}
-      if(town.plots[p.idx]){ toast('Another founder just claimed that plot. Pick a different one.','bad');
-        renderTown(town); return; }
-      town.plots[p.idx]=entry;
-      await window.storage.set(TOWN_KEY,JSON.stringify(town),true);
-    } else { town.plots[p.idx]=entry; }
+    if(sb&&S.townCode){
+      const townId=await resolveTownId(sb);
+      if(!townId){ toast('The town ledger is busy. Try again in a moment.','bad'); return; }
+      const {data:existing}=await sb.from('plots').select('plot_index').eq('town_id',townId).eq('plot_index',p.idx).maybeSingle();
+      if(existing){ toast('Another founder just claimed that plot. Pick a different one.','bad'); await loadTown(); return; }
+      const {error}=await sb.from('plots').insert({town_id:townId,plot_index:p.idx,
+        founder_name:entry.name,biz_name:entry.biz,industry:entry.industry,talent});
+      if(error){ toast('The town ledger is busy. Try again in a moment.','bad'); return; }
+      await loadTown();
+    } else {
+      const plotsMap={};
+      PLOTS.forEach(pp=>{ if(pp.data) plotsMap[pp.idx]=pp.data; });
+      plotsMap[p.idx]=entry;
+      renderTown({plots:plotsMap});
+    }
     S.townPlot=p.idx; S.talent=talent;
-    renderTown(town);
     sBig(); spawnBurst(p.x+p.w/2,40,p.z+p.d/2,0xE8C064);
     feed('You claimed a plot in Founders Commons as a '+talent+'. Every founder in this city can see it.');
     toast('<b>Plot claimed.</b> Your '+talent+' talent strengthens the whole town: every distinct talent adds +1% revenue for all members.','gold');
@@ -2928,17 +3037,199 @@ function openPlot(p){
     TALENTS.map(t=>({label:t,fn:()=>claimPlot(p,t)})).concat([{label:'Not yet.'}]));
 }
 async function recordFame(){
+  const sb=getSupabase();
+  if(!sb||!S) return;
   try{
-    if(window.storage){
-      let fame=[];
-      try{ const r=await window.storage.get(FAME_KEY,true);
-        if(r&&r.value) fame=JSON.parse(r.value); }catch(e){}
-      fame.unshift({name:S.founder.name,biz:S.biz.name,industry:S.biz.industry,day:S.day,ts:Date.now()});
-      if(fame.length>50)fame.length=50;
-      await window.storage.set(FAME_KEY,JSON.stringify(fame),true);
-      fameCache=fame;
-    }
+    const townId=S.townCode?await resolveTownId(sb):null;
+    await sb.from('fame').insert({
+      town_id:townId,
+      founder_name:S.founder.name,
+      biz_name:S.biz.name,
+      industry:S.biz.industry,
+      day_achieved:S.day
+    });
+    fameCache.unshift({name:S.founder.name,biz:S.biz.name,day:S.day});
   }catch(e){}
+}
+
+/* =========================================================
+   LIVE PRESENCE — classmates in the city
+   One Supabase Realtime channel per Class Code. Broadcasts
+   carry {founderName,x,z,yaw,skating,skin,fit} at 10Hz while
+   moving (3s heartbeat while idle). Remote players are
+   ghosts: no collision, no interaction. No-ops entirely in
+   solo play (no class code or no Supabase configured).
+   ========================================================= */
+const REMOTE_CAP=24;      // full avatars; beyond this, minimap dots only
+const BROADCAST_MS=100;   // 10Hz while moving
+const HEARTBEAT_MS=3000;  // heartbeat while idle
+const LERP_MS=120;        // smoothing window for remote motion
+const remotePlayers={};   // presence key -> avatar rig + interpolation state
+const remoteDots=[];      // minimap-only positions for overflow players
+let presenceChannel=null, presenceSubscribed=false, presenceSynced=false;
+let presenceKey=null, presenceLastSend=0;
+
+function subscribeTown(){
+  unsubscribeTown();
+  const sb=getSupabase();
+  if(!sb||!S||!S.townCode) return;
+  presenceKey='p_'+Math.random().toString(36).slice(2,10);
+  presenceSynced=false; presenceLastSend=0;
+  presenceChannel=sb.channel('town:'+S.townCode,{config:{presence:{key:presenceKey}}});
+  presenceChannel.on('broadcast',{event:'move'},({payload})=>handleRemoteMove(payload));
+  presenceChannel.on('presence',{event:'join'},({key,newPresences})=>{
+    if(key===presenceKey||!presenceSynced) return; // skip the initial roster sync
+    const meta=(newPresences&&newPresences[newPresences.length-1])||{};
+    toast('<b>'+(meta.founderName||'A founder')+'</b> stepped into the Grind');
+    tone(660,.16,'sine',.07); tone(880,.22,'sine',.05,.09);
+  });
+  presenceChannel.on('presence',{event:'leave'},({key,leftPresences})=>{
+    if(key===presenceKey) return;
+    const meta=leftPresences&&leftPresences[0];
+    removeRemote(key,meta&&meta.founderName);
+  });
+  presenceChannel.on('presence',{event:'sync'},()=>{ presenceSynced=true; });
+  presenceChannel.subscribe((status)=>{
+    if(status==='SUBSCRIBED'){
+      presenceSubscribed=true;
+      presenceChannel.track({founderName:S.founder.name});
+    }
+  });
+}
+function unsubscribeTown(){
+  const sb=getSupabase();
+  if(presenceChannel&&sb){ try{ sb.removeChannel(presenceChannel); }catch(e){} }
+  presenceChannel=null; presenceSubscribed=false; presenceSynced=false;
+  presenceKey=null; presenceLastSend=0;
+  Object.keys(remotePlayers).forEach(k=>removeRemote(k));
+  remoteDots.length=0;
+}
+function sendPresenceUpdate(now,x,z,yaw,skating,moving){
+  if(!presenceChannel||!presenceSubscribed) return;
+  const interval=moving?BROADCAST_MS:HEARTBEAT_MS;
+  if(now-presenceLastSend<interval) return;
+  presenceLastSend=now;
+  presenceChannel.send({
+    type:'broadcast',event:'move',
+    payload:{key:presenceKey,founderName:S.founder.name,x,z,yaw,skating:!!skating,skin:S.founder.skin,fit:S.founder.fit}
+  });
+}
+function lerpAngle(a,b,t){
+  const d=(((b-a+Math.PI)%(Math.PI*2))+Math.PI*2)%(Math.PI*2)-Math.PI;
+  return a+d*t;
+}
+function remoteInterp(rp,now){
+  const t=clamp((now-rp.updateStart)/LERP_MS,0,1);
+  return {x:lerp(rp.from.x,rp.to.x,t),z:lerp(rp.from.z,rp.to.z,t),yaw:lerpAngle(rp.from.yaw,rp.to.yaw,t)};
+}
+function createRemote(founderName,skin,fit){
+  const p=makePerson(SKINS[skin]||SKINS[0],FITS[fit]||FITS[0]);
+  scene.add(p.group);
+  const tag=makeLabelSprite(founderName||'Founder','#9FD8FF');
+  tag.scale.set(86,16,1); tag.position.y=30;
+  p.group.add(tag);
+  return p;
+}
+function handleRemoteMove(payload){
+  const {key,founderName,x,z,yaw,skating,skin,fit}=payload||{};
+  if(!key||key===presenceKey||typeof x!=='number'||typeof z!=='number') return;
+  let rp=remotePlayers[key];
+  const now=performance.now();
+  if(!rp){
+    const active=Object.values(remotePlayers).filter(r=>!r.overflow).length;
+    if(active>=REMOTE_CAP){ remotePlayers[key]={overflow:true,x,z}; return; }
+    rp=createRemote(founderName,skin,fit);
+    rp.founderName=founderName;
+    rp.from={x,z,yaw:yaw||0}; rp.to={x,z,yaw:yaw||0,skating:!!skating}; rp.updateStart=now;
+    rp.group.position.set(x,0,z); rp.group.rotation.y=yaw||0;
+    remotePlayers[key]=rp;
+    return;
+  }
+  if(rp.overflow){ rp.x=x; rp.z=z; return; }
+  rp.from=remoteInterp(rp,now);
+  rp.to={x,z,yaw:yaw||0,skating:!!skating};
+  rp.updateStart=now;
+  rp.founderName=founderName;
+}
+function removeRemote(key,fallbackName){
+  const rp=remotePlayers[key];
+  if(!rp) return;
+  if(!rp.overflow){
+    spawnBurst(rp.group.position.x,14,rp.group.position.z,0x9FD8FF);
+    scene.remove(rp.group);
+    toast('<b>'+(rp.founderName||fallbackName||'A founder')+'</b> left the city.');
+  }
+  delete remotePlayers[key];
+}
+function updateRemotePlayers(now){
+  remoteDots.length=0;
+  for(const key in remotePlayers){
+    const rp=remotePlayers[key];
+    if(rp.overflow){ remoteDots.push({x:rp.x,z:rp.z}); continue; }
+    const cur=remoteInterp(rp,now);
+    rp.group.position.set(cur.x,rp.to.skating?2.2:0,cur.z);
+    rp.group.rotation.y=cur.yaw;
+    rp.group.rotation.x=rp.to.skating?0.06:0;
+    rp.board.visible=rp.to.skating;
+    const moved=Math.hypot(rp.to.x-rp.from.x,rp.to.z-rp.from.z)>0.4;
+    const t=now/1000;
+    if(rp.to.skating){
+      rp.lLeg.rotation.x=0.25; rp.rLeg.rotation.x=-0.25;
+      rp.lArm.rotation.x=0; rp.rArm.rotation.x=0;
+      rp.lArm.rotation.z=0.5; rp.rArm.rotation.z=-0.5;
+      rp.group.rotation.z=Math.sin(t*2.2)*0.04;
+    }else{
+      rp.lArm.rotation.z=0; rp.rArm.rotation.z=0;
+      rp.group.rotation.z=0;
+      const swing=moved?Math.sin(t*9)*0.6:0;
+      rp.lLeg.rotation.x=swing; rp.rLeg.rotation.x=-swing;
+      rp.lArm.rotation.x=-swing*0.8; rp.rArm.rotation.x=swing*0.8;
+    }
+  }
+}
+
+/* ---- classroom session timer (?session=true&code=XXXXXX&duration=40) ---- */
+let _sessionTimer=null;
+function startSessionTimer(){
+  let timerEl=document.getElementById('sessionTimer');
+  if(!timerEl){
+    timerEl=document.createElement('div');
+    timerEl.id='sessionTimer';
+    timerEl.style.cssText='position:absolute;top:calc(56px + env(safe-area-inset-top));right:14px;'+
+      'z-index:12;display:flex;align-items:center;gap:7px;background:rgba(20,18,15,.88);'+
+      'border:2px solid #E8C064;border-radius:12px;padding:7px 13px;font-weight:800;'+
+      'font-family:Archivo,Inter,sans-serif;font-size:16px;color:#E8C064;pointer-events:none';
+    timerEl.innerHTML='⏱ <span id="sessionTimerDisplay">--:--</span>';
+    document.getElementById('hud').appendChild(timerEl);
+  }
+  timerEl.style.display='flex';
+  const displayEl=document.getElementById('sessionTimerDisplay');
+  const deadline=Date.now()+_sessionDuration;
+  // Hide mute button — sound is part of the classroom experience
+  const mb=document.getElementById('muteBtn');
+  if(mb) mb.style.display='none';
+  clearInterval(_sessionTimer);
+  _sessionTimer=setInterval(()=>{
+    const rem=Math.max(0,deadline-Date.now());
+    const m=Math.floor(rem/60000),s=Math.floor((rem%60000)/1000);
+    displayEl.textContent=m+':'+String(s).padStart(2,'0');
+    if(rem<=60000){ timerEl.style.borderColor='#FF5533'; timerEl.style.color='#FF8866'; }
+    if(rem<=0){ clearInterval(_sessionTimer); showSessionComplete(); }
+  },500);
+}
+function showSessionComplete(){
+  const biggest=S&&S.insights&&S.insights.length?S.insights[0]:null;
+  $('bmCard').innerHTML=
+    '<div style="font-size:48px">⏱</div>'+
+    '<h2 class="gold">SESSION COMPLETE</h2>'+
+    '<p><b>'+(S&&S.founder?S.founder.name:'Founder')+'</b> &middot; Day '+(S?S.day:1)+'</p>'+
+    (S&&S.biz?'<p style="color:var(--turq)">'+(S.biz.name||'')+'&ensp;&middot;&ensp;'+(S.customers||0)+' customer'+(S.customers===1?'':'s')+'</p>':'')+
+    (biggest?'<p style="margin-top:10px"><b>'+(biggest.label||'')+': '+(biggest.title||'')+'</b></p>':'')+
+    '<p style="margin-top:12px;font-size:12px;color:#9A917F">Your teacher can see your progress on the Facilitator Dashboard.</p>'+
+    '<button class="btn ghost" id="sessionExitBtn">Save &amp; Exit</button>';
+  $('bigModal').style.display='flex';
+  saveGame();
+  document.getElementById('sessionExitBtn').onclick=async()=>{ await saveGame(); location.reload(); };
 }
 
 let lampGlows=[];
@@ -3558,6 +3849,7 @@ function collide(nx,nz){
 /* ---------------- MAIN LOOP ---------------- */
 let last=performance.now(),minAcc=0;
 const lockNotice={};
+let _lastPX=0,_lastPZ=0;
 function loop(now){
   const DT=Math.min((now-last)/1000,0.05); last=now;
   const uiOpen=dialogOpen||$('phone').style.display==='flex'||$('bigModal').style.display==='flex';
@@ -3828,6 +4120,11 @@ function loop(now){
     const cz=playerPos.z+Math.cos(camYaw)*cd*Math.cos(camPitch);
     camera.position.lerp(new THREE.Vector3(cx,ch,cz),0.14);
     camera.lookAt(playerPos.x,18,playerPos.z);
+    // classroom presence: broadcast my position, animate classmates
+    const _pvMoved=Math.hypot(playerPos.x-_lastPX,playerPos.z-_lastPZ)>0.05;
+    _lastPX=playerPos.x; _lastPZ=playerPos.z;
+    sendPresenceUpdate(now,playerPos.x,playerPos.z,playerYaw,skating,_pvMoved);
+    updateRemotePlayers(now);
     updateSky();
     // hide lock sprites once unlocked
     ZONES.forEach(zo=>{ if(zo.lockSprite) zo.lockSprite.visible=S.stage<zo.unlock; });
@@ -3860,16 +4157,48 @@ async function saveGame(){
   memSave=data;
   try{ localStorage.setItem(SAVE_KEY,data); }catch(e){}
   try{ if(window.storage) await window.storage.set(SAVE_KEY,data); }catch(e){}
+  // Cloud sync — fire-and-forget so it never blocks the game.
+  // This is also what feeds the teacher's facilitator dashboard.
+  const sb=getSupabase();
+  if(sb&&S.townCode&&S.founder){
+    sb.from('saves').upsert(
+      {town_code:S.townCode,founder_name:S.founder.name,data:S,updated_at:new Date().toISOString()},
+      {onConflict:'town_code,founder_name'}
+    ).then(({error})=>{ if(error) console.warn('[SC] cloud save:',error.message); });
+  }
 }
 async function loadGame(){
+  // Load local first (fast, works offline)
+  let local=null;
   try{
     if(window.storage){
       const r=await window.storage.get(SAVE_KEY);
-      if(r&&r.value) return JSON.parse(r.value);
+      if(r&&r.value) local=JSON.parse(r.value);
     }
   }catch(e){}
-  try{ const d=localStorage.getItem(SAVE_KEY); if(d) return JSON.parse(d); }catch(e){}
-  return memSave?JSON.parse(memSave):null;
+  if(!local){
+    try{ const d=localStorage.getItem(SAVE_KEY); if(d) local=JSON.parse(d); }catch(e){}
+  }
+  if(!local) return memSave?JSON.parse(memSave):null;
+  // Then prefer the cloud copy if it's further along — lets a student
+  // continue on any device with the same class code + founder name.
+  const sb=getSupabase();
+  if(sb&&local.townCode&&local.founder){
+    try{
+      const {data,error}=await sb.from('saves').select('data').eq('town_code',local.townCode).eq('founder_name',local.founder.name).single();
+      if(!error&&data&&data.data){
+        const cloud=data.data;
+        if((cloud.day||0)>=(local.day||0)){
+          if(!cloud.townCode) cloud.townCode=local.townCode;
+          const str=JSON.stringify(cloud);
+          memSave=str;
+          try{ localStorage.setItem(SAVE_KEY,str); }catch(e){}
+          return cloud;
+        }
+      }
+    }catch(e){}
+  }
+  return local;
 }
 
 /* ---------------- TITLE / CREATOR / BOOT ---------------- */
@@ -3953,7 +4282,9 @@ function startWorld(){
   if(S.event){ const eb=$('eventBanner'); eb.textContent=String(S.event).toUpperCase(); eb.style.display='block'; }
   if(!document.getElementById('muteBtn'))initMuteBtn();
   Music.setEnabled(!S.muted);
-  loadTown();
+  loadTown().then(()=>subscribeTownPlots());
+  subscribeTown();
+  if(_sessionMode) startSessionTimer();
   if(!startWorld.townPoll){
     startWorld.townPoll=setInterval(()=>{ if(S) loadTown(); },60000);
   }
@@ -3982,7 +4313,9 @@ $('startBtn').onclick=()=>{
   creatorState.name=($('cName').value||'Founder').trim().slice(0,16)||'Founder';
   S=freshState();
   S.founder={name:creatorState.name,skin:creatorState.skin,fit:creatorState.fit,voice:creatorState.voice};
+  S.townCode=_sessionCode||normalizeTownCode($('townCodeInput').value);
   startWorld();
+  if(S.townCode) toast('Joined class town <b>'+S.townCode+'</b>. Classmates appear in the city as they play.','good');
   sBig();
   toast('<b>Halito, '+S.founder.name+'.</b> Welcome to The Grind. Find Marcus Webb.','gold');
   feed('Day 1. A founder steps into Sovereign City with $5,000 and a dream.');
@@ -4190,6 +4523,13 @@ window.Trailer=Trailer;
   await new Promise(r=>setTimeout(r,60));
   const s=await loadGame();
   if(s) $('continueBtn').style.display='inline-block';
+  // class code field: normalize as you type; session URLs pre-fill and lock it
+  const tci=$('townCodeInput');
+  if(tci){
+    tci.addEventListener('input',()=>{ tci.value=normalizeTownCode(tci.value)||''; });
+    if(_sessionCode){ tci.value=_sessionCode; tci.disabled=true; }
+    else if(s&&s.townCode) tci.value=s.townCode;
+  }
   if(document.getElementById('bootBar'))document.getElementById('bootBar').style.width='100%';
   setTimeout(()=>{const l=document.getElementById('bootLoad');if(l)l.remove();},260);
   requestAnimationFrame(loop);
