@@ -3327,6 +3327,180 @@ function crumbMilestone(n){
   }
 }
 
+/* =========================================================
+   INDUSTRY SPOTLIGHT CLIPS — cinematic moments, per industry
+   Short letterboxed in-engine scenes staged around the player
+   at big business moments: founding, 5 customers (The Debut),
+   25 customers (The Blow-Up). Fashion gets a runway show,
+   acting a movie set, music a concert, tech a launch keynote,
+   food a market rush — the celebration matches the dream.
+   Tap anywhere to skip.
+   ========================================================= */
+const CLIP_THEMES={
+  fashion:  {arch:'runway',debut:'DRESS TO IMPRESS',debutSub:'{biz} hits the runway',blow:'FASHION WEEK',blowSub:'Everyone wants what {biz} is making',col:0xE85A9B},
+  acting:   {arch:'stage', debut:'LIGHTS. CAMERA. ACTION!',debutSub:'{biz} steals the scene',blow:'STAR ON THE RISE',blowSub:'{biz} just booked the lead role',col:0xF2A33C},
+  music:    {arch:'stage', debut:'LIVE ON STAGE',debutSub:'{biz} plays its first show',blow:'SOLD OUT',blowSub:'The whole city sings along with {biz}',col:0x8A5AE8},
+  arts:     {arch:'stage', debut:'GALLERY NIGHT',debutSub:'{biz} opens the show',blow:'MASTERPIECE',blowSub:'Collectors are lining up for {biz}',col:0x3FB8AF},
+  sports:   {arch:'stage', debut:'GAME DAY',debutSub:'{biz} takes the field',blow:'CHAMPIONSHIP FORM',blowSub:'The crowd is chanting for {biz}',col:0x44CC44},
+  tech:     {arch:'launch',debut:'DEMO DAY',debutSub:'{biz} ships version 1.0',blow:'GOING VIRAL',blowSub:'{biz} is trending across the city',col:0x00C8FF},
+  ai:       {arch:'launch',debut:'LAUNCH DAY',debutSub:'{biz} goes live',blow:'BREAKTHROUGH',blowSub:'{biz} just changed the game',col:0x5FA8FF},
+  agency:   {arch:'launch',debut:'CAMPAIGN DROP',debutSub:'{biz} takes over the billboards',blow:'AWARD NIGHT',blowSub:'{biz} sweeps the awards',col:0xFFD700},
+  infra:    {arch:'launch',debut:'RIBBON CUTTING',debutSub:'{biz} breaks ground',blow:'CITY BUILDER',blowSub:'{biz} powers the whole block',col:0xC96F4A},
+  education:{arch:'launch',debut:'FIRST CLASS',debutSub:'{biz} opens its doors',blow:'EVERY SEAT TAKEN',blowSub:'The waitlist for {biz} is a mile long',col:0x5FA86B},
+  food:     {arch:'market',debut:'GRAND TASTING',debutSub:'The line for {biz} is down the block',blow:'FIVE STARS',blowSub:'{biz} is the talk of the city',col:0xFF8C00},
+  services: {arch:'market',debut:'BOOKED SOLID',debutSub:'{biz} is the name people trust',blow:'FIVE-STAR REVIEWS',blowSub:'Every review says {biz}',col:0x8FA98B}
+};
+const Clip={
+  active:false,t:0,dur:7.5,parts:[],crowd:[],beams:null,theme:null,kind:null,cx:0,cz:0,
+  play(kind){
+    if(this.active||!S||!S.biz||!playerGroup) return;
+    const th=CLIP_THEMES[S.biz.industry]||CLIP_THEMES.services;
+    this.theme=th; this.kind=kind; this.t=0;
+    this.dur=kind==='founded'?5.5:8;
+    this.active=true;
+    this.cx=playerPos.x; this.cz=playerPos.z;
+    const cap=kind==='founded'?'GRAND OPENING':(kind==='debut'?th.debut:th.blow);
+    const sub=(kind==='founded'?'{biz} is open for business':(kind==='debut'?th.debutSub:th.blowSub)).replace('{biz}',S.biz.name);
+    this.showBars(cap,sub);
+    this.build(th,kind,this.cx,this.cz);
+    tone(392,.3,'triangle',.08); tone(523,.4,'triangle',.08,.12); tone(659,.55,'triangle',.09,.24);
+  },
+  build(th,kind,px,pz){
+    const add=m=>{scene.add(m);this.parts.push(m);};
+    if(th.arch==='runway'){
+      const cat=new THREE.Mesh(new THREE.BoxGeometry(24,2,110),new THREE.MeshLambertMaterial({color:0xF2EEE6}));
+      cat.position.set(px,1,pz+14); add(cat);
+      for(let i=-4;i<=4;i++) [-13,13].forEach(ox=>{
+        const l=new THREE.Mesh(new THREE.SphereGeometry(1.1,6,6),new THREE.MeshBasicMaterial({color:th.col}));
+        l.position.set(px+ox,2.8,pz+14+i*12); add(l);
+      });
+    } else if(th.arch==='stage'||th.arch==='launch'){
+      const st=new THREE.Mesh(new THREE.CylinderGeometry(26,28,4,20),new THREE.MeshLambertMaterial({color:0x2A2530}));
+      st.position.set(px,2,pz); add(st);
+      if(th.arch==='launch'){
+        const sc=document.createElement('canvas'); sc.width=512; sc.height=256;
+        const sx=sc.getContext('2d');
+        sx.fillStyle='#10131C'; sx.fillRect(0,0,512,256);
+        sx.fillStyle='#'+new THREE.Color(th.col).getHexString();
+        sx.font='900 60px Archivo,Arial'; sx.textAlign='center';
+        sx.fillText((S.biz.name||'').slice(0,14).toUpperCase(),256,118);
+        sx.fillStyle='#F5EFE3'; sx.font='600 30px Arial';
+        sx.fillText(kind==='blowup'?'★ ★ ★ ★ ★':'v1.0 — LIVE',256,182);
+        const scr=new THREE.Mesh(new THREE.PlaneGeometry(70,35),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(sc)}));
+        scr.position.set(px,34,pz-34); add(scr);
+        const frame=new THREE.Mesh(new THREE.BoxGeometry(74,39,2),new THREE.MeshLambertMaterial({color:0x1A1C22}));
+        frame.position.set(px,34,pz-35.2); add(frame);
+      }
+    } else { // market: canopy stall + rush
+      const stall=new THREE.Mesh(new THREE.BoxGeometry(34,2.5,24),new THREE.MeshLambertMaterial({color:th.col}));
+      stall.position.set(px,18,pz-16); stall.rotation.x=0.08; add(stall);
+      [[-14,-8],[14,-8],[-14,8],[14,8]].forEach(([ox,oz])=>{
+        const p=new THREE.Mesh(new THREE.CylinderGeometry(1,1,17,6),new THREE.MeshLambertMaterial({color:0x6A5A3A}));
+        p.position.set(px+ox,8.5,pz-16+oz); add(p);
+      });
+    }
+    // sweeping light beams + a warm key light
+    this.beams=[];
+    [th.col,0xFFFFFF,th.col].forEach((bc,i)=>{
+      const cone=new THREE.Mesh(new THREE.ConeGeometry(14,60,14,1,true),
+        new THREE.MeshBasicMaterial({color:bc,transparent:true,opacity:0.14,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));
+      cone.position.set(px+(i-1)*30,32,pz-4);
+      add(cone); this.beams.push(cone);
+    });
+    const pl=new THREE.PointLight(0xFFF2DC,1.6,260);
+    pl.position.set(px,60,pz); add(pl);
+    // hyped crowd — flanking left and right so the founder stays center frame
+    const n=kind==='blowup'?10:(kind==='founded'?6:8);
+    for(let i=0;i<n;i++){
+      const side=i%2?1:-1;
+      const cxp=px+side*rnd(32,52);
+      const czp=pz+rnd(-6,34);
+      const p=makePerson(SKINS[ri(0,SKINS.length-1)],FITS[ri(0,FITS.length-1)]);
+      p.group.position.set(cxp,0,czp);
+      p.group.rotation.y=Math.atan2(px-cxp,pz-czp);
+      scene.add(p.group); this.parts.push(p.group); this.crowd.push(p);
+    }
+  },
+  update(DT,now){
+    this.t+=DT;
+    const k=Math.min(this.t/this.dur,1);
+    // slow cinematic orbit, pushing in
+    const ang=0.35+k*1.35, r=120-k*35, h=26+Math.sin(k*Math.PI)*26;
+    camera.position.set(this.cx+Math.sin(ang)*r,h,this.cz+Math.cos(ang)*r);
+    camera.lookAt(this.cx,16,this.cz);
+    const pg=playerGroup, t=now/1000;
+    if(pg){
+      const baseY=this.theme.arch==='runway'?2:(this.theme.arch==='market'?0:4);
+      pg.group.position.set(this.cx,baseY,this.cz);
+      pg.group.rotation.y=Math.atan2(camera.position.x-this.cx,camera.position.z-this.cz);
+      if(this.theme.arch==='runway'){
+        // strut: legs work, one hand on hip, the other waving
+        pg.lLeg.rotation.x=Math.sin(t*6)*0.5; pg.rLeg.rotation.x=-Math.sin(t*6)*0.5;
+        pg.lArm.rotation.z=0.35; pg.lArm.rotation.x=0;
+        pg.rArm.rotation.z=-2.4+Math.sin(t*3)*0.2; pg.rArm.rotation.x=0;
+      } else {
+        // hero bounce, both arms up
+        pg.lArm.rotation.z=2.5+Math.sin(t*4)*0.15; pg.rArm.rotation.z=-2.5-Math.sin(t*4+1)*0.15;
+        pg.lArm.rotation.x=0; pg.rArm.rotation.x=0;
+        pg.lLeg.rotation.x=0; pg.rLeg.rotation.x=0;
+        pg.group.position.y=baseY+Math.abs(Math.sin(t*5))*1.5;
+      }
+    }
+    this.crowd.forEach((c,i)=>{
+      const b=Math.abs(Math.sin(t*4+i));
+      c.group.position.y=b*2.2;
+      c.lArm.rotation.z=2.3+b*0.35; c.rArm.rotation.z=-2.3-b*0.35;
+    });
+    if(this.beams) this.beams.forEach((b,i)=>{
+      b.rotation.z=Math.sin(t*1.2+i*2)*0.25; b.rotation.x=Math.cos(t*0.9+i)*0.2;
+    });
+    // camera flashes on the runway, confetti everywhere else
+    if(Math.random()<(this.theme.arch==='runway'?0.16:0.08))
+      spawnBurst(this.cx+rnd(-40,40),rnd(10,42),this.cz+rnd(-16,42),
+        this.theme.arch==='runway'?0xFFFFFF:this.theme.col);
+    if(this.t>=this.dur) this.end();
+  },
+  end(){
+    if(!this.active) return;
+    this.active=false;
+    this.parts.forEach(m=>scene.remove(m));
+    this.parts.length=0; this.crowd.length=0; this.beams=null;
+    this.hideBars();
+    if(playerGroup){
+      playerGroup.group.position.y=0; playerGroup.group.rotation.z=0;
+      [playerGroup.lArm,playerGroup.rArm,playerGroup.lLeg,playerGroup.rLeg].forEach(l=>{l.rotation.x=0;l.rotation.z=0;});
+    }
+  },
+  showBars(cap,sub){
+    let ui=document.getElementById('clipUI');
+    if(!ui){
+      ui=document.createElement('div'); ui.id='clipUI';
+      ui.style.cssText='position:fixed;inset:0;z-index:40;pointer-events:auto;cursor:pointer';
+      ui.innerHTML=
+        '<div style="position:absolute;top:0;left:0;right:0;height:9vh;background:#000"></div>'+
+        '<div style="position:absolute;bottom:0;left:0;right:0;height:13vh;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;padding:4px">'+
+        '<div id="clipCap" style="font-family:Archivo,Inter,sans-serif;font-weight:900;font-size:clamp(17px,4.5vw,30px);color:#E8C064;letter-spacing:.05em;text-align:center"></div>'+
+        '<div id="clipSub" style="font-family:Inter,sans-serif;font-size:clamp(11px,2.6vw,14px);color:#F5EFE3;text-align:center"></div></div>'+
+        '<div style="position:absolute;top:calc(9vh + 8px);right:12px;font-size:11px;color:#C8C0AE;font-family:Inter,sans-serif;background:rgba(0,0,0,.4);padding:3px 9px;border-radius:9px">tap to skip ▶</div>';
+      ui.addEventListener('pointerdown',e=>{e.stopPropagation();Clip.end();});
+      document.body.appendChild(ui);
+    }
+    ui.style.display='block';
+    document.getElementById('clipCap').textContent=cap;
+    document.getElementById('clipSub').textContent=sub;
+    // hide gameplay UI for a clean cinematic frame
+    ['hud','lockHint','hintKeys'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el&&el.style.visibility!=='hidden'){ el.style.visibility='hidden'; this._hidden=this._hidden||[]; this._hidden.push(el); }
+    });
+  },
+  hideBars(){
+    const ui=document.getElementById('clipUI'); if(ui) ui.style.display='none';
+    (this._hidden||[]).forEach(el=>{ el.style.visibility='visible'; });
+    this._hidden=[];
+  }
+};
+
 /* ---- classroom session timer (?session=true&code=XXXXXX&duration=40) ---- */
 let _sessionTimer=null;
 function startSessionTimer(){
@@ -3993,7 +4167,14 @@ function loop(now){
   const DT=Math.min((now-last)/1000,0.05); last=now;
   const uiOpen=dialogOpen||$('phone').style.display==='flex'||$('bigModal').style.display==='flex';
   if(S&&Trailer.active){Trailer.update(DT,now);}
-  if(S&&!uiOpen&&!Trailer.active){
+  // industry spotlight clips: trigger on business milestones, run the scene
+  if(S&&S.biz&&!uiOpen&&!Trailer.active&&!Clip.active){
+    if(!S.clipFounded){ S.clipFounded=1; Clip.play('founded'); saveGame(); }
+    else if(S.customers>=5&&!S.clipDebut){ S.clipDebut=1; Clip.play('debut'); saveGame(); }
+    else if(S.customers>=25&&!S.clipBlowup){ S.clipBlowup=1; Clip.play('blowup'); saveGame(); }
+  }
+  if(S&&Clip.active) Clip.update(DT,now);
+  if(S&&!uiOpen&&!Trailer.active&&!Clip.active){
     // camera-relative movement
     let mx=joyVec.x,my=joyVec.y;
     if(keys['w']||keys['arrowup'])my-=1; if(keys['s']||keys['arrowdown'])my+=1;
@@ -4251,14 +4432,16 @@ function loop(now){
   // camera
   if(S){
     const skating=window._skating||false;
-    const targetFOV=skating?72:62;
-    camera.fov=lerp(camera.fov,targetFOV,0.06);
-    camera.updateProjectionMatrix();
-    const cd=skating?190:160,ch=50+camPitch*100;
-    const cx=playerPos.x+Math.sin(camYaw)*cd*Math.cos(camPitch);
-    const cz=playerPos.z+Math.cos(camYaw)*cd*Math.cos(camPitch);
-    camera.position.lerp(new THREE.Vector3(cx,ch,cz),0.14);
-    camera.lookAt(playerPos.x,18,playerPos.z);
+    if(!Clip.active){
+      const targetFOV=skating?72:62;
+      camera.fov=lerp(camera.fov,targetFOV,0.06);
+      camera.updateProjectionMatrix();
+      const cd=skating?190:160,ch=50+camPitch*100;
+      const cx=playerPos.x+Math.sin(camYaw)*cd*Math.cos(camPitch);
+      const cz=playerPos.z+Math.cos(camYaw)*cd*Math.cos(camPitch);
+      camera.position.lerp(new THREE.Vector3(cx,ch,cz),0.14);
+      camera.lookAt(playerPos.x,18,playerPos.z);
+    }
     // classroom presence: broadcast my position, animate classmates
     const _pvMoved=Math.hypot(playerPos.x-_lastPX,playerPos.z-_lastPZ)>0.05;
     _lastPX=playerPos.x; _lastPZ=playerPos.z;
@@ -4425,6 +4608,12 @@ function startWorld(){
   loadTown().then(()=>subscribeTownPlots());
   subscribeTown();
   if(!crumbs.length) buildCrumbs(); // needs S (collide checks the empty lot)
+  // grandfather existing saves: spotlight clips only fire on NEW progress
+  if(S.biz&&S.clipFounded===undefined){
+    S.clipFounded=1;
+    if(S.customers>=5) S.clipDebut=1;
+    if(S.customers>=25) S.clipBlowup=1;
+  }
   if(_sessionMode) startSessionTimer();
   if(!startWorld.townPoll){
     startWorld.townPoll=setInterval(()=>{ if(S) loadTown(); },60000);
