@@ -74,6 +74,17 @@ body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: 
 .fac-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #14120F; color: #E8C064; padding: 10px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 9999; }
 .fac-toast.show { opacity: 1; }
 
+/* table mode (board game founders) */
+.tm-panel { background: #FBF7EE; border: 1.5px solid #E5D9B8; border-radius: 12px; padding: 16px 18px; margin-bottom: 24px; }
+.tm-panel h3 { font-family: Archivo, sans-serif; font-size: 14px; margin-bottom: 4px; }
+.tm-panel .tm-sub { font-size: 12px; color: var(--sub); margin-bottom: 12px; }
+.tm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.tm-grid label { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--sub); margin-bottom: 3px; }
+.tm-grid input, .tm-grid select { width: 100%; border: 1.5px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 13px; font-family: inherit; background: #fff; }
+.tm-grid input:focus, .tm-grid select:focus { outline: none; border-color: var(--gold); }
+.tm-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.tag-tabletop { display: inline-block; margin-left: 6px; font-size: 11px; }
+
 @media print {
   .fac-header { background: none !important; color: #14120F !important; border-bottom: 2px solid #14120F; padding: 8px 0; }
   .code-badge { background: none !important; color: #14120F !important; border: 1.5px solid #14120F; }
@@ -161,13 +172,17 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = founders.map(row => {
+  tbody.innerHTML = founders.map((row, idx) => {
     const d = row.data || {};
     const biz = d.biz || {};
     const st = d.stage || 1;
     const p = d.lastProfit;
+    const tabletop = d.source === 'tabletop';
     return '<tr>' +
-      '<td><div class="fn">' + esc(row.founder_name) + '</div><div class="bn">' + esc(biz.name||'—') + '</div></td>' +
+      '<td><div class="fn">' + esc(row.founder_name) +
+        (tabletop ? '<span class="tag-tabletop" title="Board game founder">🎲</span>' +
+          ' <a href="#" style="font-size:11px" onclick="prefillTableForm(founders[' + idx + ']);return false">edit</a>' : '') +
+        '</div><div class="bn">' + esc(biz.name||'—') + '</div></td>' +
       '<td>' + esc(biz.industry||'—') + '</td>' +
       '<td><span class="stage-pill s' + st + '">' + esc(STAGE_NAMES[st]||'Ideator') + '</span></td>' +
       '<td>' + (d.customers||0) + '</td>' +
@@ -264,10 +279,35 @@ function renderShell() {
       '<label for="challengeInput">Today\'s Hustle</label>' +
       '<input id="challengeInput" class="hustle-input" type="text" maxlength="160" placeholder="Set a custom challenge visible to all founders in this town…">' +
       '<button id="setChallengeBtn" class="btn btn-gold">Set Challenge</button>' +
+      '<button class="btn btn-outline" id="tableModeBtn">🎲 Table Mode</button>' +
       '<button class="btn btn-outline" id="exportBtn">⬇ Export Session Report (CSV)</button>' +
       '<button class="btn btn-outline" onclick="window.print()">🖨 Print</button>' +
     '</div>' +
     '<div class="fac-main">' +
+      '<div class="tm-panel" id="tmPanel" style="display:none">' +
+        '<h3>🎲 Table Mode — log Founder Mode board-game founders</h3>' +
+        '<div class="tm-sub">Board-game founders join the same class town: they appear in this roster AND in every student\'s in-game Class Ranks, and board-game Sovereignty goes on the shared Hall of Fame. Update a founder any time — same name overwrites their entry.</div>' +
+        '<div class="tm-grid">' +
+          '<div><label for="tmName">Founder name</label><input id="tmName" maxlength="16" placeholder="Jordan C."></div>' +
+          '<div><label for="tmBiz">Business name</label><input id="tmBiz" maxlength="24" placeholder="Fresh Fade Studio"></div>' +
+          '<div><label for="tmInd">Industry</label><select id="tmInd">' +
+            [['music','Music & Sound'],['food','Food & Drink'],['services','Local Services'],['sports','Sports & Fitness'],
+             ['acting','Acting & Film'],['fashion','Fashion & Merch'],['education','Education & Tutoring'],['arts','Arts & Design'],
+             ['tech','Tech & Apps'],['agency','Agency & Talent'],['ai','AI Studio'],['infra','Infrastructure & Energy']]
+            .map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>';}).join('') +
+          '</select></div>' +
+          '<div><label for="tmStage">Stage</label><select id="tmStage">' +
+            '<option value="1">1 · Ideator</option><option value="2">2 · Hustler</option><option value="3">3 · Builder</option>' +
+            '<option value="4">4 · Scaler</option><option value="5">5 · Sovereign</option></select></div>' +
+          '<div><label for="tmCust">Customers (0–15)</label><input id="tmCust" type="number" min="0" max="15" value="0"></div>' +
+          '<div><label for="tmProfit">Profit last round ($)</label><input id="tmProfit" type="number" step="5" value="0"></div>' +
+          '<div><label for="tmRound">Round</label><input id="tmRound" type="number" min="1" max="20" value="1"></div>' +
+        '</div>' +
+        '<div class="tm-actions">' +
+          '<button class="btn btn-gold" id="tmSaveBtn">Save Founder</button>' +
+          '<button class="btn btn-outline" id="tmFameBtn" title="Only for a founder who just won at the table">🏆 Record Sovereignty</button>' +
+        '</div>' +
+      '</div>' +
       '<div class="fac-section-title">Founders — Town ' + esc(urlCode) + '</div>' +
       '<table class="founder-table">' +
         '<thead><tr>' +
@@ -283,9 +323,88 @@ function renderShell() {
 
   document.getElementById('setChallengeBtn').addEventListener('click', setChallenge);
   document.getElementById('exportBtn').addEventListener('click', exportCSV);
+  document.getElementById('tableModeBtn').addEventListener('click', () => {
+    const p = document.getElementById('tmPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+    if (p.style.display === 'block') document.getElementById('tmName').focus();
+  });
+  document.getElementById('tmSaveBtn').addEventListener('click', saveTableFounder);
+  document.getElementById('tmFameBtn').addEventListener('click', recordTableSovereignty);
   const inp = document.getElementById('challengeInput');
   inp.addEventListener('input', () => { inp._dirty = true; });
   inp.addEventListener('keydown', e => { if (e.key === 'Enter') setChallenge(); });
+}
+
+/* ---- Table Mode: board-game founders live in the same saves table,
+   so they show up in the roster AND in every student's in-game
+   Class Ranks under the same class code. ---- */
+function readTableForm() {
+  const name = (document.getElementById('tmName').value || '').trim().slice(0, 16);
+  if (!name) { showToast('Enter a founder name.'); return null; }
+  return {
+    name,
+    biz: (document.getElementById('tmBiz').value || '').trim().slice(0, 24) || name + '’s Business',
+    industry: document.getElementById('tmInd').value,
+    stage: parseInt(document.getElementById('tmStage').value) || 1,
+    customers: Math.max(0, Math.min(15, parseInt(document.getElementById('tmCust').value) || 0)),
+    profit: parseInt(document.getElementById('tmProfit').value) || 0,
+    round: Math.max(1, parseInt(document.getElementById('tmRound').value) || 1)
+  };
+}
+async function saveTableFounder() {
+  if (!sb) { showToast('Backend not configured.'); return; }
+  const f = readTableForm(); if (!f) return;
+  const data = {
+    source: 'tabletop',
+    founder: { name: f.name },
+    biz: { name: f.biz, industry: f.industry },
+    stage: f.stage, customers: f.customers, lastProfit: f.profit, day: f.round,
+    learned: [], insights: []
+  };
+  const btn = document.getElementById('tmSaveBtn'); btn.disabled = true;
+  const { error } = await sb.from('saves').upsert(
+    { town_code: urlCode, founder_name: f.name, data, updated_at: new Date().toISOString() },
+    { onConflict: 'town_code,founder_name' });
+  btn.disabled = false;
+  showToast(error ? 'Error: ' + error.message
+    : '🎲 ' + f.name + ' saved — now on the class ranks (round ' + f.round + ').');
+  if (!error) loadData();
+}
+async function recordTableSovereignty() {
+  if (!sb) { showToast('Backend not configured.'); return; }
+  const f = readTableForm(); if (!f) return;
+  if (f.stage !== 5) { showToast('Set Stage to 5 · Sovereign first — this is for a founder who just won at the table.'); return; }
+  // resolve (or create) the town id, same as the game does
+  let tid = townId;
+  if (!tid) {
+    const { data: t } = await sb.from('towns').select('id').eq('code', urlCode).maybeSingle();
+    if (t) tid = t.id;
+    else {
+      const { data: created } = await sb.from('towns').insert({ code: urlCode, name: urlCode }).select('id').single();
+      if (created) tid = created.id;
+    }
+    townId = tid;
+  }
+  const btn = document.getElementById('tmFameBtn'); btn.disabled = true;
+  await saveTableFounder();
+  const { error } = await sb.from('fame').insert({
+    town_id: tid, founder_name: f.name, biz_name: f.biz,
+    industry: f.industry, day_achieved: f.round });
+  btn.disabled = false;
+  showToast(error ? 'Error: ' + error.message
+    : '🏆 ' + f.name + ' is on the Hall of Fame — Sovereign at round ' + f.round + '!');
+}
+function prefillTableForm(row) {
+  const d = row.data || {}, b = d.biz || {};
+  document.getElementById('tmPanel').style.display = 'block';
+  document.getElementById('tmName').value = row.founder_name || '';
+  document.getElementById('tmBiz').value = b.name || '';
+  document.getElementById('tmInd').value = b.industry || 'services';
+  document.getElementById('tmStage').value = String(d.stage || 1);
+  document.getElementById('tmCust').value = d.customers || 0;
+  document.getElementById('tmProfit').value = d.lastProfit || 0;
+  document.getElementById('tmRound').value = d.day || 1;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function renderCodeForm() {

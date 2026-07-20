@@ -1410,7 +1410,7 @@ function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 async function renderRanks(c){
   const sb=getSupabase();
   const explain='<div class="feedItem" style="font-size:11.5px;color:#9A917F">Score = Stage&times;100 + Customers&times;10 + daily Profit. '+
-    'Cash alone doesn’t rank you &mdash; a real business does.</div>';
+    'Cash alone doesn’t rank you &mdash; a real business does. 🎲 = playing the Founder Mode board game.</div>';
   if(!sb||!S.townCode){
     let html='<div class="feedItem"><b>🏆 Class Ranks</b><br>Join with a Class Code on the title screen to compete with your class in one shared town.</div>';
     if(fameCache.length){
@@ -1439,7 +1439,7 @@ async function renderRanks(c){
     const me=S.founder&&r.name===S.founder.name;
     const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
     html+='<div class="feedItem"'+(me?' style="border-left:3px solid var(--gold);background:rgba(232,192,100,.08)"':'')+'>'+
-      medal+' <b>'+esc2(r.name)+(me?' (you)':'')+'</b>'+
+      medal+' <b>'+esc2(r.name)+(me?' (you)':'')+'</b>'+(r.d.source==='tabletop'?' 🎲':'')+
       (r.d.biz&&r.d.biz.name?' · '+esc2(r.d.biz.name):'')+
       '<br><span style="font-size:11px;color:#9A917F">'+(stages[r.d.stage||1])+' · '+(r.d.customers||0)+' customers · '+fmt(r.d.lastProfit||0)+'/day · <b style="color:var(--gold)">'+r.score+' pts</b></span></div>';
   });
