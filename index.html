@@ -4172,7 +4172,7 @@ function cameraBlockT(px,py,pz,cx,cy,cz){
     if(b.id==='lot'&&!S.hq) continue;
     const h=((b.mesh&&b.mesh.scale.y)?b.h3*b.mesh.scale.y:b.h3)||60;
     const x0=b.x-3,x1=b.x+b.w+3,z0=b.y-3,z1=b.y+b.d+3;
-    let t0=0.05,t1=1,a,c;
+    let t0=0.02,t1=1,a,c;
     if(Math.abs(dx)<1e-6){ if(px<x0||px>x1) continue; }
     else{ a=(x0-px)/dx; c=(x1-px)/dx; if(a>c){const s=a;a=c;c=s;} t0=Math.max(t0,a); t1=Math.min(t1,c); if(t1<t0) continue; }
     if(Math.abs(dz)<1e-6){ if(pz<z0||pz>z1) continue; }
@@ -4464,16 +4464,24 @@ function loop(now){
       const cd=skating?190:160,ch=50+camPitch*100;
       const cx=playerPos.x+Math.sin(camYaw)*cd*Math.cos(camPitch);
       const cz=playerPos.z+Math.cos(camYaw)*cd*Math.cos(camPitch);
-      // pull in just enough to keep the founder visible past buildings
+      // pull in just enough to keep the founder visible past buildings.
+      // NEVER past the wall: the camera stops at 88% of the distance to
+      // the blocking face, however close that is. If that leaves it
+      // nearly on top of the player, fade to first-person instead of
+      // showing the inside of a wall.
       const tb=cameraBlockT(playerPos.x,18,playerPos.z,cx,ch,cz);
       if(tb<1){
-        const tc=Math.max(tb*0.88,0.24);
+        const tc=tb*0.88;
         camera.position.lerp(new THREE.Vector3(
           playerPos.x+(cx-playerPos.x)*tc,
           Math.max(18+(ch-18)*tc,14),
           playerPos.z+(cz-playerPos.z)*tc),0.25);
       } else {
         camera.position.lerp(new THREE.Vector3(cx,ch,cz),0.14);
+      }
+      if(playerGroup&&!Clip.active){
+        const camDist=Math.hypot(camera.position.x-playerPos.x,camera.position.z-playerPos.z);
+        playerGroup.group.visible=camDist>16;
       }
       camera.lookAt(playerPos.x,18,playerPos.z);
     }
