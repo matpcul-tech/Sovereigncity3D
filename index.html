@@ -1919,6 +1919,30 @@ function perfSample(DT){
 
 
 /* ---- music mute button ---- */
+/* ---- skateboard stow toggle: on-screen 🛹 button + B key ---- */
+function toggleBoard(){
+  if(!S||S.stage<2) return;
+  S.boardStowed=!S.boardStowed;
+  sTap();
+  toast(S.boardStowed?'🛹 Board stowed on your back.':'🛹 Board out! Push the stick all the way (or hold Shift) to ride.','good');
+  const b=document.getElementById('boardBtn');
+  if(b) b.style.opacity=S.boardStowed?0.45:1;
+  saveGame();
+}
+function initBoardBtn(){
+  if(document.getElementById('boardBtn')) return;
+  const b=document.createElement('button');
+  b.id='boardBtn';
+  b.style.cssText='position:absolute;bottom:calc(150px + env(safe-area-inset-bottom));right:18px;'+
+    'width:44px;height:44px;border-radius:14px;background:rgba(34,30,24,.85);'+
+    'border:2px solid #4A4438;font-size:20px;pointer-events:auto;cursor:pointer;'+
+    'display:none;align-items:center;justify-content:center;z-index:11';
+  b.textContent='🛹';
+  b.title='Take out / stow skateboard (B)';
+  b.onclick=()=>{ ac(); toggleBoard(); };
+  document.getElementById('hud').appendChild(b);
+  b.style.opacity=S&&S.boardStowed?0.45:1;
+}
 function initMuteBtn(){
   const b=document.createElement('button');
   b.id='muteBtn';
@@ -4061,6 +4085,7 @@ function updateSky(){
 /* ---------------- INPUT ---------------- */
 const keys={};
 window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;
+  if(e.key.toLowerCase()==='b'&&S&&!dialogOpen&&e.target.tagName!=='INPUT') toggleBoard();
   if((e.key==='e'||e.key==='Enter')&&$('interactBtn').style.display==='block') doInteract();
   if(e.code==='Space'&&!jumpActive&&document.pointerLockElement===$('game')){e.preventDefault();jumpVel=9.5;jumpActive=true;}
   if(e.key==='Escape'&&document.pointerLockElement) document.exitPointerLock();
@@ -4224,8 +4249,9 @@ function loop(now){
     const vx=(fx*my+rx*mx),vz=(fz*my+rz*mx);
     // skateboard: unlocked at Stage 2. Full joystick push or Shift = ride.
     const pushHard=Math.hypot(joyVec.x,joyVec.y)>0.88||keys['shift'];
-    window._skating=!!(S.stage>=2&&pushHard&&Math.hypot(vx,vz)>0.05);
-    const skating=S.stage>=2&&pushHard&&Math.hypot(vx,vz)>0.05;
+    const canSkate=S.stage>=2&&!S.boardStowed;
+    window._skating=!!(canSkate&&pushHard&&Math.hypot(vx,vz)>0.05);
+    const skating=canSkate&&pushHard&&Math.hypot(vx,vz)>0.05;
     const spd=skating?145:(keys['shift']?100:72);
     const moving=Math.hypot(vx,vz)>0.05;
     if(moving){
@@ -4278,7 +4304,16 @@ function loop(now){
     playerGroup.group.rotation.y=playerYaw;
     playerGroup.group.rotation.x=skating?0.06:0;
     playerGroup.group.scale.y=squashY;
-    playerParts.board.visible=skating;
+    // board: at your feet while riding, strapped across your back when stowed
+    const bd=playerParts.board;
+    if(skating){
+      bd.visible=true; bd.position.set(0,0,0); bd.rotation.set(0,0.55,0);
+    } else if(S.stage>=2&&S.boardStowed){
+      bd.visible=true; bd.position.set(0,13.5,-3.4);
+      bd.rotation.set(-Math.PI/2+0.12,0,0.32);
+    } else {
+      bd.visible=false;
+    }
     playerParts.chain.visible=S.stage>=3;
     if(jumpActive){
       playerGroup.lLeg.rotation.x=-0.6; playerGroup.rLeg.rotation.x=-0.6;
@@ -4528,6 +4563,8 @@ function loop(now){
 
 function updateHUDChips(){
   if(!S)return;
+  const bb=document.getElementById('boardBtn');
+  if(bb) bb.style.display=S.stage>=2?'flex':'none';
   const stages=['','Ideator','Hustler','Builder','Scaler','Sovereign'];
   $('stageChip').textContent='Stage '+S.stage+' \u00B7 '+stages[S.stage]+(S.streak>0?' \u00B7 \uD83D\uDD25'+S.streak:'');
   const h12=S.hour%12===0?12:S.hour%12, ap=S.hour<12?'AM':'PM';
@@ -4672,6 +4709,7 @@ function startWorld(){
     tw.label=S.biz.name+' Tower'; updateLabelSprite(tw.labelSprite,tw.label,'#E8C064'); }
   if(S.event){ const eb=$('eventBanner'); eb.textContent=String(S.event).toUpperCase(); eb.style.display='block'; }
   if(!document.getElementById('muteBtn'))initMuteBtn();
+  initBoardBtn();
   Music.setEnabled(!S.muted);
   loadTown().then(()=>subscribeTownPlots());
   subscribeTown();
