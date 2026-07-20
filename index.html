@@ -185,7 +185,7 @@ button{font-family:inherit;cursor:pointer;border:none}
   <p class="sub">Third-person founder simulation. You have a dream and $5,000. Walk the city, solve a real problem, and raise a tower with your name on it.</p>
   <button class="btn" id="newGameBtn">New Founder</button>
   <button class="btn ghost" id="continueBtn" style="display:none">Continue</button>
-  <div class="foot">Sovereign Shield Technologies LLC &middot; Ada, Oklahoma &middot; 3D Web Demo</div>
+  <div class="foot">Sovereign Shield Technologies LLC &middot; Ada, Oklahoma &middot; V2 Real World Update</div>
 </div>
 
 <div id="creator">
@@ -240,6 +240,18 @@ button{font-family:inherit;cursor:pointer;border:none}
 
 <div id="bigModal"><div id="bmCard"></div></div>
 
+<script>
+/* One-time cleanup: older deployments installed a PWA service worker that
+   pinned a stale build on players' devices. Remove any lingering worker and
+   its caches so every update reaches every player. */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations()
+    .then(rs=>rs.forEach(r=>r.unregister())).catch(()=>{});
+}
+if(window.caches){
+  caches.keys().then(ks=>ks.forEach(k=>caches.delete(k))).catch(()=>{});
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 /* =========================================================
