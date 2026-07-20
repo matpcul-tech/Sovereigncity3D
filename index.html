@@ -4180,9 +4180,12 @@ function loop(now){
     if(keys['w']||keys['arrowup'])my-=1; if(keys['s']||keys['arrowdown'])my+=1;
     if(keys['a']||keys['arrowleft'])mx-=1; if(keys['d']||keys['arrowright'])mx+=1;
     let mlen=Math.hypot(mx,my); if(mlen>1){mx/=mlen;my/=mlen;}
-    const fx=Math.sin(camYaw),fz=Math.cos(camYaw);       // camera forward on ground
+    // (sin,cos)camYaw points from the player TOWARD the camera, so screen-
+    // forward (push up / W) must move along the NEGATIVE of it — away from
+    // the camera, into the screen.
+    const fx=Math.sin(camYaw),fz=Math.cos(camYaw);
     const rx=Math.sin(camYaw+Math.PI/2),rz=Math.cos(camYaw+Math.PI/2);
-    const vx=(fx*-my+rx*mx),vz=(fz*-my+rz*mx);
+    const vx=(fx*my+rx*mx),vz=(fz*my+rz*mx);
     // skateboard: unlocked at Stage 2. Full joystick push or Shift = ride.
     const pushHard=Math.hypot(joyVec.x,joyVec.y)>0.88||keys['shift'];
     window._skating=!!(S.stage>=2&&pushHard&&Math.hypot(vx,vz)>0.05);
