@@ -1883,8 +1883,9 @@ function stageBanner(txt,sub){
 const streetLights=[];
 function buildStreetLights(){
   // Warm orange pools in front of major buildings, zones 1 & 2
-  [[255,1020],[530,1010],[940,1020],[1300,980]].forEach(([x,z])=>{
-    const pl=new THREE.PointLight(0xFFB060,0,140,2);
+  [[255,1020],[530,1010],[940,1020],[1300,980],
+   [800,800],[1600,800],[1950,1050],[1150,350]].forEach(([x,z])=>{
+    const pl=new THREE.PointLight(0xFFB060,0,150,2);
     pl.position.set(x,14,z); pl.castShadow=false;
     scene.add(pl); streetLights.push(pl);
   });
@@ -2620,7 +2621,7 @@ function makeWindowTex(wallHex, litRatio, bw, bh){
   const doorW=Math.min(34,W*0.24), doorX=W-Math.min(40,W*0.28);
   x.fillStyle='rgba(255,205,120,0.25)'; x.fillRect(doorX,H-BASE+5,doorW,BASE-8);
   // storefront + lobby glow at night
-  ex.fillStyle='rgba(200,170,110,0.5)'; ex.fillRect(4,H-BASE+5,W-8,BASE-10);
+  ex.fillStyle='rgba(200,170,110,0.22)'; ex.fillRect(4,H-BASE+5,W-8,BASE-10);
   ex.fillStyle='rgb(255,205,120)'; ex.fillRect(doorX,H-BASE+5,doorW,BASE-8);
   // vertical edge shading for depth
   const g=x.createLinearGradient(0,0,W,0);
@@ -2789,6 +2790,8 @@ function buildCity(){
       scene.add(crown);
       roof.position.y=h+crownH+2;
     }
+    // night light spill at the storefront
+    if(!b.small) addLightPool(b.x+b.w/2,b.y+b.d+14,Math.min(b.w*0.55+10,80));
     // label
     const sp=makeLabelSprite(b.label,'#F5EFE3');
     sp.position.set(b.x+b.w/2,h+22,b.y+b.d/2);
@@ -3687,6 +3690,31 @@ function downloadSprintCard(score){
 }
 
 let lampGlows=[];
+/* warm ground pools under lamps and in front of storefronts at night —
+   pure additive decals, zero extra GPU lights */
+let nightPools=[];
+let _poolTex=null;
+function getLightPoolTex(){
+  if(_poolTex) return _poolTex;
+  const c=document.createElement('canvas'); c.width=c.height=128;
+  const x=c.getContext('2d');
+  const g=x.createRadialGradient(64,64,4,64,64,64);
+  g.addColorStop(0,'rgba(255,196,120,0.55)');
+  g.addColorStop(0.5,'rgba(255,170,90,0.18)');
+  g.addColorStop(1,'rgba(255,150,70,0)');
+  x.fillStyle=g; x.fillRect(0,0,128,128);
+  _poolTex=new THREE.CanvasTexture(c);
+  return _poolTex;
+}
+function addLightPool(x,z,size){
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(size,size),
+    new THREE.MeshBasicMaterial({map:getLightPoolTex(),transparent:true,opacity:0,
+      blending:THREE.AdditiveBlending,depthWrite:false}));
+  m.rotation.x=-Math.PI/2; m.position.set(x,0.68,z);
+  m.renderOrder=2;
+  scene.add(m);
+  nightPools.push(m.material);
+}
 function addLamp(x,z,poleMat){
   const pole=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,30,6),poleMat);
   pole.position.set(x,15,z); pole.castShadow=true;
@@ -3703,6 +3731,7 @@ function addLamp(x,z,poleMat){
   glow.scale.set(42,42,1); glow.position.set(x,31,z);
   scene.add(pole,bulb,glow);
   streetLampMats.push(bulbMat); lampGlows.push(glow.material);
+  addLightPool(x,z,46);
 }
 function addTree(x,z){
   const s=rnd(1.0,1.6);
@@ -4154,18 +4183,18 @@ function updateSky(){
   if(S&&(S.won||goldenHour>0)){
     sky=SKY_GOLD; sun=1.1; hemi=0.4;
   } else if(h>=6&&h<8){ tmpC.copy(SKY_DAWN).lerp(SKY_DAY,(h-6)/2); sky=tmpC; sun=lerp(.65,1.35,(h-6)/2); hemi=.36; }
-  else if(h>=8&&h<17){ sky=SKY_DAY; sun=1.35; hemi=0.42; }
-  else if(h>=17&&h<20){ tmpC.copy(SKY_DAY).lerp(SKY_DUSK,(h-17)/3); sky=tmpC; sun=lerp(1.0,.35,(h-17)/3); hemi=.28; }
-  else if(h>=20&&h<21){ tmpC.copy(SKY_DUSK).lerp(SKY_NIGHT,h-20); sky=tmpC; sun=lerp(.35,.05,h-20); hemi=lerp(.2,.07,h-20); night=true; }
-  else { sky=SKY_NIGHT; sun=.05; hemi=.07; night=true; }
+  else if(h>=8&&h<18){ sky=SKY_DAY; sun=1.35; hemi=0.42; }
+  else if(h>=18&&h<20){ tmpC.copy(SKY_DAY).lerp(SKY_DUSK,(h-18)/2); sky=tmpC; sun=lerp(1.0,.4,(h-18)/2); hemi=.3; }
+  else if(h>=20&&h<21){ tmpC.copy(SKY_DUSK).lerp(SKY_NIGHT,h-20); sky=tmpC; sun=lerp(.4,.3,h-20); hemi=lerp(.24,.16,h-20); night=true; }
+  else { sky=SKY_NIGHT; sun=.3; hemi=.16; night=true; } // moonlit: dark but readable
   _bgC.copy(sky instanceof THREE.Color?sky:tmpC).convertSRGBToLinear();
   scene.background=_bgC;
   scene.fog.color.copy(_bgC);
   sunLight.intensity=sun;
   hemiLight.intensity=hemi;
   // warm the sun near the horizon, cool ambient after dark
-  if(night){ sunLight.color.setHex(0xCBD6E8).convertSRGBToLinear(); if(ambLight){ambLight.intensity=0.05; ambLight.color.setHex(0x9AA8C4).convertSRGBToLinear();} }
-  else if(h<8||h>=17){ sunLight.color.setHex(0xFFD9A8).convertSRGBToLinear(); if(ambLight){ambLight.intensity=0.18; ambLight.color.setHex(0xEAD9C8).convertSRGBToLinear();} }
+  if(night){ sunLight.color.setHex(0x9FB4D8).convertSRGBToLinear(); if(ambLight){ambLight.intensity=0.10; ambLight.color.setHex(0x9AA8C4).convertSRGBToLinear();} }
+  else if(h<8||h>=18){ sunLight.color.setHex(0xFFD9A8).convertSRGBToLinear(); if(ambLight){ambLight.intensity=0.18; ambLight.color.setHex(0xEAD9C8).convertSRGBToLinear();} }
   else { sunLight.color.setHex(0xFFF2DC).convertSRGBToLinear(); if(ambLight){ambLight.intensity=0.22; ambLight.color.setHex(0xDCE8F5).convertSRGBToLinear();} }
   // sun orbits around the PLAYER so the shadow frustum stays tight and useful
   const ang=(h/24)*Math.PI*2-Math.PI/2;
@@ -4192,22 +4221,24 @@ function updateSky(){
   // stars
   if(stars) stars.material.opacity=night?0.9:(h>=20&&h<21?(h-20)*0.9:0);
   // windows + lamps + halos
-  const winGlow=night?0.85:(h>=17&&h<21?lerp(0,0.85,(h-17)/4):0);
-  BUILDINGS.forEach(b=>{ if(b.mat) b.mat.emissiveIntensity=winGlow*1.15; });
+  const winGlow=night?0.85:(h>=18&&h<21?lerp(0,0.85,(h-18)/3):0);
+  BUILDINGS.forEach(b=>{ if(b.mat) b.mat.emissiveIntensity=winGlow*1.35; });
 
   const lampOn=night||h>=19;
   streetLampMats.forEach(m=>m.color.setHex(lampOn?0xFFD080:0x3A3E44).convertSRGBToLinear());
   lampGlows.forEach(m=>m.opacity=lampOn?0.85:0);
+  const poolO=night?0.38:(lampOn?0.26:0);
+  nightPools.forEach(m=>{ m.opacity=poolO; });
   streetLights.forEach(l=>l.intensity=lampOn?2.2:0);
   neonSigns.forEach(s=>s.material.opacity=lampOn?0.95:0);
   // gradient sky dome colors per phase
   let topC,horC;
   if(S&&(S.won||goldenHour>0)){topC='#B07E2A';horC='#E8B54A';}
   else if(h>=6&&h<8){const k=(h-6)/2;topC=lerpHex('#3A4A7A','#2E6CB8',k);horC=lerpHex('#E8A05C','#A9C9E6',k);}
-  else if(h>=8&&h<17){topC='#2E6CB8';horC='#A9C9E6';}
-  else if(h>=17&&h<20){const k=(h-17)/3;topC=lerpHex('#2E6CB8','#4A3B66',k);horC=lerpHex('#A9C9E6','#D97B4A',k);}
-  else if(h>=20&&h<21){const k=h-20;topC=lerpHex('#4A3B66','#0B1026',k);horC=lerpHex('#D97B4A','#1E2A44',k);}
-  else {topC='#0B1026';horC='#1E2A44';}
+  else if(h>=8&&h<18){topC='#2E6CB8';horC='#A9C9E6';}
+  else if(h>=18&&h<20){const k=(h-18)/2;topC=lerpHex('#2E6CB8','#4A3B66',k);horC=lerpHex('#A9C9E6','#D97B4A',k);}
+  else if(h>=20&&h<21){const k=h-20;topC=lerpHex('#4A3B66','#141B36',k);horC=lerpHex('#D97B4A','#2A3A58',k);}
+  else {topC='#141B36';horC='#2A3A58';}
   const skKey=topC+horC;
   if(skKey!==lastSkyKey){lastSkyKey=skKey;paintSkyGrad(topC,horC);}
   if(skyDome)skyDome.position.set(playerPos.x,0,playerPos.z);
