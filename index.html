@@ -3782,6 +3782,30 @@ function setHQEmpty(){
   bm.sp.position.y=24;
   updateLabelSprite(bm.sp,'Empty Lot \u00B7 $1,500','#9A917F');
 }
+/* If the player is ever inside a solid building (e.g. they bought the
+   HQ while standing on the lot, or loaded a stuck save), eject them
+   through the nearest face. Runs on build, on load, and as a per-frame
+   self-heal, so nobody can ever be trapped. */
+function pushOutOfBuildings(px,pz){
+  for(const b of BUILDINGS){
+    if(b.id==='lot'&&(!S||!S.hq)) continue;
+    const x0=b.x-7,x1=b.x+b.w+7,z0=b.y-7,z1=b.y+b.d+7;
+    if(px>x0&&px<x1&&pz>z0&&pz<z1){
+      const dl=px-x0,dr=x1-px,dt=pz-z0,db=z1-pz;
+      const m=Math.min(dl,dr,dt,db);
+      if(m===dl) px=x0-1; else if(m===dr) px=x1+1;
+      else if(m===dt) pz=z0-1; else pz=z1+1;
+    }
+  }
+  return {px,pz};
+}
+function ejectPlayerFromBuildings(){
+  const ej=pushOutOfBuildings(playerPos.x,playerPos.z);
+  if(ej.px!==playerPos.x||ej.pz!==playerPos.z){
+    playerPos.x=clamp(ej.px,12,W-12); playerPos.z=clamp(ej.pz,12,H-12);
+    if(S){ S.px=playerPos.x; S.py=playerPos.z; }
+  }
+}
 function setHQBuilt(){
   const b=BUILDINGS.find(b=>b.id==='lot');
   const bm=buildingMeshes['lot'];
@@ -3791,6 +3815,7 @@ function setHQBuilt(){
   bm.sp.position.y=b.h3*sc+22;
   b.label=(S.biz?S.biz.name:'Your')+' HQ';
   updateLabelSprite(bm.sp,b.label,'#F2A33C');
+  ejectPlayerFromBuildings(); // don't trap the founder inside their new HQ
 }
 
 function drawSCFace(x){
@@ -4276,6 +4301,7 @@ function loop(now){
         playerPos.x=nx; playerPos.z=nz;
       } else if(!collide(nx,playerPos.z)){ playerPos.x=nx; }
       else if(!collide(playerPos.x,nz)){ playerPos.z=nz; }
+      ejectPlayerFromBuildings(); // per-frame self-heal: never stay stuck
       playerYaw=Math.atan2(vx,vz);
       // follow camera: swing around behind the avatar as they turn.
       // Skipped while the player is aiming the camera themselves
@@ -4700,6 +4726,7 @@ function startWorld(){
   buildNPCData(); buildNPCMeshes(); buildBots();
   applyFounderLook();
   playerPos.x=S.px; playerPos.z=S.py;
+  ejectPlayerFromBuildings(); // rescue saves that were stuck inside geometry
   camYaw=Math.PI; // look north into the city
   if(S.hq){ setHQBuilt(); buildHQSign(); } else setHQEmpty();
   if(S.communityInvested) addMurals();
