@@ -3891,17 +3891,31 @@ function makePerson(skinHex,fitHex){
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(7.5,16),
     new THREE.MeshBasicMaterial({map:getAOTexture(),color:0x000000,transparent:true,opacity:0.55,depthWrite:false}));
   shadow.rotation.x=-Math.PI/2; shadow.position.y=0.32;
-  // skateboard (hidden until skating)
+  // skateboard (hidden until skating) — real deck: grip tape, kicktails,
+  // metal trucks, urethane wheels. Built along Z = direction of travel.
   const board=new THREE.Group();
-  const deck=new THREE.Mesh(new THREE.BoxGeometry(13,1.2,5),
-    toon(0xD4702A));
-  deck.position.y=2.6;
-  const wMat=toon(0xE8C030);
-  [[-4.6,-1.8],[4.6,-1.8],[-4.6,1.8],[4.6,1.8]].forEach(([wx,wz])=>{
-    const wh=new THREE.Mesh(new THREE.CylinderGeometry(1.1,1.1,1.2,8),wMat);
-    wh.rotation.x=Math.PI/2; wh.position.set(wx,1.1,wz); board.add(wh);
+  const gripMat=toon(0x26221E), woodMat=toon(0xC46A2A);
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.6,13.5),gripMat);
+  deck.position.y=2.35;
+  const under=new THREE.Mesh(new THREE.BoxGeometry(4.4,0.28,13.2),woodMat);
+  under.position.y=1.95;
+  const tailF=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.6,3),gripMat);
+  tailF.position.set(0,2.85,7.3); tailF.rotation.x=-0.42;
+  const tailB=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.6,3),gripMat);
+  tailB.position.set(0,2.85,-7.3); tailB.rotation.x=0.42;
+  board.add(deck,under,tailF,tailB);
+  const truckMat=toon(0x9A9EA4), wheelMat=toon(0xE8E0D0);
+  [4.4,-4.4].forEach(wz=>{
+    const axle=new THREE.Mesh(new THREE.BoxGeometry(4.2,0.5,0.5),truckMat);
+    axle.position.set(0,1.1,wz); board.add(axle);
+    const king=new THREE.Mesh(new THREE.BoxGeometry(1,0.9,1.4),truckMat);
+    king.position.set(0,1.5,wz); board.add(king);
+    [-2,2].forEach(wx=>{
+      const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.95,0.95,0.85,10),wheelMat);
+      wh.rotation.z=Math.PI/2; wh.position.set(wx,0.95,wz); board.add(wh);
+    });
   });
-  board.add(deck); board.visible=false; board.rotation.y=Math.PI/2;
+  board.visible=false;
   // gold founder chain (Stage 3+ flex)
   const chain=new THREE.Mesh(new THREE.TorusGeometry(2.9,0.5,6,14),
     new THREE.MeshLambertMaterial({color:0xE8C030,emissive:0x6a5210,emissiveIntensity:0.4}));
@@ -4237,6 +4251,12 @@ function loop(now){
       } else if(!collide(nx,playerPos.z)){ playerPos.x=nx; }
       else if(!collide(playerPos.x,nz)){ playerPos.z=nz; }
       playerYaw=Math.atan2(vx,vz);
+      // follow camera: swing around behind the avatar as they turn.
+      // Skipped while the player is aiming the camera themselves
+      // (touch drag, mouse drag, or pointer-lock mouse look).
+      if(!camDrag&&!mouseDrag&&document.pointerLockElement!==$('game')){
+        camYaw=lerpAngle(camYaw,playerYaw+Math.PI,Math.min(1,DT*(skating?3.2:2.2)));
+      }
       S.px=playerPos.x; S.py=playerPos.z;
       if(S.daily&&!S.daily.done&&S.daily.type==='zone'){
         const cz=zoneAt(playerPos.x,playerPos.z);
@@ -4266,11 +4286,16 @@ function loop(now){
       playerGroup.lArm.rotation.z=0; playerGroup.rArm.rotation.z=0;
       playerGroup.group.rotation.z=0;
     } else if(skating){
-      // skate stance: legs planted wide, slight crouch, arms out
-      playerGroup.lLeg.rotation.x=0.25; playerGroup.rLeg.rotation.x=-0.25;
-      playerGroup.lArm.rotation.x=0; playerGroup.rArm.rotation.x=0;
-      playerGroup.lArm.rotation.z=0.5; playerGroup.rArm.rotation.z=-0.5;
-      playerGroup.group.rotation.z=Math.sin(t*2.2)*0.04;
+      // real skate stance: body turned side-on, front foot planted,
+      // back leg doing a periodic push-off kick, arms out for balance
+      playerGroup.group.rotation.y=playerYaw-0.55;
+      playerParts.board.rotation.y=0.55; // deck stays lined up with travel
+      const kick=Math.max(0,Math.sin(t*2.4));
+      playerGroup.lLeg.rotation.x=0.42;
+      playerGroup.rLeg.rotation.x=-0.3-kick*0.55;
+      playerGroup.lArm.rotation.x=0.25; playerGroup.rArm.rotation.x=-0.2;
+      playerGroup.lArm.rotation.z=0.55+kick*0.1; playerGroup.rArm.rotation.z=-0.55-kick*0.15;
+      playerGroup.group.rotation.z=Math.sin(t*2.2)*0.05;
     } else if(moving){
       const run=keys['shift']||Math.hypot(joyVec.x,joyVec.y)>0.88;
       const freq=run?14:8,amp=run?0.91:0.7;
