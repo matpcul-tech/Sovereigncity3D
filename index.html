@@ -2695,25 +2695,47 @@ function buildCity(){
   for(let i=0;i<7;i++){
     const g=new THREE.Group();
     const carMat=new THREE.MeshLambertMaterial({color:new THREE.Color(carCols[i%carCols.length])});
-    const body=new THREE.Mesh(new THREE.BoxGeometry(28,5,14),carMat);
-    body.position.y=5.5;
-    const cab=new THREE.Mesh(new THREE.BoxGeometry(15,5,12),toon(0x1A2A3A));
-    cab.position.set(0,10,0);
-    const windMat=new THREE.MeshBasicMaterial({color:0x9FB6C4,transparent:true,opacity:0.5});
-    const windF=new THREE.Mesh(new THREE.BoxGeometry(15.1,4,0.5),windMat);
-    windF.position.set(0,10,6.3);
-    const windB=new THREE.Mesh(new THREE.BoxGeometry(15.1,4,0.5),windMat);
-    windB.position.set(0,10,-6.3);
-    const wMat=toon(0x111122);
-    const hubMat=new THREE.MeshLambertMaterial({color:0x888899});
-    [[-11,3,8],[-11,3,-8],[11,3,8],[11,3,-8]].forEach(([wx,wy,wz])=>{
-      const w=new THREE.Mesh(new THREE.CylinderGeometry(3,3,2.5,10),wMat);
-      w.rotation.z=Math.PI/2; w.position.set(wx,wy,wz);
-      const h=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,2.7,6),hubMat);
-      h.rotation.z=Math.PI/2; h.position.set(wx,wy,wz);
+    const glass=new THREE.MeshBasicMaterial({color:0x8FA6B8,transparent:true,opacity:0.55});
+    const trimMat=toon(0x24262A);
+    // sedan silhouette: low body, hood/trunk steps, offset cabin (+x = front)
+    const body=new THREE.Mesh(new THREE.BoxGeometry(28,4.4,13),carMat);
+    body.position.y=5.2;
+    const hood=new THREE.Mesh(new THREE.BoxGeometry(7.5,1.6,12.2),carMat);
+    hood.position.set(10,7.9,0);
+    const trunk=new THREE.Mesh(new THREE.BoxGeometry(5.5,1.8,12.2),carMat);
+    trunk.position.set(-11.2,8,0);
+    const cab=new THREE.Mesh(new THREE.BoxGeometry(12.5,4.2,11.2),carMat);
+    cab.position.set(-1.5,9.6,0);
+    // slanted windshields + side glass
+    const windF=new THREE.Mesh(new THREE.BoxGeometry(0.5,4.6,10.6),glass);
+    windF.position.set(5.4,9.3,0); windF.rotation.z=-0.42;
+    const windB=new THREE.Mesh(new THREE.BoxGeometry(0.5,4.4,10.6),glass);
+    windB.position.set(-8.3,9.3,0); windB.rotation.z=0.38;
+    const sideL=new THREE.Mesh(new THREE.BoxGeometry(11.6,2.8,0.4),glass);
+    sideL.position.set(-1.5,10,5.7);
+    const sideR=new THREE.Mesh(new THREE.BoxGeometry(11.6,2.8,0.4),glass);
+    sideR.position.set(-1.5,10,-5.7);
+    // bumpers, headlights, taillights
+    const bumpF=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.8,13.2),trimMat);
+    bumpF.position.set(13.8,3.9,0);
+    const bumpB=new THREE.Mesh(new THREE.BoxGeometry(1.6,1.8,13.2),trimMat);
+    bumpB.position.set(-13.8,3.9,0);
+    const lightGeo=new THREE.BoxGeometry(0.7,1.2,2.4);
+    const headL=new THREE.MeshLambertMaterial({color:0xFFF6D8,emissive:0xBBA46A,emissiveIntensity:0.6});
+    const tailL=new THREE.MeshLambertMaterial({color:0xB02020,emissive:0x701010,emissiveIntensity:0.6});
+    [[14.1,5.8,4.2,headL],[14.1,5.8,-4.2,headL],[-14.1,5.8,4.2,tailL],[-14.1,5.8,-4.2,tailL]].forEach(([lx,ly,lz,lm])=>{
+      const l=new THREE.Mesh(lightGeo,lm); l.position.set(lx,ly,lz); g.add(l);
+    });
+    const wMat=toon(0x17181C);
+    const hubMat=new THREE.MeshLambertMaterial({color:0x9A9EA4});
+    [[-9.5,3,6.4],[-9.5,3,-6.4],[9.5,3,6.4],[9.5,3,-6.4]].forEach(([wx,wy,wz])=>{
+      const w=new THREE.Mesh(new THREE.CylinderGeometry(3,3,2.2,12),wMat);
+      w.rotation.x=Math.PI/2; w.position.set(wx,wy,wz);
+      const h=new THREE.Mesh(new THREE.CylinderGeometry(1.2,1.2,2.4,8),hubMat);
+      h.rotation.x=Math.PI/2; h.position.set(wx,wy,wz);
       g.add(w,h);
     });
-    g.add(body,cab,windF,windB);
+    g.add(body,hood,trunk,cab,windF,windB,sideL,sideR,bumpF,bumpB);
     g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
     scene.add(g);
     const horiz=i%2===0;
@@ -2909,8 +2931,8 @@ let lampGlows=[];
 function addLamp(x,z,poleMat){
   const pole=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,30,6),poleMat);
   pole.position.set(x,15,z); pole.castShadow=true;
-  const bulbMat=new THREE.MeshBasicMaterial({color:0x554a30});
-  const bulb=new THREE.Mesh(new THREE.SphereGeometry(3.2,8,8),bulbMat);
+  const bulbMat=new THREE.MeshBasicMaterial({color:0x3A3E44});
+  const bulb=new THREE.Mesh(new THREE.SphereGeometry(2.3,8,8),bulbMat);
   bulb.position.set(x,31,z);
   // warm glow halo (sprite)
   const gc=document.createElement('canvas'); gc.width=gc.height=64;
@@ -2925,27 +2947,60 @@ function addLamp(x,z,poleMat){
 }
 function addTree(x,z){
   const s=rnd(1.0,1.6);
-  const trunk=new THREE.Mesh(new THREE.CylinderGeometry(2*s,3*s,20*s,7),toon(0x6B4A2A));
-  trunk.position.set(x,10*s,z); trunk.castShadow=true; scene.add(trunk);
-  const greens=[0x4E7A2C,0x5B8A36,0x476F28,0x648F3C,0x3F6622,0x557F31];
-  const c1=new THREE.Color(greens[ri(0,greens.length-1)]);
-  const c2=new THREE.Color(greens[ri(0,greens.length-1)]);
-  const m1=new THREE.MeshLambertMaterial({color:c1});
-  const m2=new THREE.MeshLambertMaterial({color:c2});
-  // large main canopy
-  const main=new THREE.Mesh(new THREE.SphereGeometry(13*s,9,8),m1);
-  main.position.set(x,26*s,z); main.scale.y=0.82; main.castShadow=true; scene.add(main);
-  // puff clusters for volume
-  [[10,20,7],[-10,19,-6],[4,34,-4],[-5,23,10],[8,32,5]].forEach(([ox,oy,oz])=>{
-    const sm=new THREE.Mesh(new THREE.SphereGeometry(rnd(6,10)*s,7,6),m2);
-    sm.position.set(x+ox*s,oy*s,z+oz*s); sm.castShadow=true; scene.add(sm);
-  });
+  const g=new THREE.Group();
+  const barkMat=toon(Math.random()<0.5?0x6B4A2A:0x5E4023);
+  if(Math.random()<0.2){
+    // conifer: tapered trunk + stacked cones in deep evergreen tones
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(1.1*s,1.9*s,12*s,7),barkMat);
+    trunk.position.y=6*s; g.add(trunk);
+    const eg=[0x2E5323,0x35602A,0x294B20];
+    [[9.5,11,13],[7.4,9.5,19.5],[5.0,8,25.5]].forEach(([r,ch,cy],i)=>{
+      const cone=new THREE.Mesh(new THREE.ConeGeometry(r*s,ch*s,9),toon(eg[i%3]));
+      cone.position.y=cy*s; g.add(cone);
+    });
+  } else {
+    // broadleaf: tapered trunk, angled branches, faceted organic canopy
+    const trunk=new THREE.Mesh(new THREE.CylinderGeometry(1.5*s,2.6*s,16*s,7),barkMat);
+    trunk.position.y=8*s; g.add(trunk);
+    for(let b=0;b<2;b++){
+      const br=new THREE.Mesh(new THREE.CylinderGeometry(0.55*s,0.95*s,7*s,6),barkMat);
+      const ba=rnd(0,Math.PI*2);
+      br.position.set(Math.cos(ba)*2.6*s,15.5*s,Math.sin(ba)*2.6*s);
+      br.rotation.z=Math.cos(ba)*0.65; br.rotation.x=-Math.sin(ba)*0.65;
+      g.add(br);
+    }
+    const greens=[0x4E7A2C,0x5B8A36,0x476F28,0x648F3C,0x3F6622,0x557F31];
+    const m1=new THREE.MeshLambertMaterial({color:greens[ri(0,greens.length-1)]});
+    const m2=new THREE.MeshLambertMaterial({color:greens[ri(0,greens.length-1)]});
+    const main=new THREE.Mesh(new THREE.IcosahedronGeometry(10.5*s,1),m1);
+    main.position.y=25*s; main.scale.set(1.15,0.9,1.1);
+    main.rotation.y=rnd(0,Math.PI); g.add(main);
+    for(let p=0;p<4;p++){
+      const pa=rnd(0,Math.PI*2), pd=rnd(3,5.5)*s;
+      const puff=new THREE.Mesh(new THREE.IcosahedronGeometry(rnd(5,7)*s,1),p%2?m1:m2);
+      puff.position.set(Math.cos(pa)*pd,rnd(21.5,27)*s,Math.sin(pa)*pd);
+      puff.rotation.set(rnd(0,3),rnd(0,3),rnd(0,3));
+      puff.scale.y=rnd(0.75,0.95);
+      g.add(puff);
+    }
+  }
+  g.position.set(x,0,z);
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  scene.add(g);
 }
 function addBush(x,z){
-  const b=new THREE.Mesh(new THREE.SphereGeometry(rnd(4,7),6,6),
-    toon(0x4E7A2C));
-  b.position.set(x,3.5,z); b.scale.y=0.7;
-  scene.add(b);
+  const g=new THREE.Group();
+  const m1=toon(0x4E7A2C), m2=toon(0x446B26);
+  const n=ri(2,3);
+  for(let i=0;i<n;i++){
+    const r=rnd(2.8,4.6);
+    const b=new THREE.Mesh(new THREE.IcosahedronGeometry(r,1),i%2?m1:m2);
+    b.position.set(rnd(-2.5,2.5),r*0.55,rnd(-2.5,2.5));
+    b.scale.y=0.72; b.rotation.y=rnd(0,Math.PI);
+    b.castShadow=true; g.add(b);
+  }
+  g.position.set(x,0,z);
+  scene.add(g);
 }
 
 /* =========================================================
@@ -3120,9 +3175,10 @@ function drawSCFace(x){
   x.fillStyle='#E8C064'; x.fill();
 }
 function makeFaceTexture(skinHex){
+  // transparent decal: only the face features, skin shows through from the head
   const c=document.createElement('canvas'); c.width=128; c.height=128;
   const x=c.getContext('2d');
-  x.fillStyle=skinHex; x.fillRect(0,0,128,128);
+  x.clearRect(0,0,128,128);
   drawSCFace(x);
   const t=new THREE.CanvasTexture(c);
   t.userData={canvas:c};
@@ -3130,47 +3186,90 @@ function makeFaceTexture(skinHex){
 }
 function paintFace(tex,skinHex){
   const c=tex.userData.canvas, x=c.getContext('2d');
-  x.fillStyle=skinHex; x.fillRect(0,0,128,128);
+  x.clearRect(0,0,128,128);
   drawSCFace(x);
   tex.needsUpdate=true;
 }
 function makePerson(skinHex,fitHex){
-  // Blocky R6-style avatar: box head + face decal, shirt torso, skin arms, dark pants
+  // Human-proportioned stylized avatar: rounded head, neck, tapered torso,
+  // sleeved arms with hands, two-segment legs, varied hair styles.
   const group=new THREE.Group();
   const skin=new THREE.MeshLambertMaterial({color:new THREE.Color(skinHex)});
   const fit=new THREE.MeshLambertMaterial({color:new THREE.Color(fitHex)});
-  const pants=new THREE.MeshLambertMaterial({color:0x1A2040});
-  const shoeMat=new THREE.MeshLambertMaterial({color:0xF0EBE0});
-  // torso: 8 wide x 8 tall x 4 deep, top of legs at y=8
-  const torso=new THREE.Mesh(new THREE.BoxGeometry(9,9,4.5),fit);
-  torso.position.y=12.5;
-  // head: box with face decal on front (+z)
+  const pants=new THREE.MeshLambertMaterial({color:0x2A3448});
+  const shoeMat=new THREE.MeshLambertMaterial({color:0xE8E4DA});
+  const beltMat=new THREE.MeshLambertMaterial({color:0x20180F});
+  // torso: shirt with shoulder cap taper, hip band in pants color
+  const torso=new THREE.Mesh(new THREE.BoxGeometry(7.4,7.0,3.9),fit);
+  torso.position.y=13.3;
+  const shoulders=new THREE.Mesh(new THREE.BoxGeometry(7.9,2.2,3.85),fit);
+  shoulders.position.y=16.1;
+  const hips=new THREE.Mesh(new THREE.BoxGeometry(6.6,1.9,3.7),pants);
+  hips.position.y=9.0;
+  const belt=new THREE.Mesh(new THREE.BoxGeometry(6.8,0.9,3.8),beltMat);
+  belt.position.y=9.9;
+  // neck + rounded head
+  const neck=new THREE.Mesh(new THREE.CylinderGeometry(1.5,1.7,2.2,10),skin);
+  neck.position.y=17.9;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(3.6,20,16),skin);
+  head.scale.set(0.95,1.08,0.92);
+  head.position.y=22.2;
+  const earGeo=new THREE.SphereGeometry(0.72,8,6);
+  const lEar=new THREE.Mesh(earGeo,skin); lEar.position.set(-3.4,22.2,0);
+  const rEar=new THREE.Mesh(earGeo,skin); rEar.position.set(3.4,22.2,0);
+  // signature face as a decal floating just off the head sphere
   const faceTex=makeFaceTexture(skinHex);
-  const faceMat=new THREE.MeshLambertMaterial({map:faceTex});
-  const headMats=[skin,skin,skin,skin,faceMat,skin]; // +x,-x,+y,-y,+z,-z
-  const head=new THREE.Mesh(new THREE.BoxGeometry(8.5,8.5,8.5),headMats);
-  head.position.y=22;
-  // colored hair block — Roblox style
-  const hairColors=['#2A1A08','#8B1A1A','#1A3A8B','#6B1A8B','#1A6B1A','#8B6B1A','#C85020','#1A8B8B'];
-  const hairHex=hairColors[(skinHex.length+fitHex.length)%hairColors.length];
+  const faceMat=new THREE.MeshLambertMaterial({map:faceTex,transparent:true});
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(6.0,6.0),faceMat);
+  face.position.set(0,22.2,3.5);
+  face.userData.noShadow=true;
+  // hair: cap + fringe, three style variants keyed off the same hash
+  const hairColors=['#2A1A08','#4A2A12','#1A1A22','#6B4A22','#3A2418','#171310','#8A5A2A','#2E2620'];
+  const hashIdx=(skinHex.length+fitHex.length)%hairColors.length;
+  const hairHex=hairColors[hashIdx];
   const hairMat=new THREE.MeshLambertMaterial({color:new THREE.Color(hairHex)});
-  const hair=new THREE.Mesh(new THREE.BoxGeometry(8.8,3.8,8.8),hairMat);
-  hair.position.y=27.5; hair.castShadow=true;
-  // limbs swing from joints (pivot groups), Roblox-style
-  function limb(mat,isLeg){
+  const hairBits=[];
+  const cap=new THREE.Mesh(new THREE.SphereGeometry(3.75,16,12),hairMat);
+  cap.scale.set(0.97,0.85,0.97); cap.position.set(0,23.4,-0.45);
+  hairBits.push(cap);
+  const fringe=new THREE.Mesh(new THREE.BoxGeometry(5.6,1.1,1.4),hairMat);
+  fringe.position.set(0,25.0,2.5); fringe.rotation.x=-0.18;
+  hairBits.push(fringe);
+  const style=hashIdx%3;
+  if(style===1){ // longer, back volume
+    const back=new THREE.Mesh(new THREE.SphereGeometry(3.1,12,10),hairMat);
+    back.scale.set(0.9,1.25,0.8); back.position.set(0,21.4,-2.1);
+    hairBits.push(back);
+  } else if(style===2){ // top bun
+    const bun=new THREE.Mesh(new THREE.SphereGeometry(1.5,10,8),hairMat);
+    bun.position.set(0,26.6,-1.0);
+    hairBits.push(bun);
+  }
+  // limbs swing from joints (pivot groups) — animator owns pivot rotations
+  function limb(isLeg){
     const pivot=new THREE.Group();
-    const m=new THREE.Mesh(new THREE.BoxGeometry(3.4,8,3.4),mat);
-    m.position.y=-4; pivot.add(m);
+    const inner=new THREE.Group(); pivot.add(inner);
     if(isLeg){
-      const shoe=new THREE.Mesh(new THREE.BoxGeometry(3.9,2.6,5.4),shoeMat);
-      shoe.position.set(0,-7.6,1.0); pivot.add(shoe);
+      const thigh=new THREE.Mesh(new THREE.BoxGeometry(2.9,5.0,3.1),pants);
+      thigh.position.y=-2.5; inner.add(thigh);
+      const calf=new THREE.Mesh(new THREE.BoxGeometry(2.4,4.6,2.6),pants);
+      calf.position.y=-6.9; inner.add(calf);
+      const shoe=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.7,4.6),shoeMat);
+      shoe.position.set(0,-8.8,0.8); inner.add(shoe);
+    } else {
+      const sleeve=new THREE.Mesh(new THREE.BoxGeometry(2.7,3.5,2.9),fit);
+      sleeve.position.y=-1.6; inner.add(sleeve);
+      const fore=new THREE.Mesh(new THREE.BoxGeometry(2.1,4.4,2.2),skin);
+      fore.position.y=-5.3; inner.add(fore);
+      const hand=new THREE.Mesh(new THREE.SphereGeometry(1.25,8,6),skin);
+      hand.position.y=-8.0; inner.add(hand);
     }
     return pivot;
   }
-  const lArm=limb(skin,false); lArm.position.set(-5.7,16,0);
-  const rArm=limb(skin,false); rArm.position.set(5.7,16,0);
-  const lLeg=limb(pants,true); lLeg.position.set(-2.1,8,0);
-  const rLeg=limb(pants,true); rLeg.position.set(2.1,8,0);
+  const lArm=limb(false); lArm.position.set(-5.1,16.4,0); lArm.children[0].rotation.z=0.07;
+  const rArm=limb(false); rArm.position.set(5.1,16.4,0); rArm.children[0].rotation.z=-0.07;
+  const lLeg=limb(true); lLeg.position.set(-1.9,9.6,0);
+  const rLeg=limb(true); rLeg.position.set(1.9,9.6,0);
   const shadow=new THREE.Mesh(new THREE.CircleGeometry(7.5,16),
     new THREE.MeshBasicMaterial({map:getAOTexture(),color:0x000000,transparent:true,opacity:0.55,depthWrite:false}));
   shadow.rotation.x=-Math.PI/2; shadow.position.y=0.32;
@@ -3186,11 +3285,13 @@ function makePerson(skinHex,fitHex){
   });
   board.add(deck); board.visible=false; board.rotation.y=Math.PI/2;
   // gold founder chain (Stage 3+ flex)
-  const chain=new THREE.Mesh(new THREE.TorusGeometry(3.4,0.55,6,14),
+  const chain=new THREE.Mesh(new THREE.TorusGeometry(2.9,0.5,6,14),
     new THREE.MeshLambertMaterial({color:0xE8C030,emissive:0x6a5210,emissiveIntensity:0.4}));
-  chain.position.set(0,14.6,2.1); chain.rotation.x=Math.PI/2.4; chain.visible=false;
-  group.add(torso,head,lArm,rArm,lLeg,rLeg,shadow,board,chain);
-  group.traverse(o=>{ if(o.isMesh&&o!==shadow) o.castShadow=true; });
+  chain.position.set(0,15.5,1.9); chain.rotation.x=Math.PI/2.4; chain.visible=false;
+  group.add(torso,shoulders,hips,belt,neck,head,lEar,rEar,face,
+    lArm,rArm,lLeg,rLeg,shadow,board,chain);
+  hairBits.forEach(hb=>group.add(hb));
+  group.traverse(o=>{ if(o.isMesh&&o!==shadow&&!o.userData.noShadow) o.castShadow=true; });
   return {group,lLeg,rLeg,lArm,rArm,fitMat:fit,skinMat:skin,faceTex,board,chain};
 }
 function buildNPCMeshes(){
@@ -3297,7 +3398,7 @@ function updateSky(){
   BUILDINGS.forEach(b=>{ if(b.mat) b.mat.emissiveIntensity=winGlow*1.15; });
 
   const lampOn=night||h>=19;
-  streetLampMats.forEach(m=>m.color.setHex(lampOn?0xFFD080:0x554a30).convertSRGBToLinear());
+  streetLampMats.forEach(m=>m.color.setHex(lampOn?0xFFD080:0x3A3E44).convertSRGBToLinear());
   lampGlows.forEach(m=>m.opacity=lampOn?0.85:0);
   streetLights.forEach(l=>l.intensity=lampOn?2.2:0);
   neonSigns.forEach(s=>s.material.opacity=lampOn?0.95:0);
@@ -3579,7 +3680,7 @@ function loop(now){
       pm.lLeg.rotation.x=sw; pm.rLeg.rotation.x=-sw;
       if(pm.ring){
         const r=rel(n.id);
-        pm.ring.material.color.setHex(r>=2?0x5FA86B:(r<0?0xD4513B:0xE8C064));
+        pm.ring.material.color.setHex(r>=2?0x5FA86B:(r<0?0xD4513B:0xE8C064)).convertSRGBToLinear();
       }
     }
     // bot founders wander
@@ -3810,8 +3911,8 @@ function drawPreview(){
 }
 
 function applyFounderLook(){
-  playerParts.skinMat.color.set(SKINS[S.founder.skin]);
-  playerParts.fitMat.color.set(FITS[S.founder.fit]);
+  playerParts.skinMat.color.set(SKINS[S.founder.skin]).convertSRGBToLinear();
+  playerParts.fitMat.color.set(FITS[S.founder.fit]).convertSRGBToLinear();
   paintFace(playerParts.faceTex,SKINS[S.founder.skin]);
   // overhead username tag
   if(playerParts.nameTag){ playerParts.group.remove(playerParts.nameTag); }
