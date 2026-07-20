@@ -236,6 +236,7 @@ button{font-family:inherit;cursor:pointer;border:none}
   <div id="pTop"><h3>Founder Phone</h3><button id="pClose">&#10005;</button></div>
   <div id="pTabs">
     <button class="pTab sel" data-tab="biz">Business</button>
+    <button class="pTab" data-tab="ranks">Ranks</button>
     <button class="pTab" data-tab="insight">Insights</button>
     <button class="pTab" data-tab="feed">Feed</button>
     <button class="pTab" data-tab="cap">Cap Table</button>
@@ -670,6 +671,13 @@ function pitchResult(npc,base){
     sCash(); spawnBurst(playerPos.x,14,playerPos.z,0xE8C064);
     toast('<b>'+npc.name+'</b> is in! Customer #'+S.customers,'good');
     if(S.customers===1) learn('Customer Discovery','Talking to real people to find out what they\u2019ll actually pay for.');
+    // milestone fireworks \u2014 landing customers should FEEL like winning
+    if([1,5,10,25,50].includes(S.customers)){
+      sBig();
+      for(let i=0;i<3;i++) setTimeout(()=>spawnBurst(playerPos.x+rnd(-24,24),rnd(24,54),playerPos.z+rnd(-24,24),[0xE8C064,0x3FB8AF,0xF2A33C][i]),i*180);
+      if(S.customers===1) toast('<b>\ud83c\udf89 YOUR FIRST CUSTOMER!</b> Every empire starts with one yes.','gold');
+      else toast('<b>\ud83c\udf89 '+S.customers+' customers!</b> The block is talking about '+(S.biz?S.biz.name:'you')+'.','gold');
+    }
     checkProgression();
   } else {
     S.stats.hustle=clamp(S.stats.hustle+1,0,100);
@@ -1392,8 +1400,63 @@ document.querySelectorAll('.pTab').forEach(t=>t.onclick=()=>{
 });
 $('phoneBtn').onclick=()=>{ $('phone').style.display='flex'; $('phoneDot').style.display='none'; renderPhone(); sTap(); ac(); };
 $('pClose').onclick=()=>{ $('phone').style.display='none'; sTap(); };
+/* ---- CLASS RANKS — friendly competition on real founder metrics ----
+   Score rewards building (stage), customers, and PROFIT — not raw cash.
+   Kids learn fast that the leaderboard moves on business fundamentals. */
+function founderScore(d){
+  return (d.stage||1)*100+(d.customers||0)*10+Math.max(0,Math.round(d.lastProfit||0));
+}
+function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+async function renderRanks(c){
+  const sb=getSupabase();
+  const explain='<div class="feedItem" style="font-size:11.5px;color:#9A917F">Score = Stage&times;100 + Customers&times;10 + daily Profit. '+
+    'Cash alone doesn’t rank you &mdash; a real business does.</div>';
+  if(!sb||!S.townCode){
+    let html='<div class="feedItem"><b>🏆 Class Ranks</b><br>Join with a Class Code on the title screen to compete with your class in one shared town.</div>';
+    if(fameCache.length){
+      html+='<div class="feedItem" style="border-left:3px solid var(--gold)"><b>Hall of Fame — fastest to Sovereignty</b></div>';
+      fameCache.slice(0,10).forEach((f,i)=>{
+        html+='<div class="feedItem">'+(i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.')+' <b>'+esc2(f.name)+'</b> · '+esc2(f.biz)+' · Day '+f.day+'</div>';
+      });
+    }
+    c.innerHTML=html+explain;
+    return;
+  }
+  c.innerHTML='<div class="feedItem">Loading class ranks…</div>';
+  let rows=[];
+  try{
+    const {data}=await sb.from('saves').select('founder_name,data,updated_at').eq('town_code',S.townCode);
+    rows=(data||[]).map(r=>({name:r.founder_name,d:r.data||{}}));
+  }catch(e){}
+  // include myself even if my cloud save hasn't landed yet
+  if(S.founder&&!rows.some(r=>r.name===S.founder.name)) rows.push({name:S.founder.name,d:S});
+  rows.forEach(r=>{ if(S.founder&&r.name===S.founder.name) r.d=S; r.score=founderScore(r.d); });
+  rows.sort((a,b)=>b.score-a.score);
+  if(pTab!=='ranks') return; // user switched tabs while loading
+  let html='<div class="feedItem"><b>🏆 Class Ranks — Town '+esc2(S.townCode)+'</b></div>';
+  const stages=['','Ideator','Hustler','Builder','Scaler','Sovereign'];
+  rows.slice(0,15).forEach((r,i)=>{
+    const me=S.founder&&r.name===S.founder.name;
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.';
+    html+='<div class="feedItem"'+(me?' style="border-left:3px solid var(--gold);background:rgba(232,192,100,.08)"':'')+'>'+
+      medal+' <b>'+esc2(r.name)+(me?' (you)':'')+'</b>'+
+      (r.d.biz&&r.d.biz.name?' · '+esc2(r.d.biz.name):'')+
+      '<br><span style="font-size:11px;color:#9A917F">'+(stages[r.d.stage||1])+' · '+(r.d.customers||0)+' customers · '+fmt(r.d.lastProfit||0)+'/day · <b style="color:var(--gold)">'+r.score+' pts</b></span></div>';
+  });
+  const myIdx=rows.findIndex(r=>S.founder&&r.name===S.founder.name);
+  if(myIdx>0){
+    const gap=rows[myIdx-1].score-rows[myIdx].score;
+    html+='<div class="feedItem" style="border-left:3px solid var(--turq)">📈 You’re '+gap+' points behind <b>'+esc2(rows[myIdx-1].name)+'</b>. '+
+      Math.ceil(gap/10)+' more customers — or more daily profit — takes their spot.</div>';
+  } else if(myIdx===0&&rows.length>1){
+    html+='<div class="feedItem" style="border-left:3px solid var(--gold)">👑 You’re #1. Defend it: profit per day counts every time ranks refresh.</div>';
+  }
+  c.innerHTML=html+explain;
+}
+
 function renderPhone(){
   const c=$('pContent'); c.innerHTML='';
+  if(pTab==='ranks'){ renderRanks(c); return; }
   if(pTab==='biz'){
     if(!S.biz){ c.innerHTML='<div class="feedItem">No business yet. The Community Board in The Grind has four real problems waiting for a founder.</div>'; return; }
     const burn=S.lastExpenses, runway=burn>0?Math.floor(S.cash/burn):999;
@@ -1404,6 +1467,7 @@ function renderPhone(){
      stat('Expenses / day',fmt(S.lastExpenses),'red')+
      stat('Profit / day',fmt(S.lastProfit),S.lastProfit>=0?'green':'red')+
      stat('Runway',runway>365?'Stable':runway+' days',runway<8?'red':'')+
+     stat('🍞 Crumbs collected',S.crumbs||0,'gold')+
      '<div class="priceRow"><span style="font-size:12px;color:#9A917F;font-weight:600">PRICE</span>'+
      '<input type="range" min="'+Math.round(S.biz.base*0.5)+'" max="'+Math.round(S.biz.base*2.2)+'" value="'+S.biz.price+'" id="priceSlider">'+
      '<span class="pv" id="priceVal">'+fmt(S.biz.price)+'</span></div>'+
@@ -3188,6 +3252,81 @@ function updateRemotePlayers(now){
   }
 }
 
+/* =========================================================
+   FOUNDER'S CRUMBS — the city motto, made playable
+   "Pick up enough crumbs, you get a loaf of bread."
+   Spinning gold crumbs scatter across the city; walking over
+   one pays a little cash. They respawn every game day, and
+   collection milestones teach consistency and compounding.
+   ========================================================= */
+const CRUMB_COUNT=22;
+const crumbs=[];
+function crumbSpot(){
+  for(let tries=0;tries<40;tries++){
+    const x=rnd(60,W-60), z=rnd(60,H-60);
+    if(!collide(x,z)) return {x,z};
+  }
+  return {x:rnd(200,600),z:rnd(1000,1400)};
+}
+function buildCrumbs(){
+  const mat=new THREE.MeshLambertMaterial({color:0xE8C064,emissive:0x8A6A10,emissiveIntensity:0.55});
+  for(let i=0;i<CRUMB_COUNT;i++){
+    const m=new THREE.Mesh(new THREE.OctahedronGeometry(2.4),mat);
+    const p=crumbSpot();
+    m.position.set(p.x,5,p.z);
+    m.userData.phase=rnd(0,6);
+    scene.add(m);
+    crumbs.push({m,taken:false});
+  }
+}
+function respawnCrumbs(){
+  crumbs.forEach(cr=>{
+    const p=crumbSpot();
+    cr.m.position.set(p.x,5,p.z);
+    cr.m.visible=true; cr.taken=false;
+  });
+}
+function updateCrumbs(now){
+  if(!S) return;
+  const t=now/1000;
+  for(const cr of crumbs){
+    if(cr.taken) continue;
+    cr.m.rotation.y=t*2+cr.m.userData.phase;
+    cr.m.position.y=5+Math.sin(t*2.4+cr.m.userData.phase)*1.4;
+    const dx=cr.m.position.x-playerPos.x, dz=cr.m.position.z-playerPos.z;
+    if(dx*dx+dz*dz<230){
+      cr.taken=true; cr.m.visible=false;
+      const amt=ri(10,35);
+      S.cash+=amt;
+      S.crumbs=(S.crumbs||0)+1;
+      sCash(); spawnBurst(cr.m.position.x,10,cr.m.position.z,0xE8C064);
+      floatText(cr.m.position.x,16,cr.m.position.z,'+'+fmt(amt)+' crumb','#E8C064');
+      crumbMilestone(S.crumbs);
+      updateHUDChips();
+    }
+  }
+}
+function crumbMilestone(n){
+  if(n===10){
+    S.cash+=100; sBig();
+    toast('<b>🍞 10 crumbs!</b> +$100 bonus. Small actions, done daily, stack up.','gold');
+    learn('Consistency','Small actions repeated every day beat big plans done once. Ten crumbs today is a loaf next week.');
+  } else if(n===25){
+    S.cash+=250; sBig();
+    toast('<b>🍞 25 crumbs — Crumb Collector!</b> +$250 bonus.','gold');
+  } else if(n===50){
+    S.cash+=500; sBig();
+    spawnBurst(playerPos.x,30,playerPos.z,0xE8C064);
+    toast('<b>🍞 50 crumbs!</b> +$500. This is what compounding feels like.','gold');
+    learn('Compounding','Tiny gains, stacked without quitting, grow into something no single big win can match.');
+  } else if(n===100){
+    S.cash+=1000; sWin&&sWin();
+    for(let i=0;i<4;i++) setTimeout(()=>spawnBurst(playerPos.x+rnd(-30,30),rnd(20,60),playerPos.z+rnd(-30,30),0xE8C064),i*200);
+    toast('<b>🍞 100 CRUMBS — LOAF OF BREAD!</b> +$1,000. You out-hustled the whole city.','gold');
+    feed(S.founder.name+' collected 100 crumbs. Pick up enough crumbs, you get a loaf of bread.');
+  }
+}
+
 /* ---- classroom session timer (?session=true&code=XXXXXX&duration=40) ---- */
 let _sessionTimer=null;
 function startSessionTimer(){
@@ -3951,7 +4090,7 @@ function loop(now){
         if(S.hour===8) assignDaily();
         if(S.hour===9) dailySettle();
         if(S.hour>=9&&S.hour<=21) maybeChaos();
-        if(S.hour>=24){ S.hour=0; S.day++; }
+        if(S.hour>=24){ S.hour=0; S.day++; respawnCrumbs(); }
         updateHUDChips();
       }
     }
@@ -4125,6 +4264,7 @@ function loop(now){
     _lastPX=playerPos.x; _lastPZ=playerPos.z;
     sendPresenceUpdate(now,playerPos.x,playerPos.z,playerYaw,skating,_pvMoved);
     updateRemotePlayers(now);
+    updateCrumbs(now);
     updateSky();
     // hide lock sprites once unlocked
     ZONES.forEach(zo=>{ if(zo.lockSprite) zo.lockSprite.visible=S.stage<zo.unlock; });
@@ -4284,6 +4424,7 @@ function startWorld(){
   Music.setEnabled(!S.muted);
   loadTown().then(()=>subscribeTownPlots());
   subscribeTown();
+  if(!crumbs.length) buildCrumbs(); // needs S (collide checks the empty lot)
   if(_sessionMode) startSessionTimer();
   if(!startWorld.townPoll){
     startWorld.townPoll=setInterval(()=>{ if(S) loadTown(); },60000);
