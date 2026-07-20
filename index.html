@@ -2824,8 +2824,9 @@ function buildPlots(){
       toon(0x5A5238));
     pad.position.set(p.x+p.w/2,1,p.z+p.d/2); pad.receiveShadow=true;
     scene.add(pad); p.pad=pad;
-    const sp=makeLabelSprite('OPEN PLOT','#B0A888');
+    const sp=makeLabelSprite('','#B0A888');
     sp.scale.set(60,12,1); sp.position.set(p.x+p.w/2,18,p.z+p.d/2);
+    sp.visible=false;
     scene.add(sp); p.sp=sp;
   });
 }
@@ -2861,8 +2862,9 @@ function renderTown(town){
       const roof=new THREE.Mesh(new THREE.BoxGeometry(p.w-10,4,p.d-10),
         new THREE.MeshLambertMaterial({color:new THREE.Color(ind.col).multiplyScalar(0.8)}));
       roof.position.set(p.x+p.w/2,h+4,p.z+p.d/2); scene.add(roof); p.roof=roof;
+      p.sp.visible=true;
       updateLabelSprite(p.sp,d.name+' \u00B7 '+d.biz,'#E8C064');
-      p.sp.position.y=h+22; p.sp.scale.set(150,24,1);
+      p.sp.position.y=h+22; p.sp.scale.set(90,16,1);
     }
     if(d&&p.mesh&&S) p.mesh.material.emissiveIntensity=0; // sky pass will set
   });
@@ -3916,10 +3918,7 @@ function applyFounderLook(){
   paintFace(playerParts.faceTex,SKINS[S.founder.skin]);
   // overhead username tag
   if(playerParts.nameTag){ playerParts.group.remove(playerParts.nameTag); }
-  const tag=makeLabelSprite(S.founder.name,'#E8C064');
-  tag.scale.set(44,9,1); tag.position.y=38;
-  playerParts.group.add(tag);
-  playerParts.nameTag=tag;
+  playerParts.nameTag=null;
 }
 function startWorld(){
   S.streak=S.streak||0;
