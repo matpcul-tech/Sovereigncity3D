@@ -421,10 +421,13 @@ function normalizeTownCode(v){
   return code||null;
 }
 /* Session mode — teachers share one URL with the whole class:
-   ?session=true&code=ABC123&duration=40  (duration in minutes) */
+   ?session=true&code=ABC123&duration=40  (duration in minutes)
+   Sprint mode — a timed public challenge run with a shareable score:
+   ?sprint=true&code=MOONSH&duration=10 */
 const _urlParams=new URLSearchParams(location.search);
-const _sessionMode=_urlParams.get('session')==='true';
-const _sessionDuration=Math.max(1,parseInt(_urlParams.get('duration')||'40'))*60*1000;
+const _sprintMode=_urlParams.get('sprint')==='true';
+const _sessionMode=_urlParams.get('session')==='true'||_sprintMode;
+const _sessionDuration=Math.max(1,parseInt(_urlParams.get('duration')||(_sprintMode?'10':'40')))*60*1000;
 const _sessionCode=normalizeTownCode(_urlParams.get('code'));
 function freshState(){
   return {
@@ -3555,6 +3558,7 @@ function startSessionTimer(){
   },500);
 }
 function showSessionComplete(){
+  if(_sprintMode){ showSprintComplete(); return; }
   const biggest=S&&S.insights&&S.insights.length?S.insights[0]:null;
   $('bmCard').innerHTML=
     '<div style="font-size:48px">⏱</div>'+
@@ -3567,6 +3571,73 @@ function showSessionComplete(){
   $('bigModal').style.display='flex';
   saveGame();
   document.getElementById('sessionExitBtn').onclick=async()=>{ await saveGame(); location.reload(); };
+}
+
+/* ---- FOUNDER SPRINT — timed public challenge with a shareable score ---- */
+function showSprintComplete(){
+  const score=S?founderScore(S):0;
+  const biz=S&&S.biz?S.biz.name:'a business';
+  $('bmCard').innerHTML=
+    '<div style="font-size:48px">🚀</div>'+
+    '<h2 class="gold">FOUNDER SPRINT COMPLETE</h2>'+
+    '<div style="font-family:Archivo,Inter,sans-serif;font-weight:900;font-size:52px;color:var(--gold);line-height:1">'+score+'</div>'+
+    '<div style="font-size:11px;letter-spacing:.24em;color:#9A917F;text-transform:uppercase;margin-bottom:8px">Founder Points</div>'+
+    '<p><b>'+(S&&S.founder?S.founder.name:'Founder')+'</b>'+(S&&S.biz?' founded <b>'+biz+'</b>':'')+'</p>'+
+    (S&&S.biz?'<p style="color:var(--turq)">'+(S.customers||0)+' customer'+(S.customers===1?'':'s')+' &middot; '+fmt(S.cash)+' &middot; Stage '+S.stage+'</p>':'')+
+    (S&&S.townCode?'<p style="font-size:12px;color:#9A917F;margin-top:6px">Everyone in town '+S.townCode+' is playing the same sprint. Check Phone &rarr; Ranks.</p>':'')+
+    '<button class="btn" id="sprintShareBtn">Share My Score</button>'+
+    '<button class="btn ghost" id="sprintCardBtn">Download Score Card</button>'+
+    '<button class="btn ghost" id="sprintAgainBtn">Run It Again</button>';
+  $('bigModal').style.display='flex';
+  saveGame();
+  document.getElementById('sprintShareBtn').onclick=()=>shareSprintScore(score);
+  document.getElementById('sprintCardBtn').onclick=()=>downloadSprintCard(score);
+  document.getElementById('sprintAgainBtn').onclick=()=>location.reload();
+}
+function shareSprintScore(score){
+  const url=location.origin+location.pathname+location.search;
+  const text='I scored '+score+' Founder Points in the Sovereign City Founder Sprint — '+
+    (S&&S.biz?S.biz.name+', ':'')+(S?S.customers:0)+' customers in one sprint. Build what you own. Beat me: '+url;
+  if(navigator.share){ navigator.share({text}).catch(()=>{}); return; }
+  try{
+    navigator.clipboard.writeText(text).then(
+      ()=>toast('Score copied — paste it anywhere.','good'),
+      ()=>toast(text,'good'));
+  }catch(e){ toast(text,'good'); }
+}
+function buildSprintCard(score){
+  const cv=document.createElement('canvas');
+  cv.width=1200; cv.height=630;
+  const x=cv.getContext('2d');
+  const g=x.createLinearGradient(0,0,0,630);
+  g.addColorStop(0,'#1c1813'); g.addColorStop(1,'#0e0c09');
+  x.fillStyle=g; x.fillRect(0,0,1200,630);
+  x.strokeStyle='#E8C064'; x.lineWidth=8; x.strokeRect(22,22,1156,586);
+  x.textAlign='center';
+  x.fillStyle='#9A917F'; x.font='700 20px Arial';
+  x.fillText('S O V E R E I G N   C I T Y',600,86);
+  x.fillStyle='#F5EFE3'; x.font='900 54px Arial';
+  x.fillText('FOUNDER SPRINT',600,150);
+  x.fillStyle='#E8C064'; x.font='900 150px Arial';
+  x.fillText(String(score),600,320);
+  x.fillStyle='#9A917F'; x.font='700 22px Arial';
+  x.fillText('F O U N D E R   P O I N T S',600,360);
+  x.fillStyle='#F5EFE3'; x.font='900 40px Arial';
+  x.fillText((S&&S.founder?S.founder.name:'Founder')+(S&&S.biz?'  ·  '+S.biz.name:''),600,430);
+  x.fillStyle='#3FB8AF'; x.font='600 26px Arial';
+  x.fillText((S?S.customers:0)+' customers   ·   '+fmt(S?S.cash:0)+'   ·   Stage '+(S?S.stage:1),600,472);
+  x.fillStyle='#E8C064'; x.font='700 24px Arial';
+  x.fillText('BUILD WHAT YOU OWN',600,540);
+  x.fillStyle='#7E7565'; x.font='400 18px Arial';
+  x.fillText('matpcul-tech.github.io/Sovereigncity3D',600,574);
+  return cv;
+}
+function downloadSprintCard(score){
+  const cv=buildSprintCard(score);
+  const a=document.createElement('a');
+  a.download='Founder_Sprint_'+score+'.png';
+  a.href=cv.toDataURL('image/png');
+  a.click();
 }
 
 let lampGlows=[];
@@ -4748,6 +4819,7 @@ function startWorld(){
     if(S.customers>=25) S.clipBlowup=1;
   }
   if(_sessionMode) startSessionTimer();
+  if(_sprintMode) toast('<b>🚀 FOUNDER SPRINT.</b> '+Math.round(_sessionDuration/60000)+' minutes on the clock. Found a business, land customers, build your score.','gold');
   if(!startWorld.townPoll){
     startWorld.townPoll=setInterval(()=>{ if(S) loadTown(); },60000);
   }
