@@ -3528,6 +3528,52 @@ const Clip={
   }
 };
 
+/* ---- MOONSHOTS guest cameos ----
+   Appear ONLY on the Founder Sprint pitch link (sprint mode + town code
+   MOONSH): the podcast hosts stand near spawn, wave at founders, and
+   hand out a one-time Moonshot Mentor bonus. Zero footprint anywhere
+   else in the game. ---- */
+const guestMates=[];
+function buildMoonshotGuests(){
+  if(!(_sprintMode&&_sessionCode==='MOONSH')) return;
+  if(guestMates.length) return;
+  [
+    {name:'Mike Parsons',fit:'#00C8FF',x:520,z:1116,
+     line:'<b>Mike from Moonshots:</b> “Learning out loud, founder — now take the moonshot. First pitch is the hardest.” <b>+$100</b>'},
+    {name:'Mark Pearson-Freeland',fit:'#F2A33C',x:600,z:1116,
+     line:'<b>Mark from Moonshots:</b> “Superstar habits start small. Go land one customer, then another.” <b>+$100</b>'}
+  ].forEach((g,i)=>{
+    const p=makePerson(SKINS[(i*2+1)%SKINS.length],g.fit);
+    p.group.position.set(g.x,0,g.z);
+    p.group.rotation.y=Math.atan2(560-g.x,1180-g.z); // face the spawn point
+    const tag=makeLabelSprite(g.name,'#7FDBFF');
+    tag.scale.set(110,20,1); tag.position.y=31;
+    p.group.add(tag);
+    scene.add(p.group);
+    guestMates.push({p,name:g.name,line:g.line,greeted:false,phase:i*1.7});
+  });
+}
+function updateGuests(now){
+  const t=now/1000;
+  for(const g of guestMates){
+    // friendly wave so they read as hosts, not extras
+    g.p.rArm.rotation.z=-2.3-Math.sin(t*3+g.phase)*0.35;
+    g.p.lArm.rotation.z=0.1;
+    g.p.group.position.y=Math.abs(Math.sin(t*2+g.phase))*0.6;
+    if(!g.greeted&&S){
+      const dx=g.p.group.position.x-playerPos.x, dz=g.p.group.position.z-playerPos.z;
+      if(dx*dx+dz*dz<650){
+        g.greeted=true;
+        S.cash+=100;
+        sBig(); spawnBurst(g.p.group.position.x,20,g.p.group.position.z,0x7FDBFF);
+        toast(g.line,'gold');
+        feed(g.name+' gave you a Moonshot Mentor bonus.');
+        updateHUDChips();
+      }
+    }
+  }
+}
+
 /* ---- classroom session timer (?session=true&code=XXXXXX&duration=40) ---- */
 let _sessionTimer=null;
 function startSessionTimer(){
@@ -4648,6 +4694,7 @@ function loop(now){
     sendPresenceUpdate(now,playerPos.x,playerPos.z,playerYaw,skating,_pvMoved);
     updateRemotePlayers(now);
     updateCrumbs(now);
+    updateGuests(now);
     updateSky();
     // hide lock sprites once unlocked
     ZONES.forEach(zo=>{ if(zo.lockSprite) zo.lockSprite.visible=S.stage<zo.unlock; });
@@ -4820,6 +4867,7 @@ function startWorld(){
   }
   if(_sessionMode) startSessionTimer();
   if(_sprintMode) toast('<b>🚀 FOUNDER SPRINT.</b> '+Math.round(_sessionDuration/60000)+' minutes on the clock. Found a business, land customers, build your score.','gold');
+  buildMoonshotGuests();
   if(!startWorld.townPoll){
     startWorld.townPoll=setInterval(()=>{ if(S) loadTown(); },60000);
   }
