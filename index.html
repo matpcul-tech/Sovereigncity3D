@@ -3538,10 +3538,10 @@ function buildMoonshotGuests(){
   if(!(_sprintMode&&_sessionCode==='MOONSH')) return;
   if(guestMates.length) return;
   [
-    {name:'Mike Parsons',fit:'#00C8FF',x:520,z:1116,
-     line:'<b>Mike from Moonshots:</b> “Learning out loud, founder — now take the moonshot. First pitch is the hardest.” <b>+$100</b>'},
-    {name:'Mark Pearson-Freeland',fit:'#F2A33C',x:600,z:1116,
-     line:'<b>Mark from Moonshots:</b> “Superstar habits start small. Go land one customer, then another.” <b>+$100</b>'}
+    {name:'Peter Diamandis',fit:'#00C8FF',x:520,z:1116,
+     line:'<b>Peter from Moonshots:</b> “The best way to predict the future is to create it yourself. Go found something.” <b>+$100</b>'},
+    {name:'Dave Blundin',fit:'#F2A33C',x:600,z:1116,
+     line:'<b>Dave from Moonshots:</b> “There has never been a better time to be a founder. Land that first customer.” <b>+$100</b>'}
   ].forEach((g,i)=>{
     const p=makePerson(SKINS[(i*2+1)%SKINS.length],g.fit);
     p.group.position.set(g.x,0,g.z);
