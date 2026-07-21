@@ -79,11 +79,17 @@ Without the secrets the game still works perfectly in solo mode — the class-co
 
 ## Trailer Mode
 
-Open the browser console and run:
+A five-act, 30-second cinematic commercial the game films by itself — letterbox bars, on-screen captions, music shifts, fireworks, and a title card. Load a game with a named business first (the business name appears on the tower in the final act).
+
+**Desktop:** open the browser console (F12) and run:
 ```javascript
 Trailer.start()
 ```
-Records a 30-second automated cinematic sequence. Use OBS Studio to capture.
+Capture with OBS Studio (1080p, 60 fps).
+
+**Mobile (no console needed):** open the game with `?trailer=true`:
+`https://matpcul-tech.github.io/Sovereigncity3D/?trailer=true`
+Continue your save, then start your phone's screen recorder during the 5-second on-screen countdown. When the trailer ends, your game resumes untouched.
 
 ---
 

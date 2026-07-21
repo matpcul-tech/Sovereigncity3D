@@ -427,6 +427,9 @@ function normalizeTownCode(v){
 const _urlParams=new URLSearchParams(location.search);
 const _sprintMode=_urlParams.get('sprint')==='true';
 const _sessionMode=_urlParams.get('session')==='true'||_sprintMode;
+// ?trailer=true — film the cinematic trailer without a console (mobile:
+// open the link, start your screen recording during the countdown)
+const _trailerMode=_urlParams.get('trailer')==='true';
 const _sessionDuration=Math.max(1,parseInt(_urlParams.get('duration')||(_sprintMode?'10':'40')))*60*1000;
 const _sessionCode=normalizeTownCode(_urlParams.get('code'));
 function freshState(){
@@ -4901,6 +4904,16 @@ function startWorld(){
   }
   if(_sessionMode) startSessionTimer();
   if(_sprintMode) toast('<b>🚀 FOUNDER SPRINT.</b> '+Math.round(_sessionDuration/60000)+' minutes on the clock. Found a business, land customers, build your score.','gold');
+  if(_trailerMode&&!startWorld.trailerArmed){
+    startWorld.trailerArmed=1;
+    let tLeft=5;
+    const tick=()=>{
+      if(!S||Trailer.active) return;
+      if(tLeft>0){ toast('🎬 Trailer starts in '+tLeft+' — start your screen recording','gold'); tLeft--; setTimeout(tick,1000); }
+      else Trailer.start();
+    };
+    setTimeout(tick,1200);
+  }
   buildMoonshotGuests();
   if(!startWorld.townPoll){
     startWorld.townPoll=setInterval(()=>{ if(S) loadTown(); },60000);
