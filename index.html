@@ -4694,7 +4694,7 @@ function loop(now){
   // camera
   if(S){
     const skating=window._skating||false;
-    if(!Clip.active){
+    if(!Clip.active&&!Trailer.active){
       const targetFOV=skating?72:62;
       camera.fov=lerp(camera.fov,targetFOV,0.06);
       camera.updateProjectionMatrix();
@@ -4716,7 +4716,7 @@ function loop(now){
       } else {
         camera.position.lerp(new THREE.Vector3(cx,ch,cz),0.14);
       }
-      if(playerGroup&&!Clip.active){
+      if(playerGroup&&!Clip.active&&!Trailer.active){
         const camDist=Math.hypot(camera.position.x-playerPos.x,camera.position.z-playerPos.z);
         playerGroup.group.visible=camDist>16;
       }
@@ -4953,25 +4953,55 @@ $('continueBtn').onclick=async()=>{
    ========================================================= */
 const Trailer={
   active:false, clock:0, wasWon:false, wasMuted:false,
-  orbitAngle:0,
+  orbitAngle:0, _hidden:[], _cap:null, _labelSet:0,
+
+  // letterbox bars + caption strip (same cinematic frame the industry
+  // clips use, but owned by the trailer so captions can change per act)
+  ui(){
+    let u=document.getElementById('trailerUI');
+    if(!u){
+      u=document.createElement('div');
+      u.id='trailerUI';
+      u.style.cssText='position:fixed;inset:0;z-index:60;pointer-events:none;display:none';
+      u.innerHTML=
+        '<div style="position:absolute;top:0;left:0;right:0;height:9vh;background:#000"></div>'+
+        '<div style="position:absolute;bottom:0;left:0;right:0;height:13vh;background:#000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;padding:4px">'+
+        '<div id="trailerCap" style="font-family:Archivo,Inter,sans-serif;font-weight:900;font-size:clamp(17px,4.5vw,30px);color:#E8C064;letter-spacing:.05em;text-align:center"></div>'+
+        '<div id="trailerSub" style="font-family:Inter,sans-serif;font-size:clamp(11px,2.6vw,14px);color:#F5EFE3;text-align:center"></div></div>';
+      document.body.appendChild(u);
+    }
+    return u;
+  },
+  cap(c,s){
+    if(this._cap===c) return;
+    this._cap=c;
+    const el=document.getElementById('trailerCap'),su=document.getElementById('trailerSub');
+    if(el) el.textContent=c;
+    if(su) su.textContent=s||'';
+  },
 
   start(){
     if(!S){ toast('Start a game first, then run Trailer.start()','bad'); return; }
-    this.active=true; this.clock=0; this.orbitAngle=0;
+    this.active=true; this.clock=0; this.orbitAngle=0; this._labelSet=0; this._act3=0;
+    this._b1=0; this._b2=0; this._m3=0; this._b5=0;
     this.wasWon=S.won; this.wasMuted=S.muted;
     // disable user input
     joyVec={x:0,y:0};
     Object.keys(keys).forEach(k=>keys[k]=false);
-    // position founder at Zone 1 lot for act 1
-    playerPos.x=560; playerPos.z=1330;
-    playerYaw=Math.PI;
     window._skating=false;
-    // night, moody
-    S.hour=23; S.min=0;
+    // founder on Main Street for the night open
+    playerPos.x=420; playerPos.z=1000; playerYaw=Math.PI;
+    S.hour=22; S.min=0;
     S.muted=false; Music.init(); Music.setZone(1); Music.setEnabled(true);
     closeDialog();
+    // clean cinematic frame: bars on, gameplay UI off
+    this.ui().style.display='block'; this._cap=null;
+    ['hud','lockHint','hintKeys'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el&&el.style.visibility!=='hidden'){ el.style.visibility='hidden'; this._hidden.push(el); }
+    });
+    if(tutCV) tutCV.style.display='none';
     if(document.getElementById('phone')) document.getElementById('phone').style.display='none';
-    toast('\uD83C\uDFAC CINEMATIC MODE — 30 seconds','gold');
   },
 
   end(){
@@ -4981,121 +5011,181 @@ const Trailer={
     Music.setEnabled(!S.muted);
     // restore hour to midday so sky looks normal
     S.hour=12; S.min=0; goldenHour=0;
+    // put the tower back the way the trailer found it
+    if(!S.won){
+      const tw=BUILDINGS.find(b=>b.id==='tower');
+      tw.label='Construction Site';
+      updateLabelSprite(tw.labelSprite,tw.label,'#E8C064');
+      tw.mesh.scale.y=60/tw.h3; tw.mesh.position.y=30;
+      tw.roof.position.y=64; tw.labelSprite.position.y=86;
+    }
     // reset player to grind spawn
-    playerPos.x=560; playerPos.z=1200;
-    playerYaw=Math.PI;
+    playerPos.x=560; playerPos.z=1200; playerYaw=Math.PI;
+    const u=document.getElementById('trailerUI'); if(u) u.style.display='none';
+    this._hidden.forEach(el=>{ el.style.visibility='visible'; }); this._hidden=[];
+    if(tutCV) tutCV.style.display='';
+    if(playerGroup) playerGroup.group.visible=true;
     toast('\uD83C\uDFAC Trailer complete. Check your recording.','good');
+  },
+
+  // the gameplay tower-growth code is paused with the rest of the
+  // movement block, so the trailer raises the tower itself
+  growTower(DT){
+    const tw=BUILDINGS.find(b=>b.id==='tower');
+    const curH=tw.mesh.scale.y*tw.h3;
+    if(curH<519){
+      const nh=lerp(curH,520,DT*0.8);
+      tw.mesh.scale.y=nh/tw.h3; tw.mesh.position.y=nh/2;
+      tw.roof.position.y=nh+2; tw.labelSprite.position.y=nh+22;
+    }
+  },
+
+  // the gameplay movement/animation block is paused while the trailer
+  // runs, so the trailer drives the avatar itself
+  pose(mode,now){
+    if(!playerGroup) return;
+    const pg=playerGroup, t=now/1000;
+    pg.group.visible=true; pg.group.scale.y=1;
+    pg.group.rotation.x=0; pg.group.rotation.z=0;
+    const bd=playerParts.board;
+    if(mode==='skate'){
+      pg.group.position.set(playerPos.x,2.2,playerPos.z);
+      pg.group.rotation.y=playerYaw-0.55;
+      pg.group.rotation.x=0.06;
+      bd.visible=true; bd.position.set(0,0,0); bd.rotation.set(0,0.55,0);
+      const kick=Math.max(0,Math.sin(t*2.4));
+      pg.lLeg.rotation.x=0.42; pg.rLeg.rotation.x=-0.3-kick*0.55;
+      pg.lArm.rotation.x=0.25; pg.rArm.rotation.x=-0.2;
+      pg.lArm.rotation.z=0.55+kick*0.1; pg.rArm.rotation.z=-0.55-kick*0.15;
+      pg.group.rotation.z=Math.sin(t*2.2)*0.05;
+    } else if(mode==='walk'){
+      pg.group.position.set(playerPos.x,Math.abs(Math.sin(t*16))*1.2,playerPos.z);
+      pg.group.rotation.y=playerYaw;
+      bd.visible=false;
+      pg.lLeg.rotation.x=Math.sin(t*8)*0.7; pg.rLeg.rotation.x=Math.sin(t*8+Math.PI)*0.7;
+      pg.lArm.rotation.x=Math.sin(t*8+Math.PI)*0.5; pg.rArm.rotation.x=Math.sin(t*8)*0.5;
+      pg.lArm.rotation.z=0; pg.rArm.rotation.z=0;
+    } else {
+      pg.group.position.set(playerPos.x,Math.sin(t*2.1)*0.18,playerPos.z);
+      pg.group.rotation.y=playerYaw;
+      bd.visible=false;
+      pg.lLeg.rotation.x=0; pg.rLeg.rotation.x=0;
+      pg.lArm.rotation.x=Math.sin(t*1.4)*0.06; pg.rArm.rotation.x=Math.sin(t*1.4+Math.PI)*0.06;
+      pg.lArm.rotation.z=0; pg.rArm.rotation.z=0;
+    }
   },
 
   update(DT,now){
     if(!this.active)return;
     this.clock+=DT;
-    const c=this.clock;
+    const c=this.clock, t=now/1000;
 
-    /* ---- ACT 1: THE CRACKED SLAB (0–5s) ----
-       Night, moody. Slow orbit around the founder. */
+    /* ---- ACT 1: NIGHT ON MAIN STREET (0-5s) ----
+       Slow orbit around the founder under the storefront lights. */
     if(c<5){
-      S.hour=23; S.min=0;
+      S.hour=22; S.min=0;
       window._skating=false;
-      playerPos.x=560; playerPos.z=1330;
-      this.orbitAngle+=DT*0.30;
-      const r=85;
+      playerPos.x=420; playerPos.z=1000; playerYaw=Math.PI;
+      this.pose('idle',now);
+      this.orbitAngle+=DT*0.32;
+      const r=64;
       camera.position.set(
         playerPos.x+Math.sin(this.orbitAngle)*r,
-        20+Math.sin(now*0.4)*3,
+        24+Math.sin(t*0.4)*3,
         playerPos.z+Math.cos(this.orbitAngle)*r
       );
-      camera.lookAt(playerPos.x,14,playerPos.z);
-      camera.fov=58; camera.updateProjectionMatrix();
+      camera.lookAt(playerPos.x,15,playerPos.z);
+      camera.fov=56; camera.updateProjectionMatrix();
+      this.cap('EVERY FOUNDER STARTS AT ZERO','A dream, $5,000, and a city that needs you');
     }
 
-    /* ---- TRANSITION: PRE-DAWN (5–6.5s) ---- */
-    else if(c<6.5){
-      S.hour=6; S.min=30;
-      playerPos.x=560; playerPos.z=1330;
-      camera.fov=58; camera.updateProjectionMatrix();
-    }
-
-    /* ---- ACT 2: DAWN HUSTLE (6.5–13s) ----
-       Golden dawn. Founder walks toward Marcus.
-       First customer burst at 10s. */
+    /* ---- ACT 2: DAWN HUSTLE (5-13s) ----
+       Golden dawn. Founder walks up Main Street toward the camera.
+       Customer bursts at 10s and 11.2s. */
     else if(c<13){
       S.hour=7; S.min=0;
       window._skating=false;
-      // walk north
-      playerPos.z-=28*DT;
-      playerYaw=Math.PI;
-      // low-angle side profile push-in
-      camera.position.set(playerPos.x-60,14,playerPos.z+18);
-      camera.lookAt(playerPos.x,14,playerPos.z);
+      playerPos.x=420; playerYaw=Math.PI;
+      if(c<6.5){ playerPos.z=1150; this.pose('idle',now); }
+      else { playerPos.z=Math.max(970,1150-(c-6.5)*28); this.pose('walk',now); }
+      // three-quarter front dolly: camera retreats ahead of the walk
+      camera.position.set(playerPos.x+30,15,playerPos.z-58);
+      camera.lookAt(playerPos.x,15,playerPos.z);
       camera.fov=55; camera.updateProjectionMatrix();
-      // first customer burst at exactly 10s
-      if(c>=10&&c<10.06){
+      if(c>=10&&!this._b1){ this._b1=1;
         spawnBurst(playerPos.x,14,playerPos.z,0xE8C064);
         floatText(playerPos.x,32,playerPos.z,'+1 CUSTOMER','#5FA86B');
         sCash();
       }
-      if(c>=11&&c<11.06){
-        spawnBurst(playerPos.x+20,14,playerPos.z,0x5FA86B);
+      if(c>=11.2&&!this._b2){ this._b2=1;
+        spawnBurst(playerPos.x+14,14,playerPos.z-10,0x5FA86B);
         floatText(playerPos.x,38,playerPos.z-20,'+1 CUSTOMER','#5FA86B');
         sCash();
       }
+      this.cap('FIND A REAL PROBLEM. SOLVE IT.','Pitch your neighbors face to face');
     }
 
-    /* ---- ACT 3: SKATEBOARD VELOCITY (13–21s) ----
-       Music shifts to Innovation Row.
-       Founder skates fast south down Main Street.
-       Camera tight behind the wheels. */
+    /* ---- ACT 3: SKATEBOARD VELOCITY (13-21s) ----
+       Music shifts to Innovation Row. Founder skates fast down
+       Main Street, camera tight behind. S.won flips here so the
+       tower is fully grown by the time Act 4's crane arrives. */
     else if(c<21){
       if(Music.zone!==3){Music.setZone(3);}
       S.stage=Math.max(S.stage||1,3);
+      S.won=true;
       window._skating=true;
       S.hour=10; S.min=0;
-      playerPos.z-=130*DT;
-      // keep in-bounds
-      if(playerPos.z<820)playerPos.z=820;
-      playerYaw=Math.PI;
-      // FIXED follow cam: behind = south of northward-moving player = higher Z
-      // player faces PI (north), behind = opposite = south = +Z
-      const cd=110;
+      if(!this._act3){ this._act3=1; playerPos.z=1250; }
+      playerPos.x=800; playerYaw=Math.PI;
+      playerPos.z=Math.max(830,playerPos.z-55*DT);
+      this.pose('skate',now);
+      const cd=95;
       camera.position.set(
-        playerPos.x+4,                    // slight right offset for character
-        28+Math.sin(now*2.2)*1.8,         // rhythmic carve sway
-        playerPos.z+cd                    // behind the player (south)
+        playerPos.x+5,
+        26+Math.sin(t*2.2)*1.8,
+        playerPos.z+cd
       );
-      camera.lookAt(playerPos.x,16,playerPos.z);
-      camera.fov=72; camera.updateProjectionMatrix();
+      camera.lookAt(playerPos.x,14,playerPos.z);
+      camera.fov=70; camera.updateProjectionMatrix();
       // skate dust
-      if(Math.random()<0.55)particles.push(()=>{
+      if(Math.random()<0.55){
         const m=new THREE.Mesh(new THREE.BoxGeometry(1.4,1.4,1.4),
           new THREE.MeshBasicMaterial({color:0xF2A33C,transparent:true}));
         m.position.set(playerPos.x+rnd(-3,3),2,playerPos.z+rnd(-3,3));
         scene.add(m);
         particles.push({m,vx:rnd(-10,10),vy:rnd(8,22),vz:rnd(-10,10),life:rnd(.3,.7)});
-      });
-      // milestone float at 17s
-      if(c>=17&&c<17.06){
-        stageBanner('STAGE 3','Builder · Innovation Row open');
+      }
+      this.growTower(DT);
+      // milestone at 17s
+      if(c>=17&&!this._m3){ this._m3=1;
+        stageBanner('STAGE 3','Builder \u00B7 Innovation Row open');
         spawnBurst(playerPos.x,20,playerPos.z,0xF2A33C);
       }
+      this.cap('HUSTLE HAS A SPEED','Stage up. Unlock the whole city.');
     }
 
-    /* ---- ACT 4: THE TOWER RISE (21–28s) ----
-       Teleport to Skyline. Golden hour.
-       Helicopter crane shot rising on the tower. */
+    /* ---- ACT 4: THE TOWER RISE (21-28s) ----
+       Golden hour crane shot climbing the founder's tower. */
     else if(c<28){
+      if(!this._labelSet){
+        this._labelSet=1;
+        const tw=BUILDINGS.find(b=>b.id==='tower');
+        tw.label=(S.biz?S.biz.name:'FOUNDER')+' Tower';
+        updateLabelSprite(tw.labelSprite,tw.label,'#E8C064');
+      }
       playerPos.x=2000; playerPos.z=1120;
       window._skating=false;
-      S.won=true; goldenHour=1.1;
+      this.growTower(DT);
+      goldenHour=1.1;
       if(Music.zone!==6)Music.setZone(6);
       const elapsed=c-21;
-      const hOff=50+elapsed*44;          // crane rises 0→280px over 7s
+      const hOff=60+elapsed*50;
       camera.position.set(
-        playerPos.x+180,
+        playerPos.x+340,
         hOff,
-        playerPos.z+200
+        playerPos.z+370
       );
-      camera.lookAt(playerPos.x,hOff*0.30,playerPos.z);
+      camera.lookAt(playerPos.x,hOff*0.55,playerPos.z);
       camera.fov=58; camera.updateProjectionMatrix();
       // fireworks
       if(Math.random()<0.18)
@@ -5105,15 +5195,16 @@ const Trailer={
           playerPos.z+rnd(-100,100),
           [0xE8C064,0xF2A33C,0x3FB8AF][ri(0,2)]
         );
+      this.cap('BUILD WHAT YOU OWN','Your name on the skyline');
     }
 
-    /* ---- ACT 5: TITLE CARD (28–30s) ---- */
+    /* ---- ACT 5: TITLE CARD (28-30s) ---- */
     else if(c<30){
-      // hold the crane shot
-      camera.position.set(2180,300,1320);
-      camera.lookAt(2000,180,1120);
-      if(c>=29&&c<29.06)
-        stageBanner('SOVEREIGN CITY','Build What You Own');
+      camera.position.set(2400,420,1540);
+      camera.lookAt(2000,260,1120);
+      if(c>=28.3&&!this._b5){ this._b5=1;
+        stageBanner('SOVEREIGN CITY','Build What You Own'); }
+      this.cap('SOVEREIGN CITY','Free in the browser \u00B7 no download \u00B7 any device');
     }
 
     else{ this.end(); }
