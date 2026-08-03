@@ -174,6 +174,29 @@ button{font-family:inherit;cursor:pointer;border:none}
 #bmCard h2{font-family:'Archivo';font-weight:900;font-size:27px;line-height:1.1}
 #bmCard p{font-size:14px;line-height:1.6;color:#B8D0E8}
 #bmCard .gold{color:var(--gold)}
+
+/* ---------- STORY ENGINE CSS (cinematic layer) ---------- */
+#scBarTop,#scBarBot{position:fixed;left:0;right:0;height:0;background:#050608;z-index:30;
+  transition:height .5s cubic-bezier(.4,0,.2,1);pointer-events:none}
+#scBarTop{top:0} #scBarBot{bottom:0}
+body.scLetterbox #scBarTop{height:11vh} body.scLetterbox #scBarBot{height:16vh}
+#scStoryUI{position:fixed;inset:0;z-index:31;display:none}
+#scSub{position:absolute;left:50%;bottom:calc(16vh + 14px);transform:translateX(-50%);
+  width:min(620px,92vw);text-align:center;pointer-events:none}
+#scName{font-family:'Archivo';font-weight:900;font-size:13px;letter-spacing:.22em;
+  text-transform:uppercase;margin-bottom:7px;text-shadow:0 2px 8px rgba(0,0,0,.9)}
+#scLine{font-size:16.5px;line-height:1.55;color:#F2EFE6;font-weight:600;min-height:52px;
+  text-shadow:0 2px 10px rgba(0,0,0,.95),0 0 2px rgba(0,0,0,.9)}
+#scHint{margin-top:8px;font-size:10px;letter-spacing:.28em;color:#B9B0A0;opacity:0;
+  transition:opacity .3s;text-transform:uppercase}
+#scChoices{position:absolute;left:50%;bottom:calc(16vh + 128px);transform:translateX(-50%);
+  width:min(480px,92vw);display:none;flex-direction:column;gap:8px}
+.scOpt{background:rgba(10,14,20,.92);border:2px solid rgba(0,200,255,.35);border-radius:13px;
+  padding:13px 16px;color:#FFF;font-size:14px;font-weight:700;text-align:left;line-height:1.35}
+.scOpt:active{background:rgba(0,200,255,.22);border-color:var(--turq)}
+#scTimer{height:5px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden;margin-top:4px}
+#scTimerFill{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--gold),var(--terra));
+  border-radius:99px}
 </style>
 </head>
 <body>
@@ -246,6 +269,20 @@ button{font-family:inherit;cursor:pointer;border:none}
 </div></div>
 
 <div id="bigModal"><div id="bmCard"></div></div>
+
+<!-- STORY ENGINE UI: letterbox bars, subtitle plate, timed choices -->
+<div id="scBarTop"></div><div id="scBarBot"></div>
+<div id="scStoryUI">
+  <div id="scSub">
+    <div id="scName"></div>
+    <div id="scLine"></div>
+    <div id="scHint">Tap to continue</div>
+  </div>
+  <div id="scChoices">
+    <div id="scOpts" style="display:flex;flex-direction:column;gap:8px"></div>
+    <div id="scTimer"><span id="scTimerFill"></span></div>
+  </div>
+</div>
 
 <script>
 /* One-time cleanup: older deployments installed a PWA service worker that
@@ -3736,6 +3773,7 @@ function addLamp(x,z,poleMat){
   streetLampMats.push(bulbMat); lampGlows.push(glow.material);
   addLightPool(x,z,46);
 }
+const treeList=[];
 function addTree(x,z){
   const s=rnd(1.0,1.6);
   const g=new THREE.Group();
@@ -3778,6 +3816,7 @@ function addTree(x,z){
   g.position.set(x,0,z);
   g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
   scene.add(g);
+  treeList.push({g,x,z});
 }
 function addBush(x,z){
   const g=new THREE.Group();
@@ -4331,6 +4370,12 @@ function findNear(){
     const d=dist2(playerPos.x,playerPos.z,n.x,n.z);
     if(d<bd){bd=d;best={type:'npc',o:n};}
   }
+  if(window.SCStory&&SCStory.built&&!SCStory.active){
+    for(const sn of SCStory.list()){
+      const d=dist2(playerPos.x,playerPos.z,sn.x,sn.z);
+      if(d<bd){bd=d;best={type:'story',o:sn};}
+    }
+  }
   let bbd=60;
   for(const p of PLOTS){
     const cx=clamp(playerPos.x,p.x,p.x+p.w), cz=clamp(playerPos.z,p.z,p.z+p.d);
@@ -4348,7 +4393,13 @@ function findNear(){
 }
 function doInteract(){
   if(!nearTarget||dialogOpen) return;
+  if(window.SCStory&&SCStory.active) return;
   ac();
+  if(nearTarget.type==='story'){
+    if(Trailer.active||Clip.active) return;
+    if(playerGroup) playerGroup.group.visible=true;
+    SCStory.beginFor(nearTarget.o.id); return;
+  }
   if(nearTarget.type==='npc') talkTo(nearTarget.o);
   else if(nearTarget.type==='plot') openPlot(nearTarget.o);
   else {
@@ -4404,14 +4455,16 @@ function loop(now){
   const DT=Math.min((now-last)/1000,0.05); last=now;
   const uiOpen=dialogOpen||$('phone').style.display==='flex'||$('bigModal').style.display==='flex';
   if(S&&Trailer.active){Trailer.update(DT,now);}
+  const storyOn=!!(window.SCStory&&SCStory.active);
+  if(window.SCStory&&SCStory.built){SCStory.update(DT,now);}
   // industry spotlight clips: trigger on business milestones, run the scene
-  if(S&&S.biz&&!uiOpen&&!Trailer.active&&!Clip.active){
+  if(S&&S.biz&&!uiOpen&&!Trailer.active&&!Clip.active&&!storyOn){
     if(!S.clipFounded){ S.clipFounded=1; Clip.play('founded'); saveGame(); }
     else if(S.customers>=5&&!S.clipDebut){ S.clipDebut=1; Clip.play('debut'); saveGame(); }
     else if(S.customers>=25&&!S.clipBlowup){ S.clipBlowup=1; Clip.play('blowup'); saveGame(); }
   }
   if(S&&Clip.active) Clip.update(DT,now);
-  if(S&&!uiOpen&&!Trailer.active&&!Clip.active){
+  if(S&&!uiOpen&&!Trailer.active&&!Clip.active&&!storyOn){
     // camera-relative movement
     let mx=joyVec.x,my=joyVec.y;
     if(keys['w']||keys['arrowup'])my-=1; if(keys['s']||keys['arrowdown'])my+=1;
@@ -4675,7 +4728,7 @@ function loop(now){
     const ib=$('interactBtn');
     if(nearTarget){
       ib.style.display='block';
-      ib.textContent=nearTarget.type==='npc'
+      ib.textContent=(nearTarget.type==='npc'||nearTarget.type==='story')
         ? 'Talk \u00B7 '+nearTarget.o.name.split(' ')[0]
         : (nearTarget.type==='plot'
           ? (nearTarget.o.data?'Visit \u00B7 '+nearTarget.o.data.name:'Claim Plot')
@@ -4697,7 +4750,9 @@ function loop(now){
   // camera
   if(S){
     const skating=window._skating||false;
-    if(!Clip.active&&!Trailer.active){
+    if(window.SCStory&&SCStory.active){
+      SCStory.camUpdate(DT,now);
+    } else if(!Clip.active&&!Trailer.active){
       const targetFOV=skating?72:62;
       camera.fov=lerp(camera.fov,targetFOV,0.06);
       camera.updateProjectionMatrix();
@@ -4879,6 +4934,17 @@ function startWorld(){
   if(!S.insightSeen)S.insightSeen={};
   if(S.biz&&!S.biz.industry)S.biz.industry='services';
   buildNPCData(); buildNPCMeshes(); buildBots();
+  if(window.SCStory) SCStory.init();
+  // trees are placed randomly per load — keep the story stage and its
+  // camera lines clear by sliding any tree that landed on set
+  if(window.SCStory&&SCStory.built){
+    for(const t of treeList){
+      if(dist2(t.x,t.z,713,1170)<70){
+        t.x+=(t.x<713?-1:1)*90;
+        t.g.position.x=t.x;
+      }
+    }
+  }
   applyFounderLook();
   playerPos.x=S.px; playerPos.z=S.py;
   ejectPlayerFromBuildings(); // rescue saves that were stuck inside geometry
@@ -4959,6 +5025,738 @@ $('continueBtn').onclick=async()=>{
   startWorld();
   toast('Welcome back, '+S.founder.name+'. Day '+S.day+'.','gold');
 };
+/* =========================================================
+   STORY DATA - Telltale-style cinematic layer
+   Story NPCs, scene graph, flags. All persistence lives under
+   its own namespaced key so nothing clashes with the game save.
+   ========================================================= */
+const SC_STORY_KEY='sc3d-story-layer-v1';
+
+const SC_STORY_NPCS=[
+  {id:'mara', name:'Mara Voss', role:'City Schedule Keeper',
+   x:700, z:1148, face:Math.PI*0.85,
+   skin:'#C89A6B', fit:'#3E5560', hair:'#1A1A22', accent:'#7FD4C8'},
+  {id:'eli', name:'Eli Grant', role:'Street Clockmaker',
+   x:726, z:1170, face:-Math.PI*0.35,
+   skin:'#8A5A3A', fit:'#7A4A28', hair:'#3A3430', accent:'#F2A33C'}
+];
+// where the founder stands during the scene, and where the camera works
+const SC_SCENE_MARK={px:706, pz:1200};
+
+/* The demo scene: one audit, one kind clock, two decisions.
+   Beat fields: shot, actor, clip, emotion, line, wait, choice,
+   set (flags), switch/cases for flag-driven variants. */
+const SC_SCENES={
+
+  night_audit:{
+    id:'night_audit',
+    beats:[
+      {shot:'wide',  actor:'mara', clip:'point',     emotion:'warm',
+       line:'There you are! Perfect timing. Eli and I need a tiebreaker, and you look like someone with opinions.'},
+      {shot:'oshA',  actor:'mara', clip:'talk1',     emotion:'neutral',
+       line:'Here is the case. The big street clock runs four minutes fast. I keep the city schedule, and a wrong clock turns my beautiful charts into spaghetti.'},
+      {shot:'oshB',  actor:'eli',  clip:'talk2',     emotion:'warm',
+       line:'It is not wrong, Mara. It is helpful. Four friendly minutes, wound by hand every single morning.'},
+      {shot:'cuA',   actor:'mara', clip:'armsCrossed', emotion:'stern',
+       line:'A clock has one job, Eli. Telling the truth.'},
+      {shot:'two',   actor:'eli',  clip:'shrug',     emotion:'sad',
+       line:'The market sellers lose track of time on busy days. My four extra minutes mean they never miss the last bus home. Eleven people, home for dinner, every night.'},
+      {shot:'cuB',   actor:'eli',  clip:'talk3',     emotion:'warm',
+       line:'Ask our tiebreaker. They walk past my clock every day.'},
+      {shot:'cuA',   actor:'mara', clip:'point',     emotion:'neutral',
+       line:'Okay, tiebreaker, quick question. Is a helpful clock that fibs still a good clock?',
+       choice:{
+         timeout:8,
+         options:[
+           {t:'A clock should tell the truth.',
+            set:{sided:'audit'}, remember:'mara'},
+           {t:'Helping people get home sounds pretty good.',
+            set:{sided:'clock'}, remember:'eli'},
+           {t:'Maybe the clock is not the real problem here.',
+            set:{sided:'dodge'}}
+         ],
+         timeoutSet:{sided:'silent'}
+       }},
+      {switch:'sided', cases:{
+        audit:{shot:'two', actor:'mara', clip:'nod', emotion:'warm',
+          line:'See? Truth first. If people cannot trust the clock, one day they stop checking it at all.'},
+        clock:{shot:'two', actor:'eli', clip:'nod', emotion:'smile',
+          line:'Ha! A heart after my own gears. Kindness counts for something in this city.'},
+        dodge:{shot:'two', actor:'mara', clip:'surprised', emotion:'surprised',
+          line:'Not the clock? Huh. Hold that thought, tiebreaker. I want to hear where it goes.'},
+        silent:{shot:'two', actor:'mara', clip:'nod', emotion:'neutral',
+          line:'Thinking it over first? Honestly, that is fair. Big questions deserve a quiet minute.'}
+      }},
+      {shot:'oshB',  actor:'mara', clip:'talk2',     emotion:'sad',
+       line:'Here is my worry. If the clock fibs for a good reason today, then tomorrow nobody knows when anything really starts.'},
+      {shot:'cuB',   actor:'eli',  clip:'talk1',     emotion:'sad',
+       line:'And here is mine. If the clock tells the truth, eleven tired sellers sprint for a bus they cannot catch.'},
+      {shot:'cuA',   actor:'mara', clip:'talk3',     emotion:'neutral',
+       line:'So, tiebreaker. Enough philosophy. What should we actually DO about it?',
+       choice:{
+         timeout:8,
+         options:[
+           {t:'Fix the clock AND ask the depot to run the bus four minutes later.',
+            set:{verdict:'rootfix'}, remember:'mara'},
+           {t:'Keep the friendly clock. It works, does it not?',
+            set:{verdict:'covered'}, remember:'eli'},
+           {t:'Fix the clock. Truth comes first, then we help the sellers.',
+            set:{verdict:'audit'}, remember:'mara'}
+         ],
+         timeoutSet:{verdict:'undecided'}
+       }},
+      {switch:'verdict', cases:{
+        rootfix:{shot:'wide', actor:'mara', clip:'surprised', emotion:'surprised',
+          line:'Move the BUS. Fix the real problem instead of arguing about the clock. Eli, why did we never think of that?',
+          set:{clockSafe:true}},
+        covered:{shot:'wide', actor:'mara', clip:'shrug', emotion:'warm',
+          line:'Alright. The clock keeps its four kind minutes. But I am writing HELPFUL, NOT ACCURATE on my chart in very large letters.',
+          set:{clockSafe:true}},
+        audit:{shot:'wide', actor:'mara', clip:'nod', emotion:'warm',
+          line:'Truth it is. And I will walk the market at closing time myself and call out the last bus like a town crier. Deal.',
+          set:{clockSafe:false}},
+        undecided:{shot:'wide', actor:'mara', clip:'shake', emotion:'neutral',
+          line:'No decision? Then homework for all three of us. The best answers usually survive a good night of sleep.',
+          set:{clockSafe:false}}
+      }},
+      {switch:'verdict', cases:{
+        rootfix:{shot:'cuB', actor:'eli', clip:'nod', emotion:'smile',
+          line:'Fix the cause, not the symptom. I am engraving that on a little brass plaque. Tiny letters. Big idea. Thank you, friend.'},
+        covered:{shot:'cuB', actor:'eli', clip:'talk2', emotion:'smile',
+          line:'Come by the stall any evening, friend. The clock and I owe you four minutes, and we always pay our debts.'},
+        audit:{shot:'cuB', actor:'eli', clip:'nod', emotion:'neutral',
+          line:'Then I will build the sellers a closing-time bell. A clockmaker can always find another way to be helpful. Watch me.'},
+        undecided:{shot:'cuB', actor:'eli', clip:'nod', emotion:'warm',
+          line:'Pending suits me fine. Good ideas, like good clocks, take a little winding.'}
+      }}
+    ]
+  },
+
+  greet_after:{
+    id:'greet_after',
+    beats:[
+      {switch:'verdict', cases:{
+        rootfix:{shot:'two', actor:'eli', clip:'talk2', emotion:'smile',
+          line:'Update, friend! The bus leaves four minutes later, the clock tells the truth, and everybody still gets home for dinner. That was YOUR idea. Root cause, remember?'},
+        covered:{shot:'two', actor:'eli', clip:'nod', emotion:'smile',
+          line:'The clock still runs four friendly minutes, and Mara only grumbles about it on Mondays. Our little arrangement, friend.'},
+        audit:{shot:'two', actor:'mara', clip:'nod', emotion:'warm',
+          line:'The clock tells the truth now, and Eli built his closing-time bell. Two good ideas beat one argument. Nice work, tiebreaker.'},
+        undecided:{shot:'two', actor:'mara', clip:'talk1', emotion:'neutral',
+          line:'Still thinking about our clock question? Me too. That is what the good questions do. Come back when you have it.'}
+      }}
+    ]
+  }
+};
+
+/* =========================================================
+   CLIP DATA - keyframe clips as plain data
+   tracks: boneName -> [ [time, rxDeg, ryDeg, rzDeg], ... ]
+   Eased interpolation and crossfades happen in the engine.
+   ========================================================= */
+const SC_CLIPS={
+  idle:{dur:4.2, loop:true, tracks:{
+    hips: [[0,0,0,1.2],[2.1,0,0,-1.2],[4.2,0,0,1.2]],
+    chest:[[0,0,0,-0.8],[2.1,0,0,0.8],[4.2,0,0,-0.8]],
+    head: [[0,0,-2,0.6],[1.4,1.5,2,0],[2.9,0,-1,-0.6],[4.2,0,-2,0.6]],
+    uaL:  [[0,0,0,2],[2.1,1.5,0,3],[4.2,0,0,2]],
+    uaR:  [[0,0,0,-2],[2.1,1.5,0,-3],[4.2,0,0,-2]]
+  }},
+  talk1:{dur:2.2, loop:true, tracks:{
+    uaR:  [[0,-8,0,-4],[0.5,-38,0,-8],[1.0,-16,0,-5],[1.6,-32,0,-10],[2.2,-8,0,-4]],
+    laR:  [[0,-14,0,0],[0.5,-52,0,0],[1.0,-26,0,0],[1.6,-48,0,0],[2.2,-14,0,0]],
+    head: [[0,2,0,0],[0.6,-2,3,0],[1.2,2,-2,0],[2.2,2,0,0]],
+    chest:[[0,1,0,0],[1.1,-1,2,0],[2.2,1,0,0]]
+  }},
+  talk2:{dur:2.6, loop:true, tracks:{
+    uaL:  [[0,-12,0,10],[0.7,-30,0,16],[1.5,-18,0,12],[2.6,-12,0,10]],
+    uaR:  [[0,-12,0,-10],[0.7,-26,0,-18],[1.5,-34,0,-12],[2.6,-12,0,-10]],
+    laL:  [[0,-30,0,0],[0.7,-52,0,0],[1.5,-36,0,0],[2.6,-30,0,0]],
+    laR:  [[0,-30,0,0],[0.7,-40,0,0],[1.5,-56,0,0],[2.6,-30,0,0]],
+    head: [[0,0,2,0],[1.3,2,-3,0],[2.6,0,2,0]]
+  }},
+  talk3:{dur:2.0, loop:true, tracks:{
+    chest:[[0,3,0,0],[0.9,5,-2,0],[2.0,3,0,0]],
+    uaR:  [[0,-24,0,-6],[0.45,-48,0,-8],[0.9,-30,0,-6],[1.4,-52,0,-9],[2.0,-24,0,-6]],
+    laR:  [[0,-30,0,0],[0.45,-24,0,0],[0.9,-44,0,0],[1.4,-22,0,0],[2.0,-30,0,0]],
+    head: [[0,3,0,0],[1.0,1,4,0],[2.0,3,0,0]]
+  }},
+  nod:{dur:0.9, loop:false, tracks:{
+    head:[[0,0,0,0],[0.28,15,0,0],[0.55,-4,0,0],[0.9,0,0,0]],
+    neck:[[0,0,0,0],[0.28,6,0,0],[0.9,0,0,0]]
+  }},
+  shake:{dur:1.05, loop:false, tracks:{
+    head:[[0,0,0,0],[0.25,0,-17,0],[0.55,0,14,0],[0.8,0,-8,0],[1.05,0,0,0]]
+  }},
+  shrug:{dur:1.15, loop:false, tracks:{
+    shL:  [[0,0,0,0],[0.3,0,0,-14],[0.75,0,0,-14],[1.15,0,0,0]],
+    shR:  [[0,0,0,0],[0.3,0,0,14],[0.75,0,0,14],[1.15,0,0,0]],
+    uaL:  [[0,0,0,4],[0.3,-16,0,26],[0.75,-16,0,26],[1.15,0,0,4]],
+    uaR:  [[0,0,0,-4],[0.3,-16,0,-26],[0.75,-16,0,-26],[1.15,0,0,-4]],
+    laL:  [[0,0,0,0],[0.3,-58,0,0],[0.75,-58,0,0],[1.15,0,0,0]],
+    laR:  [[0,0,0,0],[0.3,-58,0,0],[0.75,-58,0,0],[1.15,0,0,0]],
+    head: [[0,0,0,0],[0.3,-4,0,6],[0.75,-4,0,6],[1.15,0,0,0]]
+  }},
+  point:{dur:0.85, loop:false, clamp:true, tracks:{
+    uaR: [[0,0,0,-4],[0.4,-72,0,-6],[0.85,-66,0,-6]],
+    laR: [[0,-10,0,0],[0.4,-6,0,0],[0.85,-8,0,0]],
+    head:[[0,0,0,0],[0.4,4,-4,0],[0.85,3,-3,0]],
+    chest:[[0,0,0,0],[0.4,2,-3,0],[0.85,2,-3,0]]
+  }},
+  armsCrossed:{dur:0.85, loop:false, clamp:true, tracks:{
+    uaL: [[0,0,0,4],[0.45,-36,14,20],[0.85,-34,12,18]],
+    uaR: [[0,0,0,-4],[0.45,-36,-14,-20],[0.85,-34,-12,-18]],
+    laL: [[0,0,0,0],[0.45,-96,28,0],[0.85,-92,26,0]],
+    laR: [[0,0,0,0],[0.45,-96,-28,0],[0.85,-92,-26,0]],
+    chest:[[0,0,0,0],[0.45,-2,0,0],[0.85,-2,0,0]]
+  }},
+  surprised:{dur:0.75, loop:false, clamp:true, tracks:{
+    chest:[[0,0,0,0],[0.18,-8,0,0],[0.5,-5,0,0],[0.75,-5,0,0]],
+    head: [[0,0,0,0],[0.18,-12,0,0],[0.5,-7,0,0],[0.75,-7,0,0]],
+    uaL:  [[0,0,0,4],[0.18,-34,0,22],[0.75,-24,0,14]],
+    uaR:  [[0,0,0,-4],[0.18,-34,0,-22],[0.75,-24,0,-14]],
+    laL:  [[0,0,0,0],[0.18,-40,0,0],[0.75,-28,0,0]],
+    laR:  [[0,0,0,0],[0.18,-40,0,0],[0.75,-28,0,0]]
+  }}
+};
+
+/* =========================================================
+   STORY ENGINE - characters, animation, director, dialogue
+   ========================================================= */
+const SC_D2R=Math.PI/180;
+function scEase(t){ return t*t*(3-2*t); }
+
+/* ---- character factory: primitive rig with a real bone tree ---- */
+function scBuildStoryChar(def){
+  const root=new THREE.Group();
+  const skin=toon(def.skin), fit=toon(def.fit), hairM=toon(def.hair);
+  const pantsM=toon('#2A3040'), shoeM=toon('#D8D4CA');
+  const bones={};
+  const B=(name,parent,x,y,z)=>{ const o=new THREE.Object3D(); o.position.set(x,y,z);
+    parent.add(o); bones[name]=o; return o; };
+  const mesh=(parent,geo,mat,x,y,z)=>{ const m=new THREE.Mesh(geo,mat);
+    m.position.set(x,y,z); m.castShadow=true; parent.add(m); return m; };
+
+  const hips=B('hips',root,0,9.6,0);
+  mesh(hips,new THREE.BoxGeometry(6.4,2.2,3.6),pantsM,0,0.5,0);
+  const spine=B('spine',hips,0,1.9,0);
+  mesh(spine,new THREE.BoxGeometry(6.8,3.0,3.7),fit,0,1.2,0);
+  const chest=B('chest',spine,0,3.2,0);
+  mesh(chest,new THREE.BoxGeometry(7.3,3.8,3.9),fit,0,1.3,0);
+  mesh(chest,new THREE.BoxGeometry(7.8,1.6,3.85),fit,0,3.0,0);
+  const neck=B('neck',chest,0,3.6,0);
+  mesh(neck,new THREE.CylinderGeometry(1.4,1.6,2.0,10),skin,0,0.6,0);
+  const head=B('head',neck,0,2.0,0);
+  const skull=mesh(head,new THREE.SphereGeometry(3.5,20,16),skin,0,2.5,0);
+  skull.scale.set(0.95,1.06,0.92);
+  mesh(head,new THREE.SphereGeometry(0.68,8,6),skin,-3.3,2.5,0);
+  mesh(head,new THREE.SphereGeometry(0.68,8,6),skin,3.3,2.5,0);
+  // hair: cap and a fringe, per-npc color
+  const cap=mesh(head,new THREE.SphereGeometry(3.65,16,12),hairM,0,3.6,-0.4);
+  cap.scale.set(0.97,0.82,0.97);
+  mesh(head,new THREE.BoxGeometry(5.4,1.0,1.3),hairM,0,5.2,2.3);
+  if(def.id==='mara'){ // tight bun
+    mesh(head,new THREE.SphereGeometry(1.3,10,8),hairM,0,5.9,-1.6);
+  } else { // eli: fuller sides
+    mesh(head,new THREE.BoxGeometry(1.2,2.6,2.6),hairM,-3.2,3.2,-0.4);
+    mesh(head,new THREE.BoxGeometry(1.2,2.6,2.6),hairM,3.2,3.2,-0.4);
+  }
+  // face canvas: lids, brows, mouth shapes, saccades
+  const fcv=document.createElement('canvas'); fcv.width=256; fcv.height=256;
+  const fx=fcv.getContext('2d');
+  const ftex=new THREE.CanvasTexture(fcv);
+  const faceMat=new THREE.MeshBasicMaterial({map:ftex,transparent:true});
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(5.9,5.9),faceMat);
+  face.position.set(0,2.45,3.35); head.add(face);
+
+  const shL=B('shL',chest,-4.35,2.6,0), shR=B('shR',chest,4.35,2.6,0);
+  const uaL=B('uaL',shL,-0.6,0,0), uaR=B('uaR',shR,0.6,0,0);
+  mesh(uaL,new THREE.BoxGeometry(2.6,4.6,2.8),fit,0,-1.9,0);
+  mesh(uaR,new THREE.BoxGeometry(2.6,4.6,2.8),fit,0,-1.9,0);
+  const laL=B('laL',uaL,0,-4.3,0), laR=B('laR',uaR,0,-4.3,0);
+  mesh(laL,new THREE.BoxGeometry(2.1,4.2,2.2),skin,0,-1.8,0);
+  mesh(laR,new THREE.BoxGeometry(2.1,4.2,2.2),skin,0,-1.8,0);
+  const handL=B('handL',laL,0,-4.0,0), handR=B('handR',laR,0,-4.0,0);
+  mesh(handL,new THREE.SphereGeometry(1.2,8,6),skin,0,-0.4,0);
+  mesh(handR,new THREE.SphereGeometry(1.2,8,6),skin,0,-0.4,0);
+
+  const ulL=B('ulL',hips,-1.9,-0.4,0), ulR=B('ulR',hips,1.9,-0.4,0);
+  mesh(ulL,new THREE.BoxGeometry(2.9,5.2,3.1),pantsM,0,-2.3,0);
+  mesh(ulR,new THREE.BoxGeometry(2.9,5.2,3.1),pantsM,0,-2.3,0);
+  const llL=B('llL',ulL,0,-4.8,0), llR=B('llR',ulR,0,-4.8,0);
+  mesh(llL,new THREE.BoxGeometry(2.4,4.4,2.6),pantsM,0,-2.0,0);
+  mesh(llR,new THREE.BoxGeometry(2.4,4.4,2.6),pantsM,0,-2.0,0);
+  const footL=B('footL',llL,0,-4.2,0), footR=B('footR',llR,0,-4.2,0);
+  mesh(footL,new THREE.BoxGeometry(2.8,1.5,4.4),shoeM,0,-0.4,0.8);
+  mesh(footR,new THREE.BoxGeometry(2.8,1.5,4.4),shoeM,0,-0.4,0.8);
+
+  // soft ground blob + the marked spot ring
+  const blob=new THREE.Mesh(new THREE.CircleGeometry(7.5,16),
+    new THREE.MeshBasicMaterial({map:getAOTexture(),color:0x000000,transparent:true,opacity:0.5,depthWrite:false}));
+  blob.rotation.x=-Math.PI/2; blob.position.y=0.3; root.add(blob);
+  const ring=new THREE.Mesh(new THREE.RingGeometry(9,11.4,26),
+    new THREE.MeshBasicMaterial({color:new THREE.Color(def.accent),transparent:true,opacity:0.55,side:THREE.DoubleSide,depthWrite:false}));
+  ring.rotation.x=-Math.PI/2; ring.position.y=0.34; root.add(ring);
+
+  root.position.set(def.x,0,def.z);
+  root.rotation.y=def.face;
+  scene.add(root);
+
+  return {
+    def, root, bones, ring, fx, ftex,
+    emotion:'neutral', mouth:'neutral', talking:false, talkT:0,
+    blinkNext:1+Math.random()*4, blinkT:-1, sacT:0, sacX:0, sacY:0,
+    lookWeight:0, lookTarget:null, lookYaw:0, lookPitch:0,
+    anim:scMakeAnimator(bones), faceDirty:true
+  };
+}
+
+/* ---- face painting: brows, lids, iris saccades, mouth shapes ---- */
+function scDrawFace(ch){
+  const c=ch.fx; c.clearRect(0,0,256,256);
+  const emo=ch.emotion, mouth=ch.mouth;
+  const browY={neutral:88, warm:84, stern:96, sad:86, smile:82, surprised:70}[emo]||88;
+  const browTilt={neutral:0, warm:-4, stern:12, sad:-12, smile:-4, surprised:-2}[emo]||0;
+  const blink=ch.blinkT>=0?Math.sin(Math.min(1,ch.blinkT/0.13)*Math.PI):0;
+  const lid=Math.max(blink,{stern:0.22,sad:0.3}[emo]||0);
+  const ex=[86,170];
+  for(let i=0;i<2;i++){
+    const x=ex[i], s=i?1:-1;
+    // brow: inner end drops for stern, lifts for sad
+    c.strokeStyle='#20160C'; c.lineWidth=9; c.lineCap='round';
+    c.beginPath();
+    if(i===0){ c.moveTo(x-22,browY-browTilt); c.lineTo(x+22,browY+browTilt); }
+    else     { c.moveTo(x-22,browY+browTilt); c.lineTo(x+22,browY-browTilt); }
+    c.stroke();
+    // eye white
+    c.fillStyle='#F2EFE6';
+    c.beginPath(); c.ellipse(x,118,15,10.5,0,0,Math.PI*2); c.fill();
+    // iris with saccade offset
+    c.fillStyle='#241B10';
+    c.beginPath(); c.arc(x+ch.sacX,119+ch.sacY,5.6,0,Math.PI*2); c.fill();
+    c.fillStyle='rgba(255,255,255,0.85)';
+    c.beginPath(); c.arc(x+ch.sacX+1.8,117+ch.sacY,1.7,0,Math.PI*2); c.fill();
+    // lids close from the top
+    if(lid>0.02){ c.fillStyle=ch.def.skin;
+      c.fillRect(x-16,107,32,22*lid); }
+  }
+  // mouth shapes
+  c.strokeStyle='#2A1408'; c.lineWidth=7; c.lineCap='round';
+  c.fillStyle='#4A241A';
+  const my=176;
+  if(mouth==='open'){
+    c.beginPath(); c.ellipse(128,my+6,14,17,0,0,Math.PI*2); c.fill();
+  } else if(mouth==='talk'){
+    c.beginPath(); c.ellipse(128,my+4,15,9,0,0,Math.PI*2); c.fill();
+  } else if(mouth==='smile'){
+    c.beginPath(); c.moveTo(102,my); c.quadraticCurveTo(128,my+22,154,my); c.stroke();
+  } else if(mouth==='frown'){
+    c.beginPath(); c.moveTo(104,my+10); c.quadraticCurveTo(128,my-10,152,my+10); c.stroke();
+  } else {
+    c.beginPath(); c.moveTo(108,my+2); c.quadraticCurveTo(128,my+8,148,my+2); c.stroke();
+  }
+  ch.ftex.needsUpdate=true; ch.faceDirty=false;
+}
+
+/* ---- animator: eased keyframe playback with crossfade ---- */
+function scMakeAnimator(bones){
+  return {
+    bones, cur:'idle', nxt:null, t:0, nt:0, fade:0, fadeDur:0.25,
+    play(name,fade){
+      if(!SC_CLIPS[name]||name===this.cur&&!this.nxt) return;
+      this.nxt=name; this.nt=0; this.fade=0; this.fadeDur=fade||0.25;
+    },
+    pose(clipName,t,out){
+      const clip=SC_CLIPS[clipName]; if(!clip) return;
+      let ct=t;
+      if(clip.loop) ct=t%clip.dur;
+      else if(clip.clamp||true) ct=Math.min(t,clip.dur-0.0001);
+      for(const bn in clip.tracks){
+        const keys=clip.tracks[bn];
+        let a=keys[0], b=keys[keys.length-1];
+        for(let i=0;i<keys.length-1;i++){
+          if(ct>=keys[i][0]&&ct<=keys[i+1][0]){ a=keys[i]; b=keys[i+1]; break; }
+        }
+        const span=Math.max(0.0001,b[0]-a[0]);
+        const k=scEase(clamp((ct-a[0])/span,0,1));
+        if(!out[bn]) out[bn]=[0,0,0];
+        out[bn][0]+=(a[1]+(b[1]-a[1])*k)*SC_D2R;
+        out[bn][1]+=(a[2]+(b[2]-a[2])*k)*SC_D2R;
+        out[bn][2]+=(a[3]+(b[3]-a[3])*k)*SC_D2R;
+      }
+    },
+    update(dt){
+      this.t+=dt;
+      const poseA={}; this.pose(this.cur,this.t,poseA);
+      let mix=poseA;
+      if(this.nxt){
+        this.nt+=dt; this.fade=Math.min(1,this.fade+dt/this.fadeDur);
+        const poseB={}; this.pose(this.nxt,this.nt,poseB);
+        mix={};
+        const names={}; for(const n in poseA)names[n]=1; for(const n in poseB)names[n]=1;
+        for(const n in names){
+          const a=poseA[n]||[0,0,0], b=poseB[n]||[0,0,0], f=scEase(this.fade);
+          mix[n]=[a[0]+(b[0]-a[0])*f, a[1]+(b[1]-a[1])*f, a[2]+(b[2]-a[2])*f];
+        }
+        if(this.fade>=1){ this.cur=this.nxt; this.t=this.nt; this.nxt=null;
+          const cc=SC_CLIPS[this.cur];
+          if(!cc.loop&&!cc.clamp&&this.t>=cc.dur){ this.cur='idle'; this.t=Math.random()*4; }
+        }
+      } else {
+        const cc=SC_CLIPS[this.cur];
+        if(cc&&!cc.loop&&!cc.clamp&&this.t>=cc.dur){ this.play('idle',0.3); }
+      }
+      // zero, then apply
+      for(const bn in this.bones){ this.bones[bn].rotation.set(0,0,0); }
+      for(const bn in mix){ const b=this.bones[bn]; if(b) b.rotation.set(mix[bn][0],mix[bn][1],mix[bn][2]); }
+    }
+  };
+}
+
+/* ---- procedural life: breath, blinks, saccades, look-at, lip flap ---- */
+function scLifeUpdate(ch,dt,now){
+  const t=now/1000;
+  // breathing rides on top of whatever the clips did
+  ch.bones.chest.rotation.x+=Math.sin(t*1.8+ch.def.x)*0.022+0.012;
+  ch.bones.spine.rotation.x+=Math.sin(t*1.8+ch.def.x)*0.01;
+  // blink scheduling: every 2 to 6 seconds
+  if(ch.blinkT>=0){ ch.blinkT+=dt; if(ch.blinkT>0.13){ ch.blinkT=-1; ch.blinkNext=2+Math.random()*4; } ch.faceDirty=true; }
+  else { ch.blinkNext-=dt; if(ch.blinkNext<=0){ ch.blinkT=0; ch.faceDirty=true; } }
+  // eye saccades
+  ch.sacT-=dt;
+  if(ch.sacT<=0){ ch.sacT=0.7+Math.random()*1.7;
+    ch.sacX=(Math.random()*2-1)*3.4; ch.sacY=(Math.random()*2-1)*1.6; ch.faceDirty=true; }
+  // damped head look-at toward the active speaker (or the player when idle)
+  let want=0, wantP=0, w=0;
+  if(ch.lookTarget){
+    const tp=ch.lookTarget();
+    if(tp){
+      const dx=tp.x-ch.root.position.x, dz=tp.z-ch.root.position.z;
+      const yawTo=Math.atan2(dx,dz)-ch.root.rotation.y;
+      let ny=yawTo; while(ny>Math.PI)ny-=Math.PI*2; while(ny<-Math.PI)ny+=Math.PI*2;
+      want=clamp(ny,-0.65,0.65);
+      wantP=clamp(Math.atan2((tp.y||16)-19,Math.hypot(dx,dz))* -1,-0.25,0.3);
+      w=1;
+    }
+  }
+  ch.lookWeight+=(w-ch.lookWeight)*Math.min(1,dt*3);
+  ch.lookYaw+=(want-ch.lookYaw)*Math.min(1,dt*4.5);
+  ch.lookPitch+=(wantP-ch.lookPitch)*Math.min(1,dt*4.5);
+  ch.bones.head.rotation.y+=ch.lookYaw*ch.lookWeight;
+  ch.bones.head.rotation.x+=ch.lookPitch*ch.lookWeight;
+  ch.bones.neck.rotation.y+=ch.lookYaw*ch.lookWeight*0.35;
+  // lip flap while a line is active
+  if(ch.talking){
+    ch.talkT-=dt;
+    ch.flapT=(ch.flapT||0)-dt;
+    if(ch.flapT<=0){ ch.flapT=0.07+Math.random()*0.08;
+      ch.mouth=(ch.mouth==='talk')?'neutral':'talk'; ch.faceDirty=true; }
+    if(ch.talkT<=0){ ch.talking=false; ch.mouth=scMouthFor(ch.emotion); ch.faceDirty=true; }
+  }
+  if(ch.faceDirty) scDrawFace(ch);
+}
+function scMouthFor(emo){
+  return emo==='smile'||emo==='warm'?'smile':emo==='sad'?'frown':emo==='surprised'?'open':'neutral';
+}
+
+/* ---- the director ---- */
+const SCStory={
+  active:false, chars:{}, built:false,
+  scene:null, beat:-1, beatObj:null,
+  lineDone:false, typeT:0, typeLen:0, lineText:'',
+  choiceOpen:false, choiceT:0, choiceMax:8,
+  shotName:'', shotTime:0, camPos:null, camLook:null, camFov:55,
+  waitT:0, phase:'idle', cooldownUntil:0, armed:true, playerSnap:null,
+  data:{flags:{}, played:{}},
+
+  load(){ try{ const d=JSON.parse(localStorage.getItem(SC_STORY_KEY));
+    if(d&&d.flags) this.data=d; }catch(e){} },
+  save(){ try{ localStorage.setItem(SC_STORY_KEY,JSON.stringify(this.data)); }catch(e){} },
+
+  init(){
+    this.load();
+    if(!this.camPos){ this.camPos=new THREE.Vector3(); this.camLook=new THREE.Vector3(); }
+    if(this.built) return;
+    this.built=true;
+    for(const def of SC_STORY_NPCS){
+      const ch=scBuildStoryChar(def);
+      ch.lookTarget=()=>({x:playerPos.x, z:playerPos.z, y:16});
+      scDrawFace(ch);
+      this.chars[def.id]=ch;
+    }
+  },
+  list(){ return SC_STORY_NPCS; },
+
+  update(dt,now){
+    if(!this.built) return;
+    for(const id in this.chars){
+      const ch=this.chars[id];
+      ch.anim.update(dt);
+      scLifeUpdate(ch,dt,now);
+      // marked spot ring pulse
+      ch.ring.material.opacity=0.35+Math.sin(now/400+ch.def.x)*0.2;
+      ch.ring.scale.setScalar(1+Math.sin(now/700+ch.def.z)*0.05);
+    }
+    if(this.active){ this.sceneUpdate(dt,now); return; }
+    // proximity trigger: approaching the pair starts the scene
+    if(!S||dialogOpen) return;
+    if($('phone').style.display==='flex'||$('bigModal').style.display==='flex') return;
+    const a=SC_STORY_NPCS[0];
+    const d=dist2(playerPos.x,playerPos.z,a.x,a.z);
+    if(d>72) this.armed=true;
+    if(now<this.cooldownUntil||!this.armed) return;
+    if(d<44){ this.beginFor(a.id); }
+  },
+
+  beginFor(){
+    if(this.active) return;
+    const first=!this.data.played.night_audit;
+    this.start(first?'night_audit':'greet_after');
+  },
+
+  start(sceneId){
+    const sc=SC_SCENES[sceneId]; if(!sc) return;
+    this.scene=sc; this.beat=-1; this.active=true; this.phase='beat';
+    // freeze the founder into a calm stance on a mark, facing the pair
+    playerGroup.lLeg.rotation.x=0; playerGroup.rLeg.rotation.x=0;
+    playerGroup.lArm.rotation.x=0; playerGroup.rArm.rotation.x=0;
+    playerGroup.group.rotation.z=0; playerGroup.group.scale.y=1;
+    this.playerSnap={x:playerPos.x,z:playerPos.z};
+    playerPos.x=SC_SCENE_MARK.px; playerPos.z=SC_SCENE_MARK.pz;
+    playerYaw=Math.atan2(SC_STORY_NPCS[0].x-playerPos.x,SC_STORY_NPCS[0].z-playerPos.z);
+    playerGroup.group.position.set(playerPos.x,0,playerPos.z);
+    playerGroup.group.rotation.y=playerYaw;
+    window._skating=false;
+    // NPCs turn toward the player mark
+    for(const def of SC_STORY_NPCS){
+      const ch=this.chars[def.id];
+      ch.root.rotation.y=Math.atan2(playerPos.x-def.x,playerPos.z-def.z);
+      ch.ring.visible=false;
+    }
+    $('interactBtn').style.display='none';
+    $('hud').style.visibility='hidden';
+    const ui=$('scStoryUI'); ui.style.display='block';
+    document.body.classList.add('scLetterbox');
+    this.setShot('wide',true);
+    if(typeof Music!=='undefined'&&Music.duck) Music.duck&&Music.duck();
+    this.nextBeat();
+  },
+
+  resolveBeat(b){
+    if(b&&b.switch){
+      const v=this.data.flags[b.switch];
+      return b.cases[v]||b.cases[Object.keys(b.cases)[0]];
+    }
+    return b;
+  },
+
+  nextBeat(){
+    this.beat++;
+    const raw=this.scene.beats[this.beat];
+    if(!raw){ this.end(); return; }
+    const b=this.resolveBeat(raw);
+    this.beatObj=b;
+    if(b.set){ for(const k in b.set){ this.data.flags[k]=b.set[k]; } this.save(); }
+    if(b.shot) this.setShot(b.shot, true);
+    // actor performs
+    const ch=this.chars[b.actor];
+    if(ch){
+      if(b.emotion){ ch.emotion=b.emotion; ch.mouth=scMouthFor(b.emotion); ch.faceDirty=true; }
+      if(b.clip) ch.anim.play(b.clip,0.22);
+      // everyone looks at the speaker
+      for(const id in this.chars){
+        const other=this.chars[id];
+        other.lookTarget = id===b.actor
+          ? ()=>({x:playerPos.x,z:playerPos.z,y:16})
+          : ()=>({x:ch.root.position.x,z:ch.root.position.z,y:19});
+      }
+    }
+    // line
+    if(b.line){
+      this.lineText=b.line; this.typeT=0; this.typeLen=0; this.lineDone=false;
+      $('scName').textContent=(SC_STORY_NPCS.find(n=>n.id===b.actor)||{name:''}).name;
+      $('scName').style.color=(SC_STORY_NPCS.find(n=>n.id===b.actor)||{accent:'#fff'}).accent;
+      $('scLine').textContent='';
+      $('scHint').style.opacity='0';
+      if(ch){ ch.talking=true; ch.talkT=Math.min(9,1.0+b.line.length*0.045); }
+      this.phase='typing';
+    } else {
+      this.phase='wait'; this.waitT=b.wait||0.4;
+    }
+    this.choiceOpen=false;
+    $('scChoices').style.display='none';
+  },
+
+  sceneUpdate(dt,now){
+    if(this.phase==='typing'){
+      this.typeT+=dt;
+      const want=Math.min(this.lineText.length,Math.floor(this.typeT/0.024));
+      if(want!==this.typeLen){
+        this.typeLen=want;
+        $('scLine').textContent=this.lineText.slice(0,want);
+      }
+      if(this.typeLen>=this.lineText.length){
+        this.lineDone=true;
+        this.phase=this.beatObj.choice?'choicePrep':'lineHold';
+        $('scHint').style.opacity=this.beatObj.choice?'0':'1';
+        if(this.beatObj.choice){ this.openChoice(this.beatObj.choice); }
+      }
+    }
+    else if(this.phase==='wait'){
+      this.waitT-=dt; if(this.waitT<=0) this.nextBeat();
+    }
+    else if(this.phase==='choice'){
+      this.choiceT-=dt;
+      $('scTimerFill').style.width=Math.max(0,this.choiceT/this.choiceMax*100)+'%';
+      if(this.choiceT<=0){
+        const c=this.beatObj.choice;
+        if(c.timeoutSet){ for(const k in c.timeoutSet){ this.data.flags[k]=c.timeoutSet[k]; } this.save(); }
+        this.closeChoice(); this.nextBeat();
+      }
+    }
+  },
+
+  openChoice(c){
+    this.choiceOpen=true; this.phase='choice';
+    this.choiceMax=c.timeout||8; this.choiceT=this.choiceMax;
+    const box=$('scChoices'); box.style.display='flex';
+    const list=$('scOpts'); list.innerHTML='';
+    c.options.forEach(o=>{
+      const b=document.createElement('button');
+      b.className='scOpt'; b.textContent=o.t;
+      b.onclick=(ev)=>{ ev.stopPropagation(); sTap();
+        if(o.set){ for(const k in o.set){ this.data.flags[k]=o.set[k]; } this.save(); }
+        if(o.remember){
+          const nm=(SC_STORY_NPCS.find(n=>n.id===o.remember)||{name:'Someone'}).name;
+          toast('<b>'+nm+' will remember that.</b>','gold');
+        }
+        this.closeChoice(); this.nextBeat();
+      };
+      list.appendChild(b);
+    });
+  },
+  closeChoice(){ this.choiceOpen=false; $('scChoices').style.display='none'; },
+
+  tap(){
+    if(!this.active) return;
+    if(this.phase==='typing'){
+      // first tap completes the line
+      this.typeLen=this.lineText.length;
+      $('scLine').textContent=this.lineText;
+      this.lineDone=true;
+      const ch=this.chars[this.beatObj.actor];
+      if(ch){ ch.talkT=Math.min(ch.talkT,0.3); }
+      if(this.beatObj.choice){ this.phase='choicePrep'; this.openChoice(this.beatObj.choice); }
+      else { this.phase='lineHold'; $('scHint').style.opacity='1'; }
+      return;
+    }
+    if(this.phase==='lineHold'){ sTap(); this.nextBeat(); }
+  },
+
+  /* named shots: hard cut on change, slow drift within */
+  headOf(id){
+    if(id==='player'){ return new THREE.Vector3(playerPos.x,22,playerPos.z); }
+    const ch=this.chars[id]; const v=new THREE.Vector3();
+    ch.bones.head.getWorldPosition(v); v.y+=1.6; return v;
+  },
+  setShot(name,cut){
+    this.shotName=name; this.shotTime=0;
+    if(cut) this.applyShot(0,true);
+  },
+  applyShot(dt,hard){
+    const A=this.headOf('mara'), B=this.headOf('eli'), P=this.headOf('player');
+    const mid=A.clone().add(B).multiplyScalar(0.5);
+    const midAll=mid.clone().add(P).multiplyScalar(0.5);
+    let pos,look,fov=55;
+    const ab=B.clone().sub(A); ab.y=0; ab.normalize();
+    const perp=new THREE.Vector3(-ab.z,0,ab.x);
+    const drift=Math.min(this.shotTime*0.55,3);
+    switch(this.shotName){
+      case 'two':
+        pos=mid.clone().add(perp.clone().multiplyScalar(72)).add(new THREE.Vector3(0,5,0));
+        look=mid.clone().setY(mid.y-2); fov=50; break;
+      case 'oshA':{ // over Eli's shoulder, looking at Mara
+        const d=A.clone().sub(B).setY(0).normalize();
+        pos=B.clone().add(d.clone().multiplyScalar(-20)).add(perp.clone().multiplyScalar(-9));
+        pos.y=B.y+3.5; look=A.clone(); fov=46; break; }
+      case 'oshB':{ // over Mara's shoulder, looking at Eli
+        const d=B.clone().sub(A).setY(0).normalize();
+        pos=A.clone().add(d.clone().multiplyScalar(-20)).add(perp.clone().multiplyScalar(9));
+        pos.y=A.y+3.5; look=B.clone(); fov=46; break; }
+      case 'cuA':{
+        const d=P.clone().sub(A).setY(0).normalize();
+        pos=A.clone().add(d.multiplyScalar(38)).add(perp.clone().multiplyScalar(5));
+        pos.y=A.y+1.2; look=A.clone().setY(A.y+0.4); fov=42; break; }
+      case 'cuB':{
+        const d=P.clone().sub(B).setY(0).normalize();
+        pos=B.clone().add(d.multiplyScalar(38)).add(perp.clone().multiplyScalar(-5));
+        pos.y=B.y+1.2; look=B.clone().setY(B.y+0.4); fov=42; break; }
+      case 'wide':
+      default:
+        pos=midAll.clone().add(perp.clone().multiplyScalar(88)).add(new THREE.Vector3(0,15,20));
+        look=midAll.clone().setY(13); fov=54;
+    }
+    // slow push-in drift within the shot
+    const fwd=look.clone().sub(pos).normalize();
+    pos.add(fwd.multiplyScalar(drift));
+    pos.y+=Math.sin(this.shotTime*0.7)*0.35;
+    if(hard){ this.camPos.copy(pos); this.camLook.copy(look); this.camFov=fov; }
+    else{
+      this.camPos.lerp(pos,Math.min(1,dt*6));
+      this.camLook.lerp(look,Math.min(1,dt*6));
+      this.camFov=lerp(this.camFov,fov,Math.min(1,dt*6));
+    }
+  },
+  camUpdate(dt,now){
+    this.shotTime+=dt;
+    this.applyShot(dt,false);
+    camera.position.copy(this.camPos);
+    camera.lookAt(this.camLook);
+    camera.fov=this.camFov; camera.updateProjectionMatrix();
+  },
+
+  end(){
+    this.active=false; this.phase='idle';
+    const firstRun=!this.data.played[this.scene.id];
+    if(firstRun) this.data.played[this.scene.id]=1;
+    this.save();
+    // educational payoff: the scene's lesson lands in the Learn tab
+    if(firstRun&&this.scene.id==='night_audit'&&typeof learn==='function'&&S){
+      learn('Root Cause','The real reason a problem happens. Eli\'s clock fibbed to cover a bus problem. Fixing the cause (the bus schedule) beats patching the symptom (a fibbing clock).');
+      if(this.data.flags.verdict==='rootfix'&&typeof toast==='function'){
+        toast('<b>Great thinking!</b> You solved the real problem, not just the noisy one.','good');
+      }
+    }
+    this.scene=null;
+    document.body.classList.remove('scLetterbox');
+    $('scStoryUI').style.display='none';
+    $('hud').style.visibility='visible';
+    for(const def of SC_STORY_NPCS){
+      const ch=this.chars[def.id];
+      ch.ring.visible=true;
+      ch.lookTarget=()=>({x:playerPos.x,z:playerPos.z,y:16});
+      ch.anim.play('idle',0.4);
+      ch.talking=false; ch.mouth=scMouthFor(ch.emotion); ch.faceDirty=true;
+    }
+    // re-approach cooldown, and require walking away before the next trigger
+    this.cooldownUntil=performance.now()+6000;
+    this.armed=false;
+    // follow camera resumes by itself; give it a sane fov to blend from
+  }
+};
+window.SCStory=SCStory;
+
+// taps anywhere on the story overlay advance the line
+document.addEventListener('DOMContentLoaded',()=>{});
+(function(){
+  const ui=document.getElementById('scStoryUI');
+  if(ui){ ui.addEventListener('click',e=>{
+    if(e.target.classList&&e.target.classList.contains('scOpt')) return;
+    SCStory.tap();
+  }); }
+})();
+
+
 /* =========================================================
    SOVEREIGN CITY — CINEMATIC TRAILER ENGINE
    Run Trailer.start() from the browser console.
