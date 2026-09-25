@@ -534,6 +534,7 @@ function freshState(){
     biz:null,customers:0,
     hq:false,hqLevel:0,
     gear:{board:false,chain:false,sign:false,fits:[]},
+    pitchStreak:0,
     employees:[],manager:false,automated:false,communityInvested:false,
     equity:[{who:'You',pct:100,c:'#E8C064'}],
     investors:{park:false,chase:false,sovereignFund:false},
@@ -843,39 +844,82 @@ function pitchResult(npc,style){
     won=Math.random()<odds;
   }
   if(won){
-    if(!S.customersOf) S.customersOf={};
-    S.customersOf[npc.id]=S.day;
-    S.customers++; S.stats.hustle=clamp(S.stats.hustle+2,0,100);
-    S.stats.reputation=clamp(S.stats.reputation+1,0,100);
-    bumpRel(npc.id,2); remember(npc.id,'I signed up as your customer.');
-    sCash(); if(S.customers===1) sBig();
-    spawnBurst(npc.x,16,npc.z,0xE8C064);
-    reactNpc(npc,'yes');
-    floatText(npc.x,30,npc.z,'YES!','#5FA86B');
-    parkCustomer(npc);
-    toast('<b>'+npc.name+'</b> cheers. Customer #'+S.customers+' is on your lot.','good');
-    if(S.customers===1) learn('Customer Discovery','Talking to real people to find out what they\u2019ll actually pay for.');
-    // milestone fireworks \u2014 landing customers should FEEL like winning
-    if([1,5,10,25,50].includes(S.customers)){
-      sBig();
-      for(let i=0;i<3;i++) setTimeout(()=>spawnBurst(playerPos.x+rnd(-24,24),rnd(24,54),playerPos.z+rnd(-24,24),[0xE8C064,0x3FB8AF,0xF2A33C][i]),i*180);
-      if(S.customers===1) toast('<b>\ud83c\udf89 YOUR FIRST CUSTOMER!</b> The Corner Store will sell you a board, a jacket, and a sign.','gold');
-      else toast('<b>\ud83c\udf89 '+S.customers+' customers!</b> The block is talking about '+(S.biz?S.biz.name:'you')+'.','gold');
-    }
-    checkProgression();
-  } else {
-    S.stats.hustle=clamp(S.stats.hustle+1,0,100);
-    bumpRel(npc.id,-1); remember(npc.id,'you pitched me and I passed.');
-    sBad(); reactNpc(npc,'no');
-    floatText(npc.x,28,npc.z,'NOPE','#D4513B');
-    const jokes=[
-      npc.name+' shakes their head. "That was not it."',
-      npc.name+' snorts. "Read the room."',
-      '"Nope." '+npc.name+' folds their arms.'
-    ];
-    toast(jokes[ri(0,jokes.length-1)]+(guided?' The tell is still there.':' Come back tomorrow.'),'bad');
-    learn('Rejection Handling','Every no teaches you something a yes never could.');
+    if(isHaggler(npc)&&!guided){ openHaggle(npc); return; }
+    landCustomer(npc);
+  } else missPitch(npc,guided);
+}
+function isHaggler(npc){
+  if(!npc||npc.key||npc.id==='nia') return false;
+  let h=0; const id=npc.id||'';
+  for(let i=0;i<id.length;i++) h=(h*17+id.charCodeAt(i))>>>0;
+  return h%6===0;
+}
+function landCustomer(npc){
+  if(!S.customersOf) S.customersOf={};
+  if(S.customersOf[npc.id]) return;
+  S.customersOf[npc.id]=S.day;
+  S.customers++; S.stats.hustle=clamp(S.stats.hustle+2,0,100);
+  S.stats.reputation=clamp(S.stats.reputation+1,0,100);
+  bumpRel(npc.id,2); remember(npc.id,'I signed up as your customer.');
+  sCash(); if(S.customers===1) sBig();
+  spawnBurst(npc.x,16,npc.z,0xE8C064);
+  reactNpc(npc,'yes');
+  floatText(npc.x,30,npc.z,'YES!','#5FA86B');
+  parkCustomer(npc);
+  toast('<b>'+npc.name+'</b> cheers. Customer #'+S.customers+' is on your lot.','good');
+  if(S.customers===1) learn('Customer Discovery','Talking to real people to find out what they\u2019ll actually pay for.');
+  if([1,5,10,25,50].includes(S.customers)){
+    sBig();
+    for(let i=0;i<3;i++) setTimeout(()=>spawnBurst(playerPos.x+rnd(-24,24),rnd(24,54),playerPos.z+rnd(-24,24),[0xE8C064,0x3FB8AF,0xF2A33C][i]),i*180);
+    if(S.customers===1) toast('<b>\ud83c\udf89 YOUR FIRST CUSTOMER!</b> The Corner Store will sell you a board, a jacket, and a sign.','gold');
+    else toast('<b>\ud83c\udf89 '+S.customers+' customers!</b> The block is talking about '+(S.biz?S.biz.name:'you')+'.','gold');
   }
+  S.pitchStreak=(S.pitchStreak||0)+1;
+  if(S.pitchStreak>=3){
+    S.pitchStreak=0; S.cash+=50;
+    floatText(npc.x,38,npc.z,'+$50','#E8C064');
+    toast('<b>Three yeses in a row.</b> The block tipped you $50.','gold');
+    sCash();
+  }
+  checkProgression();
+  saveGame();
+}
+function missPitch(npc,guided){
+  const had=S.pitchStreak||0;
+  S.pitchStreak=0;
+  S.stats.hustle=clamp(S.stats.hustle+1,0,100);
+  bumpRel(npc.id,-1); remember(npc.id,'you pitched me and I passed.');
+  sBad(); reactNpc(npc,'no');
+  floatText(npc.x,28,npc.z,'NOPE','#D4513B');
+  const jokes=[
+    npc.name+' shakes their head. "That was not it."',
+    npc.name+' snorts. "Read the room."',
+    '"Nope." '+npc.name+' folds their arms.'
+  ];
+  toast(jokes[ri(0,jokes.length-1)]+(guided?' The tell is still there.':' Come back tomorrow.')+(had>=2?' Streak over.':''),'bad');
+  learn('Rejection Handling','Every no teaches you something a yes never could.');
+  saveGame();
+}
+function openHaggle(npc){
+  const floor=Math.max(Math.round((S.biz.base||10)*0.5),1);
+  const deal=Math.max(floor, S.biz.price-3);
+  showDialog(npc.name,'Haggler','#E8C064',
+    'I like it. I like it better at <b>'+fmt(deal)+'</b>. Drop the price and I sign. My cousin is watching.',
+    [{label:'Take '+fmt(deal),sub:'They sign, and the cousin gets in line.',fn:()=>{
+        S.biz.price=deal; landCustomer(npc); addCousin(npc);
+      }},
+     {label:'Hold at '+fmt(S.biz.price),sub:'They might walk.',fn:()=>{
+        if(Math.random()<0.5) landCustomer(npc);
+        else missPitch(npc,false);
+      }}]);
+}
+function addCousin(npc){
+  S.customers++;
+  S.stats.reputation=clamp(S.stats.reputation+1,0,100);
+  parkCustomer(npc);
+  floatText(npc.x,34,npc.z,'+COUSIN','#5FA86B');
+  toast('Their cousin saw the deal and got in line.','good');
+  checkProgression();
   saveGame();
 }
 
@@ -1468,7 +1512,29 @@ function dailySettle(){
   }
   if(S.eventDays>0){ S.eventDays--; if(S.eventDays===0){ S.event=null; $('eventBanner').style.display='none'; } }
   else if(Math.random()<0.22) rollEvent();
+  feed(nextHook());
   saveGame();
+}
+function nextHook(){
+  if(!S||!S.biz) return 'Next time: pick a lane, then pitch Nia.';
+  if(S.customers<1) return 'Next time: Nia is still waiting by the board.';
+  if(!S.gear||!S.gear.board) return 'Next time: the Corner Store will sell you a skateboard.';
+  if(!S.hq) return 'Next time: the empty lot is still for sale.';
+  if(S.customers<20) return 'Next time: run the street demo at City Market.';
+  if(!S.manager) return 'Next time: the business still needs you every hour. Hire, or it stays a job.';
+  if(S.sovereignDays<7) return 'Next time: '+S.sovereignDays+'/7 profitable days. The tower is watching.';
+  return 'Next time: the city is yours. Keep the profit honest.';
+}
+function whyBooks(){
+  if(!S||!S.biz) return 'No business yet, so the period did not pay.';
+  const books=projectBooks();
+  const profit=books?books.profit:0;
+  let why=S.customers+' customer'+(S.customers===1?'':'s')+' at '+fmt(S.biz.price)+' comes to about '+fmt(profit)+' a day.';
+  if(S.biz.price>sweetSpot()*1.2) why+=' The price is ahead of what people trust you for.';
+  else if(S.customers<3) why+=' The line is still short.';
+  else if(profit<0) why+=' Expenses are bigger than sales.';
+  else why+=' That gap, not the cash in the till, is the score.';
+  return why;
 }
 function rollEvent(){
   const r=Math.random();
@@ -3972,15 +4038,17 @@ function startSessionTimer(){
 }
 function showSessionComplete(){
   if(_sprintMode){ showSprintComplete(); return; }
-  const biggest=S&&S.insights&&S.insights.length?S.insights[0]:null;
+  const name=S&&S.founder?S.founder.name:'Founder';
+  const profit=S&&S.biz?S.lastProfit:0;
   $('bmCard').innerHTML=
-    '<div style="font-size:48px">⏱</div>'+
-    '<h2 class="gold">SESSION COMPLETE</h2>'+
-    '<p><b>'+(S&&S.founder?S.founder.name:'Founder')+'</b> &middot; Day '+(S?S.day:1)+'</p>'+
-    (S&&S.biz?'<p style="color:var(--turq)">'+(S.biz.name||'')+'&ensp;&middot;&ensp;'+(S.customers||0)+' customer'+(S.customers===1?'':'s')+'</p>':'')+
-    (biggest?'<p style="margin-top:10px"><b>'+(biggest.label||'')+': '+(biggest.title||'')+'</b></p>':'')+
-    '<p style="margin-top:12px;font-size:12px;color:#9A917F">Your teacher can see your progress on the Facilitator Dashboard.</p>'+
-    '<button class="btn ghost" id="sessionExitBtn">Save &amp; Exit</button>';
+    '<div style="font-size:40px">&#128176;</div>'+
+    '<h2 class="gold">PAYDAY</h2>'+
+    '<p><b>'+name+'</b>'+(S&&S.biz?' &middot; '+S.biz.name:'')+' &middot; Day '+(S?S.day:1)+'</p>'+
+    '<p style="font-family:Archivo,sans-serif;font-weight:900;font-size:36px;color:'+(profit>=0?'#5FA86B':'#E23B2F')+'">'+fmt(profit)+'</p>'+
+    '<p style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9A917F">Last payday &middot; '+(S?S.customers:0)+' customers &middot; '+fmt(S?S.cash:0)+' cash</p>'+
+    '<p>'+whyBooks()+'</p>'+
+    '<p style="color:var(--gold)"><b>'+nextHook()+'</b></p>'+
+    '<button class="btn ghost" id="sessionExitBtn">Save & come back</button>';
   $('bigModal').style.display='flex';
   saveGame();
   document.getElementById('sessionExitBtn').onclick=async()=>{ await saveGame(); location.reload(); };
@@ -5462,6 +5530,7 @@ function startWorld(){
   if(!S.gear.fits)S.gear.fits=[];
   if(S.stage>=2)S.gear.board=true;
   if(S.stage>=3)S.gear.chain=true;
+  if(S.pitchStreak==null)S.pitchStreak=0;
   if(!S.customersOf)S.customersOf={};
   if(!S.insights)S.insights=[];
   if(!S.insightSeen)S.insightSeen={};
@@ -6260,9 +6329,24 @@ const SCStory={
     // educational payoff: the scene's lesson lands in the Learn tab
     if(firstRun&&this.scene.id==='night_audit'&&typeof learn==='function'&&S){
       learn('Root Cause','The real reason a problem happens. Eli\'s clock fibbed to cover a bus problem. Fixing the cause (the bus schedule) beats patching the symptom (a fibbing clock).');
-      if(this.data.flags.verdict==='rootfix'&&typeof toast==='function'){
+      const v=this.data.flags.verdict;
+      if(S.biz&&v==='rootfix'){
+        S.customers+=2; S.cash+=40; S.stats.reputation=clamp(S.stats.reputation+3,0,100);
+        toast('<b>The bus is on time.</b> Two riders become customers. +'+fmt(40)+'.','gold');
+        feed('You fixed the route, not the clock. +2 customers.');
+        if(typeof syncCustomerLine==='function') syncCustomerLine();
+        if(typeof checkProgression==='function') checkProgression();
+      } else if(v==='covered'){
+        toast('The clock looks honest. The riders still miss the stop. No new customers.','bad');
+      } else if(S.biz&&v==='audit'){
+        S.customers+=1; S.stats.reputation=clamp(S.stats.reputation+1,0,100);
+        toast('You asked a better question. One rider takes a chance on you.','good');
+        if(typeof syncCustomerLine==='function') syncCustomerLine();
+        if(typeof checkProgression==='function') checkProgression();
+      } else if(v==='rootfix'){
         toast('<b>Great thinking!</b> You solved the real problem, not just the noisy one.','good');
       }
+      saveGame();
     }
     this.scene=null;
     document.body.classList.remove('scLetterbox');
