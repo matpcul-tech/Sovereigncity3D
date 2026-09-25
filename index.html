@@ -574,7 +574,7 @@ function npcPos(id){ const n=npcById(id); return n?{x:n.x,z:n.z}:null; }
 /* ---------------- NPCS ---------------- */
 const SKINS=['#F3D5B5','#E0AC7E','#C68B59','#9C6644','#7F4F24','#5C3A21'];
 const FITS=['#E8461A','#1AB8AE','#E83020','#1A6AB8','#5AAE2A','#C82870','#E8C030','#5840C8'];
-const FIRST=['Jaylen','Maya','Tommy','Rosa','Darius','Kim','Ellis','Tasha','Ray','Lena','Hector','Nia','Owen','Pearl','Sam','Ida','Cole','Mona','Trey','Faye','Bo','June','Zeke','Ada','Gus','Vera'];
+const FIRST=['Jaylen','Maya','Tommy','Rosa','Darius','Kim','Ellis','Tasha','Ray','Lena','Hector','Nina','Owen','Pearl','Sam','Ida','Cole','Mona','Trey','Faye','Bo','June','Zeke','Ada','Gus','Vera'];
 const NPCS=[];
 function npcById(id){ return NPCS.find(n=>n.id===id); }
 function addNPC(o){
@@ -754,6 +754,7 @@ function foundBusiness(ind,name){
   learn('Value Proposition','The specific problem you solve and why it\u2019s worth paying for.');
   feed('You founded '+name+' ('+ind.name+'). The city barely notices. Yet.');
   toast('<b>'+name+'</b> is open. Nia is waiting by the board. Go get your first yes.','gold'); sBig();
+  applyStoryReward();
   saveGame();
 }
 
@@ -776,9 +777,9 @@ function talkCustomer(npc){
   openPitch(npc);
 }
 const PITCH_TELLS=[
-  ['They grab their head.','Lead with the problem.'],
-  ['They tap their wallet.','Lead with the price.'],
-  ['They look you over.','Lead with who you are.']
+  ['They grab their head.',''],
+  ['They tap their wallet.',''],
+  ['They look you over.','']
 ];
 function openPitch(npc){
   const taste=pitchTaste(npc);
@@ -792,7 +793,7 @@ function openPitch(npc){
   const tell=$('pitchTell'); if(!tell) return;
   tell.style.display='block';
   $('pitchTellMain').textContent=PITCH_TELLS[taste][0];
-  $('pitchTellSub').textContent=PITCH_TELLS[taste][1];
+  $('pitchTellSub').textContent='Match the gesture. The buttons do not say which.';
   const fill=$('pitchBarFill');
   fill.style.transition='none';
   fill.style.transform='scaleX(1)';
@@ -903,13 +904,15 @@ function missPitch(npc,guided){
 function openHaggle(npc){
   const floor=Math.max(Math.round((S.biz.base||10)*0.5),1);
   const deal=Math.max(floor, S.biz.price-3);
+  if(deal>=S.biz.price){ landCustomer(npc); return; }
   showDialog(npc.name,'Haggler','#E8C064',
-    'I like it. I like it better at <b>'+fmt(deal)+'</b>. Drop the price and I sign. My cousin is watching.',
-    [{label:'Take '+fmt(deal),sub:'They sign, and the cousin gets in line.',fn:()=>{
-        S.biz.price=deal; landCustomer(npc); addCousin(npc);
+    'I will sign at <b>'+fmt(deal)+'</b>. That becomes the price for <b>every</b> customer, not just me. One yes now, less money every day after.',
+    [{label:'Drop everyone to '+fmt(deal),sub:'One customer. The whole block pays less.',fn:()=>{
+        S.biz.price=deal; landCustomer(npc);
+        learn('Discounting','A deal for one person becomes the price for all of them.');
       }},
-     {label:'Hold at '+fmt(S.biz.price),sub:'They might walk.',fn:()=>{
-        if(Math.random()<0.5) landCustomer(npc);
+     {label:'Hold at '+fmt(S.biz.price),sub:'Usually they still pay full price.',fn:()=>{
+        if(Math.random()<0.7) landCustomer(npc);
         else missPitch(npc,false);
       }}]);
 }
@@ -972,6 +975,7 @@ function hireScene(){
       if(c.good){ S.stats.strategy+=3; toast('<b>'+c.name+' joined.</b> Good instinct. Output multiplied.','good'); sBig(); }
       else { toast(c.name+' joined... that shrug was a warning. Productivity will lag.','bad'); sBad(); }
       feed('First hire: '+c.name+'. Payroll starts tomorrow.');
+      syncStaff();
       checkProgression(); saveGame();}})));
 }
 function hireManager(){
@@ -979,6 +983,7 @@ function hireManager(){
   sBig(); learn('Sovereignty','Your business runs without you. That is the goal.');
   feed('General Manager hired. The machine can run without your hands on it.');
   toast('<b>GM hired.</b> Now prove it: 7 straight profitable days, hands off.','gold');
+  syncStaff();
   showDialog('Your GM','General Manager','#3FB8AF',
     '"I\u2019ve got the floor. Go be a founder, not an operator. Check your phone, watch the profit, and let the system breathe."',
     [{label:'It\u2019s yours. Run it.'}]);
@@ -1102,24 +1107,42 @@ function talkRivera(){
 
 function talkRival(){
   const hostile=rel('rival')<0;
+  const opts=[];
+  if(S.biz&&S.rivalLoss>0){
+    opts.push({label:'Win a customer back',sub:S.rivalLoss+' still with them. Full price, no discount.',fn:()=>{
+      if(Math.random()<0.65){
+        S.customers++; S.rivalLoss--;
+        sCash(); toast('<b>Won one back.</b> They are standing on your lot.','good');
+        syncCustomerLine(); checkProgression();
+      } else { sBad(); toast('Not this time. They stayed with the rival.','bad'); }
+      saveGame();
+    }});
+  }
+  if(S.biz&&S.stage>=3){
+    opts.push({label:'Propose a partnership',sub:'Ends the poaching. Both of you gain customers.',fn:()=>{
+      if(Math.random()<0.4+S.stats.charisma*0.005){
+        bumpRel('rival',3); S.rivalPeace=true; S.rivalLoss=0; S.customers+=5; remember('rival','we became partners.');
+        sBig(); toast('<b>Partnership formed.</b> +5 customers. They stop taking yours.','gold');
+        syncCustomerLine();
+        learn('Blue Ocean','Skip the fight. Find or create the market nobody is contesting.');
+      } else { bumpRel('rival',-2); remember('rival','you tried to partner and I laughed.');
+        sBad(); toast('They laughed it off. The rivalry just got personal.','bad'); }
+      saveGame();
+    }});
+    opts.push({label:'Talk trash',sub:'Feels good. Costs reputation.',fn:()=>{
+      bumpRel('rival',-2); S.stats.reputation=Math.max(0,S.stats.reputation-3);
+      remember('rival','you talked trash on the street.');
+      toast('Word travels. Reputation -3. Was it worth it?','bad'); saveGame();
+    }});
+  }
+  if(!opts.length) opts.push({label:'We\u2019ll see.'});
+  else opts.push({label:'Walk away.'});
   showDialog('Rival Founder','Competing Founder','#B6657F',
     greet(npcById('rival'))+(S.biz?
-    (hostile?' We both know only one of us owns this market.':' Same city, same hunger. Question is whether we eat alone or together.'):
+    (S.rivalLoss?' I have '+S.rivalLoss+' of your customers. Come take them.':
+     (hostile?' We both know only one of us owns this market.':' Same city, same hunger.')):
     ' I started six months before you. The grind doesn\u2019t care who came first, only who stays.'),
-    S.biz&&S.stage>=3?[
-     {label:'Propose a partnership',sub:'Joint venture: both gain customers, rivalry ends',fn:()=>{
-        if(Math.random()<0.4+S.stats.charisma*0.005){
-          bumpRel('rival',3); S.customers+=5; remember('rival','we became partners.');
-          sBig(); toast('<b>Partnership formed.</b> +5 customers. A rival became an ally.','gold');
-          learn('Blue Ocean','Skip the fight. Find or create the market nobody is contesting.');
-        } else { bumpRel('rival',-2); remember('rival','you tried to partner and I laughed.');
-          sBad(); toast('They laughed it off. The rivalry just got personal.','bad'); }
-        saveGame();}},
-     {label:'Talk trash',sub:'Feels good. Costs reputation.',fn:()=>{
-        bumpRel('rival',-2); S.stats.reputation=Math.max(0,S.stats.reputation-3);
-        remember('rival','you talked trash on the street.');
-        toast('Word travels. Reputation -3. Was it worth it?','bad'); saveGame();}},
-     {label:'Walk away.'}]:[{label:'We\u2019ll see.'}]);
+    opts);
 }
 
 const PARK_QS=[
@@ -1145,9 +1168,10 @@ function talkPark(){
     showDialog('David Park','Angel Investor',c,'I write $5K to $15K checks for founders with real customer numbers. Come back with traction, not a story.',[{label:'Noted.'}]);
     return;
   }
-  if(S.lastRevenue<250){
+  const parkRev=(projectBooks()||{}).revenue||0;
+  if(parkRev<250){
     showDialog('David Park','Angel Investor',c,
-      greet(npcById('park'))+' I looked at your run rate. '+fmt(S.lastRevenue)+'/day isn\u2019t there yet. I need $250+/day. '+
+      greet(npcById('park'))+' I looked at your run rate. '+fmt(parkRev)+'/day isn\u2019t there yet. I need $250+/day. '+
       (S.parkFailed?'You bounced back before. Do it again.':'Data-focused isn\u2019t cold, it\u2019s respect for your time and mine.'),
       [{label:'I\u2019ll be back with the numbers.'}]);
     return;
@@ -1512,8 +1536,19 @@ function dailySettle(){
   }
   if(S.eventDays>0){ S.eventDays--; if(S.eventDays===0){ S.event=null; $('eventBanner').style.display='none'; } }
   else if(Math.random()<0.22) rollEvent();
+  rivalTick();
   feed(nextHook());
   saveGame();
+}
+function rivalTick(){
+  if(!S.biz||S.customers<6||S.rivalPeace||rel('rival')>=3) return;
+  if(Math.random()>0.45) return;
+  const lost=1;
+  S.customers=Math.max(0,S.customers-lost);
+  S.rivalLoss=(S.rivalLoss||0)+lost;
+  toast('<b>Rival Founder</b> took a customer. Talk to them to win one back.','bad');
+  feed('A customer left for the rival. You can win them back, one at a time.');
+  if(typeof syncCustomerLine==='function') syncCustomerLine();
 }
 function nextHook(){
   if(!S||!S.biz) return 'Next time: pick a lane, then pitch Nia.';
@@ -2153,8 +2188,11 @@ function buildYardSign(){
   const x=c.getContext('2d');
   x.fillStyle='#F4E7C8'; x.fillRect(0,0,512,256);
   x.fillStyle='#1B2A3B'; x.fillRect(18,18,476,220);
-  x.fillStyle='#E8C064'; x.font='bold 58px Arial'; x.textAlign='center'; x.textBaseline='middle';
-  x.fillText((S.biz.name||'OPEN').toUpperCase().slice(0,14),256,108);
+  x.fillStyle='#E8C064'; x.textAlign='center'; x.textBaseline='middle';
+  const brand=(S.biz.name||'OPEN').toUpperCase();
+  let size=54; x.font='bold '+size+'px Arial';
+  while(size>20 && x.measureText(brand).width>430){ size-=2; x.font='bold '+size+'px Arial'; }
+  x.fillText(brand,256,108);
   x.font='600 28px Arial'; x.fillStyle='#F5EFE3';
   x.fillText('NOW OPEN',256,176);
   const face=new THREE.Mesh(new THREE.PlaneGeometry(24,12), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c)}));
@@ -2171,7 +2209,12 @@ const SHOP=[
   {id:'night',name:'Night market fit',price:250,need:1,fit:5,blurb:'Loud on purpose.'},
   {id:'goldfit',name:'Gold fit',price:400,need:3,fit:6,blurb:'Costs more. Looks like it.'},
   {id:'chain',name:'Gold chain',price:500,need:3,blurb:'On your chest, whether you have a stage or not.'},
-  {id:'sign',name:'Yard sign',price:450,need:1,blurb:'Your name, stuck in the lot, today.'}
+  {id:'sign',name:'Yard sign',price:450,need:1,blurb:'Your name, stuck in the lot, today.'},
+  {id:'plants',name:'Lot garden',price:600,need:8,blurb:'Three planters beside the customer line.'},
+  {id:'lights',name:'String lights',price:900,need:8,blurb:'Bulbs over the lot. You can see them from the street.'},
+  {id:'helmet',name:'Founder helmet',price:700,need:12,blurb:'Sits on your head.'},
+  {id:'awning',name:'Store awning',price:1500,need:8,hq:true,blurb:'A stripe of color across the HQ.'},
+  {id:'crates',name:'Delivery crates',price:1000,need:20,blurb:'Stacked by the door. You are shipping.'}
 ];
 function gearOwned(item){
   if(!S.gear) return false;
@@ -2187,7 +2230,7 @@ function openShop(){
   if(!S.gear) S.gear={board:false,chain:false,sign:false,fits:[]};
   const opts=SHOP.map(item=>{
     const owned=gearOwned(item);
-    const lockedNeed=(S.customers||0)<item.need;
+    const lockedNeed=(S.customers||0)<item.need||(item.hq&&!S.hq);
     if(owned&&item.fit!=null){
       const wearing=S.founder&&S.founder.fit===item.fit;
       return {label:(wearing?'Wearing: ':'Wear: ')+item.name, sub:wearing?'Already on you.':'Swap. You already paid.',
@@ -2197,7 +2240,7 @@ function openShop(){
     return {label:item.name+' · '+fmt(item.price),
       sub:(lockedNeed?'After '+item.need+' customer'+(item.need>1?'s':'')+'. ':item.blurb),
       locked:lockedNeed||S.cash<item.price,
-      lockMsg:lockedNeed?'Land '+item.need+' customer'+(item.need>1?'s':'')+' first.':'Need '+fmt(item.price)+'.',
+      lockMsg:(item.hq&&!S.hq)?'Buy the lot first.':(lockedNeed?'Land '+item.need+' customer'+(item.need>1?'s':'')+' first.':'Need '+fmt(item.price)+'.'),
       fn:()=>buyGear(item)};
   });
   opts.push({label:'Just browsing.'});
@@ -2207,7 +2250,7 @@ function openShop(){
 function buyGear(item){
   if(!S.gear) S.gear={board:false,chain:false,sign:false,fits:[]};
   if(!S.gear.fits) S.gear.fits=[];
-  if((S.customers||0)<item.need||S.cash<item.price) return;
+  if((S.customers||0)<item.need||S.cash<item.price||(item.hq&&!S.hq)) return;
   const first=!S.gear.board&&!S.gear.chain&&!S.gear.sign&&!S.gear.fits.length;
   S.cash-=item.price;
   if(item.fit!=null){
@@ -2227,9 +2270,100 @@ function buyGear(item){
     if(playerParts&&playerParts.chain) playerParts.chain.visible=true;
     toast('<b>Chain on.</b> Check your chest.','gold');
   } else toast('<b>'+item.name+' on.</b> That is what '+fmt(item.price)+' looks like.','gold');
+  refreshLotDress(); wearHelmet();
   if(first) learn('Spending','Profit is only real when it changes something you can point at.');
   feed('Bought '+item.name+' for '+fmt(item.price)+'.');
   saveGame();
+}
+let lotDress=null, staffMeshes=[], staffN=-1;
+function refreshLotDress(){
+  if(lotDress){ scene.remove(lotDress); lotDress=null; }
+  if(!scene||!S||!S.gear) return;
+  const b=BUILDINGS.find(x=>x.id==='lot'); if(!b) return;
+  const g=new THREE.Group();
+  const add=(m)=>{ m.castShadow=false; g.add(m); };
+  if(S.gear.plants){
+    [[-36, b.d/2-16],[0, b.d/2-12],[36, b.d/2-16]].forEach(([ox,oz],i)=>{
+      const pot=new THREE.Mesh(new THREE.CylinderGeometry(3,3.5,4,8), toon(0xC46A2A));
+      pot.position.set(ox,2,oz); add(pot);
+      const bush=new THREE.Mesh(new THREE.SphereGeometry(4.2,8,6), toon(i%2?0x3E8C4A:0x6BBF59));
+      bush.position.set(ox,6.2,oz); add(bush);
+    });
+  }
+  if(S.gear.lights){
+    for(let i=0;i<6;i++){
+      const bulb=new THREE.Mesh(new THREE.SphereGeometry(1.05,8,6), new THREE.MeshBasicMaterial({color:0xFFE08A}));
+      bulb.position.set(-30+i*12, 18, b.d/2-8); add(bulb);
+    }
+  }
+  if(S.gear.awning&&S.hq){
+    const aw=new THREE.Mesh(new THREE.BoxGeometry(Math.min(b.w*0.62,90),2.2,16), toon(0xE8461A));
+    aw.position.set(0, 32, b.d/2+6); add(aw);
+  }
+  if(S.gear.crates){
+    const c1=new THREE.Mesh(new THREE.BoxGeometry(8,8,8), toon(0xC4A574));
+    c1.position.set(b.w/2-16,4,b.d/2-12); add(c1);
+    const c2=new THREE.Mesh(new THREE.BoxGeometry(8,8,8), toon(0xA88860));
+    c2.position.set(b.w/2-20,12,b.d/2-14); add(c2);
+  }
+  if(!g.children.length) return;
+  g.position.set(b.x+b.w/2,0,b.y+b.d/2);
+  scene.add(g); lotDress=g;
+}
+function wearHelmet(){
+  if(!playerGroup||!playerGroup.group) return;
+  const old=playerGroup.group.getObjectByName('helmet');
+  if(old) playerGroup.group.remove(old);
+  if(!S||!S.gear||!S.gear.helmet) return;
+  const h=new THREE.Mesh(new THREE.SphereGeometry(3.4,10,8), toon(0xE8C030));
+  h.name='helmet'; h.castShadow=false; h.scale.y=0.62; h.position.y=25.2;
+  playerGroup.group.add(h);
+}
+function syncStaff(){
+  if(!scene||!S) return;
+  const n=(S.employees?S.employees.length:0)+(S.manager?1:0);
+  if(n===staffN) return;
+  while(staffMeshes.length){ const old=staffMeshes.pop(); scene.remove(old.group); }
+  const b=BUILDINGS.find(x=>x.id==='lot'); if(!b){ staffN=n; return; }
+  for(let i=0;i<n;i++){
+    const person=makePerson(SKINS[(i+2)%SKINS.length], FITS[(i+1)%FITS.length], i%2?'girl':'guy');
+    person.group.position.set(b.x+22+i*16, 0, b.y+28);
+    person.group.rotation.y=0.2;
+    scene.add(person.group);
+    staffMeshes.push(person);
+  }
+  staffN=n;
+}
+function grantStoryReward(v){
+  if(!S||!v) return;
+  if(!S.biz){
+    if(v==='rootfix'||v==='audit'){
+      S.storyPending=v;
+      toast('The riders will show up once you have a business. That choice is saved.','good');
+      saveGame();
+    } else if(v==='covered'){
+      toast('The clock looks honest. The riders still miss the stop. No new customers.','bad');
+    }
+    return;
+  }
+  if(v==='rootfix'){
+    S.customers+=2; S.cash+=40; S.stats.reputation=clamp(S.stats.reputation+3,0,100);
+    toast('<b>The bus is on time.</b> Two riders become customers. +'+fmt(40)+'.','gold');
+    feed('You fixed the route, not the clock. +2 customers.');
+    syncCustomerLine(); checkProgression();
+  } else if(v==='covered'){
+    toast('The clock looks honest. The riders still miss the stop. No new customers.','bad');
+  } else if(v==='audit'){
+    S.customers+=1; S.stats.reputation=clamp(S.stats.reputation+1,0,100);
+    toast('You asked a better question. One rider takes a chance on you.','good');
+    syncCustomerLine(); checkProgression();
+  }
+  saveGame();
+}
+function applyStoryReward(){
+  if(!S||!S.storyPending||!S.biz) return;
+  const v=S.storyPending; S.storyPending=null;
+  grantStoryReward(v);
 }
 
 
@@ -4036,22 +4170,35 @@ function startSessionTimer(){
     if(rem<=0){ clearInterval(_sessionTimer); showSessionComplete(); }
   },500);
 }
-function showSessionComplete(){
-  if(_sprintMode){ showSprintComplete(); return; }
-  const name=S&&S.founder?S.founder.name:'Founder';
-  const profit=S&&S.biz?S.lastProfit:0;
+function showPayday(canExit){
+  if(!S||!S.biz) return;
+  const blocked=dialogOpen||(window.Clip&&Clip.active)||(window.SCStory&&SCStory.active)||(window.Trailer&&Trailer.active);
+  if(blocked){ S.paydayDue=canExit?'exit':'stay'; return; }
+  const books=projectBooks();
+  const profit=books?books.profit:0;
+  const name=S.founder?S.founder.name:'Founder';
   $('bmCard').innerHTML=
     '<div style="font-size:40px">&#128176;</div>'+
     '<h2 class="gold">PAYDAY</h2>'+
-    '<p><b>'+name+'</b>'+(S&&S.biz?' &middot; '+S.biz.name:'')+' &middot; Day '+(S?S.day:1)+'</p>'+
+    '<p><b>'+name+'</b> &middot; '+S.biz.name+' &middot; Day '+S.day+'</p>'+
     '<p style="font-family:Archivo,sans-serif;font-weight:900;font-size:36px;color:'+(profit>=0?'#5FA86B':'#E23B2F')+'">'+fmt(profit)+'</p>'+
-    '<p style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9A917F">Last payday &middot; '+(S?S.customers:0)+' customers &middot; '+fmt(S?S.cash:0)+' cash</p>'+
+    '<p style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9A917F">Tomorrow at 9 AM &middot; '+S.customers+' customers</p>'+
+    (S.day>1?'<p style="font-size:13px;color:#9A917F">Yesterday paid '+fmt(S.lastProfit)+'.</p>':'')+
     '<p>'+whyBooks()+'</p>'+
     '<p style="color:var(--gold)"><b>'+nextHook()+'</b></p>'+
-    '<button class="btn ghost" id="sessionExitBtn">Save & come back</button>';
+    (S.townCode?'<p style="font-size:12px;color:#9A917F">Class town '+S.townCode+'. Open the phone, then Ranks.</p>':'')+
+    '<button class="btn" id="paydayOk">'+(canExit?'Save & come back':'Back to the street')+'</button>';
   $('bigModal').style.display='flex';
   saveGame();
-  document.getElementById('sessionExitBtn').onclick=async()=>{ await saveGame(); location.reload(); };
+  document.getElementById('paydayOk').onclick=async()=>{
+    await saveGame();
+    if(canExit) location.reload();
+    else $('bigModal').style.display='none';
+  };
+}
+function showSessionComplete(){
+  if(_sprintMode){ showSprintComplete(); return; }
+  showPayday(true);
 }
 
 /* ---- FOUNDER SPRINT — timed public challenge with a shareable score ---- */
@@ -4415,6 +4562,7 @@ function setHQBuilt(){
   updateLabelSprite(bm.sp,b.label,'#F2A33C');
   ejectPlayerFromBuildings(); // don't trap the founder inside their new HQ
   buildYardSign();
+  refreshLotDress();
 }
 
 function drawSCFace(x){
@@ -4897,8 +5045,9 @@ function findNear(){
     }
   }
   if(place&&person){
-    // The quest arrow stands you back from a door. A passerby only
-    // takes Talk if you are basically next to them.
+    // After the business exists, Nia keeps Talk even if you came from the Board.
+    if(S.biz&&S.customers<1&&person.o&&person.o.id==='nia'&&personD<NPC_R&&!(place.o&&place.o.id==='board'&&placeD<6))
+      return person;
     if(personD<8&&personD+4<placeD) return person;
     return place;
   }
@@ -5025,6 +5174,9 @@ function touchShadow(now){
 function loop(now){
   const DT=Math.min(Math.max((now-last)/1000,0),0.1); last=now;
   const uiOpen=dialogOpen||$('phone').style.display==='flex'||$('bigModal').style.display==='flex';
+  if(S&&S.paydayDue&&!dialogOpen&&!(window.Clip&&Clip.active)&&!(window.SCStory&&SCStory.active)&&!(window.Trailer&&Trailer.active)&&$('bigModal').style.display!=='flex'){
+    const mode=S.paydayDue; S.paydayDue=null; showPayday(mode==='exit');
+  }
   if(S&&!shadowsTuned){ shadowsTuned=true; tuneShadows(); }
   if(S) touchShadow(now);
   if(S&&Trailer.active){Trailer.update(DT,now);}
@@ -5165,7 +5317,7 @@ function loop(now){
       minAcc-=0.1; S.min++;
       if(S.min>=60){ S.min=0; S.hour++;
         if(S.hour===8) assignDaily();
-        if(S.hour===9) dailySettle();
+        if(S.hour===9&&S.biz){ dailySettle(); showPayday(false); }
         if(S.hour>=9&&S.hour<=21) maybeChaos();
         if(S.hour>=24){ S.hour=0; S.day++; respawnCrumbs(); }
         updateHUDChips();
@@ -5520,6 +5672,7 @@ function applyFounderLook(){
   armPlayerShadow(playerGroup.group);
   if(playerParts.nameTag){ playerParts.group.remove(playerParts.nameTag); }
   playerParts.nameTag=null;
+  wearHelmet();
 }
 function startWorld(){
   S.streak=S.streak||0;
@@ -5556,6 +5709,8 @@ function startWorld(){
   snapCameraClear();
   if(S.hq){ setHQBuilt(); buildHQSign(); } else setHQEmpty();
   buildYardSign();
+  refreshLotDress();
+  syncStaff();
   if(S.communityInvested) addMurals();
   const hq=BUILDINGS.find(b=>b.id==='lot');
   if(S.bankrupt&&S.hq){ hq.label='FOR LEASE'; updateLabelSprite(hq.labelSprite,'FOR LEASE','#D4513B'); }
@@ -6329,24 +6484,7 @@ const SCStory={
     // educational payoff: the scene's lesson lands in the Learn tab
     if(firstRun&&this.scene.id==='night_audit'&&typeof learn==='function'&&S){
       learn('Root Cause','The real reason a problem happens. Eli\'s clock fibbed to cover a bus problem. Fixing the cause (the bus schedule) beats patching the symptom (a fibbing clock).');
-      const v=this.data.flags.verdict;
-      if(S.biz&&v==='rootfix'){
-        S.customers+=2; S.cash+=40; S.stats.reputation=clamp(S.stats.reputation+3,0,100);
-        toast('<b>The bus is on time.</b> Two riders become customers. +'+fmt(40)+'.','gold');
-        feed('You fixed the route, not the clock. +2 customers.');
-        if(typeof syncCustomerLine==='function') syncCustomerLine();
-        if(typeof checkProgression==='function') checkProgression();
-      } else if(v==='covered'){
-        toast('The clock looks honest. The riders still miss the stop. No new customers.','bad');
-      } else if(S.biz&&v==='audit'){
-        S.customers+=1; S.stats.reputation=clamp(S.stats.reputation+1,0,100);
-        toast('You asked a better question. One rider takes a chance on you.','good');
-        if(typeof syncCustomerLine==='function') syncCustomerLine();
-        if(typeof checkProgression==='function') checkProgression();
-      } else if(v==='rootfix'){
-        toast('<b>Great thinking!</b> You solved the real problem, not just the noisy one.','good');
-      }
-      saveGame();
+      grantStoryReward(this.data.flags.verdict);
     }
     this.scene=null;
     document.body.classList.remove('scLetterbox');
