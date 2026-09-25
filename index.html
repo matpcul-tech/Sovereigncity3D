@@ -533,6 +533,7 @@ function freshState(){
     stats:{hustle:10,charisma:10,strategy:10,reputation:5,sovereignty:0},
     biz:null,customers:0,
     hq:false,hqLevel:0,
+    gear:{board:false,chain:false,sign:false,fits:[]},
     employees:[],manager:false,automated:false,communityInvested:false,
     equity:[{who:'You',pct:100,c:'#E8C064'}],
     investors:{park:false,chase:false,sovereignFund:false},
@@ -858,7 +859,7 @@ function pitchResult(npc,style){
     if([1,5,10,25,50].includes(S.customers)){
       sBig();
       for(let i=0;i<3;i++) setTimeout(()=>spawnBurst(playerPos.x+rnd(-24,24),rnd(24,54),playerPos.z+rnd(-24,24),[0xE8C064,0x3FB8AF,0xF2A33C][i]),i*180);
-      if(S.customers===1) toast('<b>\ud83c\udf89 YOUR FIRST CUSTOMER!</b> Every empire starts with one yes.','gold');
+      if(S.customers===1) toast('<b>\ud83c\udf89 YOUR FIRST CUSTOMER!</b> The Corner Store will sell you a board, a jacket, and a sign.','gold');
       else toast('<b>\ud83c\udf89 '+S.customers+' customers!</b> The block is talking about '+(S.biz?S.biz.name:'you')+'.','gold');
     }
     checkProgression();
@@ -2074,6 +2075,96 @@ function buildHQSign(){
   hqSign.position.set(b.x+b.w/2,cy,b.y+b.d/2);
   scene.add(hqSign);
 }
+let yardSign=null;
+function buildYardSign(){
+  if(yardSign){ scene.remove(yardSign); yardSign=null; }
+  if(!S||!S.biz||!S.gear||!S.gear.sign||S.hq) return;
+  const b=BUILDINGS.find(x=>x.id==='lot'); if(!b) return;
+  const g=new THREE.Group();
+  const post=new THREE.Mesh(new THREE.BoxGeometry(1.6,18,1.6), toon(0xC4A574));
+  post.position.y=9;
+  const c=document.createElement('canvas'); c.width=512; c.height=256;
+  const x=c.getContext('2d');
+  x.fillStyle='#F4E7C8'; x.fillRect(0,0,512,256);
+  x.fillStyle='#1B2A3B'; x.fillRect(18,18,476,220);
+  x.fillStyle='#E8C064'; x.font='bold 58px Arial'; x.textAlign='center'; x.textBaseline='middle';
+  x.fillText((S.biz.name||'OPEN').toUpperCase().slice(0,14),256,108);
+  x.font='600 28px Arial'; x.fillStyle='#F5EFE3';
+  x.fillText('NOW OPEN',256,176);
+  const face=new THREE.Mesh(new THREE.PlaneGeometry(24,12), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c)}));
+  face.position.y=17;
+  const back=new THREE.Mesh(new THREE.BoxGeometry(24.4,12.4,0.6), toon(0xC4A574));
+  back.position.y=17; back.position.z=-0.4;
+  g.add(post,back,face);
+  g.position.set(b.x+b.w+14,0,b.y+b.d*0.55);
+  scene.add(g); yardSign=g;
+}
+const SHOP=[
+  {id:'board',name:'Skateboard',price:400,need:1,blurb:'At your feet. Push hard, or hold Shift, to ride.'},
+  {id:'jacket',name:'Block jacket',price:250,need:1,fit:3,blurb:'Blue. The block can see you coming.'},
+  {id:'night',name:'Night market fit',price:250,need:1,fit:5,blurb:'Loud on purpose.'},
+  {id:'goldfit',name:'Gold fit',price:400,need:3,fit:6,blurb:'Costs more. Looks like it.'},
+  {id:'chain',name:'Gold chain',price:500,need:3,blurb:'On your chest, whether you have a stage or not.'},
+  {id:'sign',name:'Yard sign',price:450,need:1,blurb:'Your name, stuck in the lot, today.'}
+];
+function gearOwned(item){
+  if(!S.gear) return false;
+  if(item.fit!=null) return (S.gear.fits||[]).indexOf(item.fit)>=0;
+  return !!S.gear[item.id];
+}
+function openShop(){
+  if(!S.biz){
+    showDialog('Corner Store','The Grind','#F2A33C',
+      'The clerk looks you over. "Come back when you have a business. Then we talk gear."',[{label:'Fair.'}]);
+    return;
+  }
+  if(!S.gear) S.gear={board:false,chain:false,sign:false,fits:[]};
+  const opts=SHOP.map(item=>{
+    const owned=gearOwned(item);
+    const lockedNeed=(S.customers||0)<item.need;
+    if(owned&&item.fit!=null){
+      const wearing=S.founder&&S.founder.fit===item.fit;
+      return {label:(wearing?'Wearing: ':'Wear: ')+item.name, sub:wearing?'Already on you.':'Swap. You already paid.',
+        fn:()=>{ if(wearing) return; S.founder.fit=item.fit; applyFounderLook(); sTap(); toast(item.name+' on.','good'); saveGame(); }};
+    }
+    if(owned) return {label:item.name+' · owned', sub:item.blurb, fn:()=>toast('You already bought that. Look at yourself, or your lot.','good')};
+    return {label:item.name+' · '+fmt(item.price),
+      sub:(lockedNeed?'After '+item.need+' customer'+(item.need>1?'s':'')+'. ':item.blurb),
+      locked:lockedNeed||S.cash<item.price,
+      lockMsg:lockedNeed?'Land '+item.need+' customer'+(item.need>1?'s':'')+' first.':'Need '+fmt(item.price)+'.',
+      fn:()=>buyGear(item)};
+  });
+  opts.push({label:'Just browsing.'});
+  showDialog('Corner Store','Spend it where you can see it','#F2A33C',
+    'Cash '+fmt(S.cash)+'. A jacket, a board, and a sign change the street. A number on your phone does not.', opts);
+}
+function buyGear(item){
+  if(!S.gear) S.gear={board:false,chain:false,sign:false,fits:[]};
+  if(!S.gear.fits) S.gear.fits=[];
+  if((S.customers||0)<item.need||S.cash<item.price) return;
+  const first=!S.gear.board&&!S.gear.chain&&!S.gear.sign&&!S.gear.fits.length;
+  S.cash-=item.price;
+  if(item.fit!=null){
+    if(S.gear.fits.indexOf(item.fit)<0) S.gear.fits.push(item.fit);
+    S.founder.fit=item.fit; applyFounderLook();
+  } else S.gear[item.id]=true;
+  sBig(); updateHUDChips();
+  if(item.id==='board'){
+    S.boardStowed=false;
+    toast('<b>Board bought.</b> It is at your feet. Push the stick all the way, or hold Shift.','gold');
+  } else if(item.id==='sign'){
+    buildYardSign();
+    const b=BUILDINGS.find(x=>x.id==='lot');
+    if(b) spawnBurst(b.x+b.w+14,16,b.y+b.d*0.55,0xE8C064);
+    toast('<b>Sign is up</b> beside your lot. Go look.','gold');
+  } else if(item.id==='chain'){
+    if(playerParts&&playerParts.chain) playerParts.chain.visible=true;
+    toast('<b>Chain on.</b> Check your chest.','gold');
+  } else toast('<b>'+item.name+' on.</b> That is what '+fmt(item.price)+' looks like.','gold');
+  if(first) learn('Spending','Profit is only real when it changes something you can point at.');
+  feed('Bought '+item.name+' for '+fmt(item.price)+'.');
+  saveGame();
+}
 
 
 /* =========================================================
@@ -2148,8 +2239,9 @@ function perfSample(DT){
 
 /* ---- music mute button ---- */
 /* ---- skateboard stow toggle: on-screen 🛹 button + B key ---- */
+function hasBoard(){ return !!(S&&S.gear&&S.gear.board); }
 function toggleBoard(){
-  if(!S||S.stage<2) return;
+  if(!hasBoard()) return;
   S.boardStowed=!S.boardStowed;
   sTap();
   toast(S.boardStowed?'🛹 Board stowed on your back.':'🛹 Board out! Push the stick all the way (or hold Shift) to ride.','good');
@@ -4254,6 +4346,7 @@ function setHQBuilt(){
   b.label=(S.biz?S.biz.name:'Your')+' HQ';
   updateLabelSprite(bm.sp,b.label,'#F2A33C');
   ejectPlayerFromBuildings(); // don't trap the founder inside their new HQ
+  buildYardSign();
 }
 
 function drawSCFace(x){
@@ -4757,6 +4850,7 @@ function doInteract(){
   else {
     const b=nearTarget.o;
     if(b.id==='board') openBoard();
+    else if(b.id==='corner') openShop();
     else if(b.id==='lot') openLot();
     else if(b.id==='market') openMarket();
     else if(b.id==='techhub') openTechHub();
@@ -4889,7 +4983,7 @@ function loop(now){
     const vx=(fx*my+rx*mx),vz=(fz*my+rz*mx);
     // skateboard: unlocked at Stage 2. Full joystick push or Shift = ride.
     const pushHard=Math.hypot(joyVec.x,joyVec.y)>0.88||keys['shift'];
-    const canSkate=S.stage>=2&&!S.boardStowed;
+    const canSkate=hasBoard()&&!S.boardStowed;
     window._skating=!!(canSkate&&pushHard&&Math.hypot(vx,vz)>0.05);
     const skating=canSkate&&pushHard&&Math.hypot(vx,vz)>0.05;
     const spd=skating?145:(keys['shift']?100:72);
@@ -4955,13 +5049,15 @@ function loop(now){
     const bd=playerParts.board;
     if(skating){
       bd.visible=true; bd.position.set(0,0,0); bd.rotation.set(0,0.55,0);
-    } else if(S.stage>=2&&S.boardStowed){
+    } else if(hasBoard()&&S.boardStowed){
       bd.visible=true; bd.position.set(0,13.5,-3.4);
       bd.rotation.set(-Math.PI/2+0.12,0,0.32);
+    } else if(hasBoard()){
+      bd.visible=true; bd.position.set(1.8,0.15,2.2); bd.rotation.set(0,0.5,0);
     } else {
       bd.visible=false;
     }
-    playerParts.chain.visible=S.stage>=3;
+    playerParts.chain.visible=!!(S.gear&&S.gear.chain);
     if(jumpActive){
       playerGroup.lLeg.rotation.x=-0.6; playerGroup.rLeg.rotation.x=-0.6;
       playerGroup.lArm.rotation.x=0.4; playerGroup.rArm.rotation.x=0.4;
@@ -5227,7 +5323,7 @@ function loop(now){
 function updateHUDChips(){
   if(!S)return;
   const bb=document.getElementById('boardBtn');
-  if(bb) bb.style.display=S.stage>=2?'flex':'none';
+  if(bb) bb.style.display=hasBoard()?'flex':'none';
   const stages=['','Ideator','Hustler','Builder','Scaler','Sovereign'];
   $('stageChip').textContent='Stage '+S.stage+' \u00B7 '+stages[S.stage]+(S.streak>0?' \u00B7 \uD83D\uDD25'+S.streak:'');
   const h12=S.hour%12===0?12:S.hour%12, ap=S.hour<12?'AM':'PM';
@@ -5362,6 +5458,10 @@ function startWorld(){
   if(S.daily===undefined)S.daily=null;
   if(S.townPlot===undefined)S.townPlot=null;
   if(S.muted===undefined)S.muted=false;
+  if(!S.gear)S.gear={board:false,chain:false,sign:false,fits:[]};
+  if(!S.gear.fits)S.gear.fits=[];
+  if(S.stage>=2)S.gear.board=true;
+  if(S.stage>=3)S.gear.chain=true;
   if(!S.customersOf)S.customersOf={};
   if(!S.insights)S.insights=[];
   if(!S.insightSeen)S.insightSeen={};
@@ -5386,6 +5486,7 @@ function startWorld(){
   camPitch=0.36;
   snapCameraClear();
   if(S.hq){ setHQBuilt(); buildHQSign(); } else setHQEmpty();
+  buildYardSign();
   if(S.communityInvested) addMurals();
   const hq=BUILDINGS.find(b=>b.id==='lot');
   if(S.bankrupt&&S.hq){ hq.label='FOR LEASE'; updateLabelSprite(hq.labelSprite,'FOR LEASE','#D4513B'); }
