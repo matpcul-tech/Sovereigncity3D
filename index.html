@@ -38,11 +38,37 @@ button{font-family:inherit;cursor:pointer;border:none}
 .btn.ghost{background:rgba(27,42,59,.7);color:#FFFFFF;box-shadow:inset 0 0 0 2px rgba(0,200,255,.5);font-weight:700;font-size:14px;padding:12px 26px;border-radius:14px}
 #title .foot{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));font-size:10px;letter-spacing:.12em;color:#6B6354;text-transform:uppercase}
 
+/* ---------- LOADING ---------- */
+#bootLoad{position:fixed;inset:0;z-index:80;background:#000;display:flex;align-items:center;justify-content:center}
+#bootLoad img{width:min(920px,92vw);height:auto;max-height:68vh;object-fit:contain}
+#bootLoad .boot-foot{position:absolute;left:0;right:0;bottom:max(28px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:10px}
+.boot-track{width:min(220px,64vw);height:4px;background:rgba(255,255,255,.16);border-radius:99px;overflow:hidden}
+#bootBar{width:18%;height:100%;background:#E8C064;border-radius:99px;transition:width .35s ease}
+.boot-label{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#9A917F;font-weight:600}
+
 /* ---------- CREATOR ---------- */
 #creator{position:absolute;inset:0;z-index:49;background:#14120F;display:none;
-  flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:20px;overflow-y:auto}
-#creator h2{font-family:'Archivo';font-weight:900;font-size:24px}
-#creator .eyebrow{font-size:11px;letter-spacing:.3em;color:var(--amber);text-transform:uppercase;font-weight:700}
+  align-items:center;justify-content:center;padding:24px 16px;overflow-y:auto}
+.creator-stage{width:min(820px,100%);display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr);gap:28px;align-items:center}
+.creator-portrait{display:flex;flex-direction:column;align-items:center;gap:12px;background:#1C1813;border:1px solid #3A342A;border-radius:28px;padding:20px 16px 18px}
+.portrait-frame{width:240px;height:320px;border-radius:20px;background:#100E0B;border:1px solid #2A261E;overflow:hidden}
+#preview{width:240px;height:320px;display:block}
+#previewName{font-family:'Archivo',sans-serif;font-weight:700;font-size:16px;color:var(--paper);text-align:center}
+#creator h2{font-family:'Archivo';font-weight:700;font-size:clamp(26px,4vw,34px);line-height:1.05}
+#creator .eyebrow{font-size:11px;letter-spacing:.22em;color:var(--amber);text-transform:uppercase;font-weight:700}
+.creator-lead{font-size:14px;line-height:1.5;color:#B9B0A0;max-width:42ch}
+.creator-panel{display:flex;flex-direction:column;gap:14px;min-width:0}
+.lookGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lookCard{background:#221E18;border:1px solid #3A342A;color:#CFC6B4;border-radius:12px;min-height:64px;padding:10px 12px;text-align:left}
+.lookCard b{display:block;font-family:'Archivo',sans-serif;font-size:16px;color:var(--paper)}
+.lookCard span{font-size:12px;color:#9A917F}
+.lookCard.sel{background:var(--amber);border-color:var(--amber)}
+.lookCard.sel b,.lookCard.sel span{color:var(--ink)}
+@media (max-width:720px){
+  .creator-stage{grid-template-columns:1fr}
+  .portrait-frame,#preview{width:160px;height:214px}
+  .creator-portrait{flex-direction:row;justify-content:flex-start}
+}
 .cRow{width:min(360px,92vw);display:flex;flex-direction:column;gap:7px}
 .cRow label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9A917F;font-weight:600}
 .cRow input[type=text]{background:#221E18;border:2px solid #3A342A;border-radius:9px;
@@ -54,7 +80,7 @@ button{font-family:inherit;cursor:pointer;border:none}
 .pills{display:flex;gap:8px;flex-wrap:wrap}
 .pill{background:#221E18;border:2px solid #3A342A;color:#CFC6B4;border-radius:999px;padding:8px 16px;font-size:13px;font-weight:600}
 .pill.sel{background:var(--amber);border-color:var(--amber);color:var(--ink)}
-#preview{width:96px;height:120px}
+#preview{width:240px;height:320px}
 
 /* ---------- HUD ---------- */
 #hud{position:absolute;inset:0;z-index:10;pointer-events:none;display:none}
@@ -201,6 +227,14 @@ body.scLetterbox #scBarTop{height:11vh} body.scLetterbox #scBarBot{height:16vh}
 </head>
 <body>
 
+<div id="bootLoad">
+  <img src="og.jpg" alt="Sovereign City" />
+  <div class="boot-foot">
+    <div class="boot-track"><div id="bootBar"></div></div>
+    <div class="boot-label">Building the city</div>
+  </div>
+</div>
+
 <div id="title">
   <canvas class="skyline" id="skylineCv" width="420" height="110"></canvas>
   <div><h1>SOVEREIGN<br><span>CITY</span></h1>
@@ -218,14 +252,23 @@ body.scLetterbox #scBarTop{height:11vh} body.scLetterbox #scBarBot{height:16vh}
 </div>
 
 <div id="creator">
-  <div class="eyebrow">Founder Creation</div>
-  <h2>This city is about to know your name.</h2>
-  <canvas id="preview" width="96" height="120"></canvas>
-  <div class="cRow"><label>Founder name</label><input type="text" id="cName" maxlength="16" placeholder="Your name" autocomplete="off"></div>
-  <div class="cRow"><label>Skin tone</label><div class="swatches" id="cSkin"></div></div>
-  <div class="cRow"><label>Fit</label><div class="swatches" id="cFit"></div></div>
-  <div class="cRow"><label>Voice</label><div class="pills" id="cVoice"></div></div>
-  <button class="btn" id="startBtn" style="margin-top:6px">Step Into The Grind</button>
+  <div class="creator-stage">
+    <div class="creator-portrait">
+      <div class="eyebrow">Founder</div>
+      <div class="portrait-frame"><canvas id="preview" width="240" height="320"></canvas></div>
+      <p id="previewName">Unnamed founder</p>
+    </div>
+    <div class="creator-panel">
+      <h2>Who walks into the city?</h2>
+      <p class="creator-lead">Name, look, and voice. This is the face the block remembers.</p>
+      <div class="cRow"><label>Presentation</label><div class="lookGrid" id="cLook"></div></div>
+      <div class="cRow"><label>Founder name</label><input type="text" id="cName" maxlength="16" placeholder="Your name" autocomplete="off"></div>
+      <div class="cRow"><label>Skin tone</label><div class="swatches" id="cSkin"></div></div>
+      <div class="cRow"><label>Fit</label><div class="swatches" id="cFit"></div></div>
+      <div class="cRow"><label>Voice</label><div class="pills" id="cVoice"></div></div>
+      <button class="btn" id="startBtn" style="margin-top:6px">Step Into The Grind</button>
+    </div>
+  </div>
 </div>
 
 <canvas id="game"></canvas>
@@ -4045,7 +4088,7 @@ function paintFace(tex,skinHex){
   drawSCFace(x);
   tex.needsUpdate=true;
 }
-function makePerson(skinHex,fitHex){
+function makePerson(skinHex,fitHex,look){
   // Human-proportioned stylized avatar: rounded head, neck, tapered torso,
   // sleeved arms with hands, two-segment legs, varied hair styles.
   const group=new THREE.Group();
@@ -4160,8 +4203,63 @@ function makePerson(skinHex,fitHex){
   group.add(torso,shoulders,hips,belt,neck,head,lEar,rEar,face,
     lArm,rArm,lLeg,rLeg,shadow,board,chain);
   hairBits.forEach(hb=>group.add(hb));
+  if(look==='girl'){
+    const tail=new THREE.Mesh(new THREE.BoxGeometry(4.8,9.2,1.7),hairMat);
+    tail.position.set(0,17.6,-2.8);
+    group.add(tail);
+    const skirt=new THREE.Mesh(new THREE.CylinderGeometry(3.5,5.3,4.8,12),fit);
+    skirt.position.y=7.4;
+    group.add(skirt);
+  }
   group.traverse(o=>{ if(o.isMesh&&o!==shadow&&!o.userData.noShadow) o.castShadow=true; });
   return {group,lLeg,rLeg,lArm,rArm,fitMat:fit,skinMat:skin,faceTex,board,chain};
+}
+let portrait=null, portraitRAF=0;
+function showPortrait(canvas, skinHex, fitHex, look){
+  if(!canvas) return;
+  if(!portrait||portrait.canvas!==canvas){
+    const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+    const pScene=new THREE.Scene();
+    pScene.background=new THREE.Color(0x16130f);
+    const pCam=new THREE.PerspectiveCamera(26,3/4,0.1,90);
+    pScene.add(new THREE.HemisphereLight(0xfff0d8,0x3a2c20,1.05));
+    const key=new THREE.DirectionalLight(0xfff6e4,0.9);
+    key.position.set(8,18,14); pScene.add(key);
+    const fill=new THREE.DirectionalLight(0x9ab4d8,0.35);
+    fill.position.set(-8,8,-2); pScene.add(fill);
+    const ground=new THREE.Mesh(new THREE.CircleGeometry(8,24), new THREE.MeshBasicMaterial({color:0x0c0a08}));
+    ground.rotation.x=-Math.PI/2; ground.position.y=0.02; pScene.add(ground);
+    portrait={renderer,scene:pScene,camera:pCam,canvas,person:null,key:''};
+    const tick=()=>{
+      portraitRAF=requestAnimationFrame(tick);
+      if(!portrait||!portrait.person||portrait.canvas.offsetParent===null) return;
+      portrait.person.group.rotation.y+=0.012;
+      const w=portrait.canvas.clientWidth||240, h=portrait.canvas.clientHeight||320;
+      const pr=portrait.renderer.getPixelRatio();
+      if(portrait.renderer.domElement.width!==Math.floor(w*pr)){
+        portrait.renderer.setSize(w,h,false);
+        portrait.camera.aspect=w/Math.max(1,h);
+        portrait.camera.updateProjectionMatrix();
+      }
+      portrait.renderer.render(portrait.scene,portrait.camera);
+    };
+    if(!portraitRAF) tick();
+  }
+  const key=skinHex+'|'+(fitHex||'')+'|'+(look||'guy');
+  if(portrait.key===key) return;
+  if(portrait.person) portrait.scene.remove(portrait.person.group);
+  const person=makePerson(skinHex, fitHex, look||'guy');
+  person.group.rotation.y=0.45;
+  portrait.scene.add(person.group);
+  portrait.person=person; portrait.key=key;
+  portrait.camera.position.set(13,13,20);
+  portrait.camera.lookAt(0,11,0);
+  const w=canvas.clientWidth||240, h=canvas.clientHeight||320;
+  portrait.renderer.setSize(w,h,false);
+  portrait.camera.aspect=w/Math.max(1,h);
+  portrait.camera.updateProjectionMatrix();
+  portrait.renderer.render(portrait.scene,portrait.camera);
 }
 function buildNPCMeshes(){
   Object.values(npcMeshes).forEach(m=>scene.remove(m.group));
@@ -4882,8 +4980,16 @@ async function loadGame(){
   } draw();
 })();
 
-const creatorState={name:'',skin:2,fit:0,voice:'Warm'};
+const creatorState={name:'',skin:2,fit:0,voice:'Warm',look:'guy'};
+const LOOKS=[{id:'guy',title:'Guy',note:'Short hair, street fit'},{id:'girl',title:'Girl',note:'Long hair, city fit'}];
 function buildCreator(){
+  const lk=$('cLook'); if(lk){ lk.innerHTML='';
+    LOOKS.forEach(v=>{ const b=document.createElement('button'); b.type='button';
+      b.className='lookCard'+(v.id===creatorState.look?' sel':'');
+      b.innerHTML='<b>'+v.title+'</b><span>'+v.note+'</span>';
+      b.onclick=()=>{creatorState.look=v.id;buildCreator();drawPreview();sTap();};
+      lk.appendChild(b); });
+  }
   const sk=$('cSkin');sk.innerHTML='';
   SKINS.forEach((s,i)=>{const d=document.createElement('div');d.className='sw'+(i===creatorState.skin?' sel':'');
     d.style.background=s;d.onclick=()=>{creatorState.skin=i;buildCreator();drawPreview();sTap();};sk.appendChild(d);});
@@ -4896,32 +5002,25 @@ function buildCreator(){
     b.onclick=()=>{creatorState.voice=v;buildCreator();sTap();};vc.appendChild(b);});
 }
 function drawPreview(){
-  const c=$('preview'),x=c.getContext('2d');
-  x.clearRect(0,0,96,120);
-  const skin=SKINS[creatorState.skin], fit=FITS[creatorState.fit];
-  // shadow
-  x.fillStyle='rgba(0,0,0,0.3)';x.beginPath();x.ellipse(48,112,24,6,0,0,Math.PI*2);x.fill();
-  // legs (pants)
-  x.fillStyle='#2e3440';x.fillRect(34,78,12,28);x.fillRect(50,78,12,28);
-  // arms (skin)
-  x.fillStyle=skin;x.fillRect(18,46,12,30);x.fillRect(66,46,12,30);
-  // torso (shirt)
-  x.fillStyle=fit;x.fillRect(32,44,32,34);
-  // head (skin block)
-  x.fillStyle=skin;x.fillRect(33,10,30,30);
-  // face
-  x.fillStyle='#1a1a1a';
-  x.beginPath();x.ellipse(42,23,2.6,3.6,0,0,Math.PI*2);x.fill();
-  x.beginPath();x.ellipse(54,23,2.6,3.6,0,0,Math.PI*2);x.fill();
-  x.strokeStyle='#1a1a1a';x.lineWidth=2.4;x.lineCap='round';
-  x.beginPath();x.arc(48,28,6.5,Math.PI*0.15,Math.PI*0.85);x.stroke();
+  showPortrait($('preview'), SKINS[creatorState.skin], FITS[creatorState.fit], creatorState.look);
+  const label=$('previewName');
+  if(label){
+    const n=($('cName')&&$('cName').value||'').trim();
+    label.textContent=n||'Unnamed founder';
+  }
 }
+if($('cName')) $('cName').addEventListener('input',()=>drawPreview());
 
 function applyFounderLook(){
-  playerParts.skinMat.color.set(SKINS[S.founder.skin]).convertSRGBToLinear();
-  playerParts.fitMat.color.set(FITS[S.founder.fit]).convertSRGBToLinear();
-  paintFace(playerParts.faceTex,SKINS[S.founder.skin]);
-  // overhead username tag
+  const look=S.founder&&S.founder.look==='girl'?'girl':'guy';
+  const prev=playerGroup;
+  const pos=prev?prev.group.position.clone():null;
+  const rotY=prev?prev.group.rotation.y:0;
+  if(prev) scene.remove(prev.group);
+  playerGroup=makePerson(SKINS[S.founder.skin], FITS[S.founder.fit], look);
+  playerParts=playerGroup;
+  if(pos){ playerGroup.group.position.copy(pos); playerGroup.group.rotation.y=rotY; }
+  scene.add(playerGroup.group);
   if(playerParts.nameTag){ playerParts.group.remove(playerParts.nameTag); }
   playerParts.nameTag=null;
 }
@@ -5008,7 +5107,7 @@ $('startBtn').onclick=()=>{
   ac(); Music.init(); Music.setZone(1);
   creatorState.name=($('cName').value||'Founder').trim().slice(0,16)||'Founder';
   S=freshState();
-  S.founder={name:creatorState.name,skin:creatorState.skin,fit:creatorState.fit,voice:creatorState.voice};
+  S.founder={name:creatorState.name,skin:creatorState.skin,fit:creatorState.fit,voice:creatorState.voice,look:creatorState.look};
   S.townCode=_sessionCode||normalizeTownCode($('townCodeInput').value);
   startWorld();
   if(S.townCode) toast('Joined class town <b>'+S.townCode+'</b>. Classmates appear in the city as they play.','good');
@@ -6024,17 +6123,8 @@ const Trailer={
 window.Trailer=Trailer;
 
 (async function boot(){
-  // visible loading state so a slow CDN never looks frozen
-  const ld=document.createElement('div');
-  ld.id='bootLoad';
-  ld.style.cssText='position:fixed;inset:0;z-index:60;background:#14120F;display:flex;'+
-    'flex-direction:column;align-items:center;justify-content:center;gap:14px;'+
-    'font-family:Archivo,Inter,sans-serif;color:#E8C064';
-  ld.innerHTML='<div style="font-weight:900;font-size:26px;letter-spacing:.06em">SOVEREIGN CITY</div>'+
-    '<div style="width:160px;height:6px;background:#2a261e;border-radius:99px;overflow:hidden">'+
-    '<div id="bootBar" style="width:20%;height:100%;background:#E8C064;border-radius:99px;transition:width .4s"></div></div>'+
-    '<div style="font-size:11px;letter-spacing:.24em;color:#9A917F">BUILDING THE CITY</div>';
-  document.body.appendChild(ld);
+  const ld=document.getElementById('bootLoad');
+  const started=performance.now();
   const bar=()=>document.getElementById('bootBar');
   await new Promise(r=>setTimeout(r,30)); if(bar())bar().style.width='45%';
   initThree();
@@ -6049,8 +6139,14 @@ window.Trailer=Trailer;
     if(_sessionCode){ tci.value=_sessionCode; tci.disabled=true; }
     else if(s&&s.townCode) tci.value=s.townCode;
   }
-  if(document.getElementById('bootBar'))document.getElementById('bootBar').style.width='100%';
-  setTimeout(()=>{const l=document.getElementById('bootLoad');if(l)l.remove();},260);
+  if(bar()) bar().style.width='100%';
+  const hold=Math.max(420, 1400-(performance.now()-started));
+  setTimeout(()=>{
+    if(!ld) return;
+    ld.style.transition='opacity .4s ease';
+    ld.style.opacity='0';
+    setTimeout(()=>ld.remove(), 420);
+  }, hold);
   requestAnimationFrame(loop);
 })();
 
