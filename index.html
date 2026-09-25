@@ -83,7 +83,7 @@ button{font-family:inherit;cursor:pointer;border:none}
 .pill.sel{background:var(--amber);border-color:var(--amber);color:var(--ink)}
 /* ---------- HUD ---------- */
 #hud{position:absolute;inset:0;z-index:10;pointer-events:none;display:none}
-#questBar{position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 58px);left:10px;right:10px;
+#questBar{position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 58px);left:10px;right:168px;
   background:rgba(27,42,59,.92);backdrop-filter:blur(8px);border:2px solid #00C8FF;border-radius:16px;
   padding:8px 14px;font-size:13px;font-weight:700;white-space:normal;text-align:center;line-height:1.35;
   color:var(--gold);box-shadow:0 2px 12px rgba(0,200,255,0.25)}
@@ -362,7 +362,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const lerp=(a,b,t)=>a+(b-a)*t;
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const ri=(a,b)=>Math.floor(rnd(a,b+1));
-const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
+const fmt=n=>{ const v=Math.round(Number(n)||0); return (v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US'); };
 const dist2=(ax,az,bx,bz)=>Math.hypot(ax-bx,az-bz);
 
 /* ---------------- AUDIO ---------------- */
@@ -530,7 +530,7 @@ function freshState(){
     profitStreak:0,sovereignDays:0,
     event:null,eventDays:0,
     comebackUsed:false,bankrupt:false,won:false,legacy:false,
-    npcMem:{},npcRel:{},pitched:{},
+    npcMem:{},npcRel:{},pitched:{},customersOf:{},
     feed:[],learned:[],chikasha:0,
     streak:0,daily:null,townPlot:null,talent:null,muted:false,
     insights:[],insightSeen:{}
@@ -599,18 +599,12 @@ function remember(id,txt){
 function lastMem(id){ const m=S.npcMem[id]; return m&&m.length?m[m.length-1]:null; }
 
 /* ---------------- TOASTS / FEED / LEARN ---------------- */
-const _toastQ=[]; let _toastOn=0;
 function toast(msg,kind){
-  _toastQ.push({msg,kind}); pumpToasts();
-}
-function pumpToasts(){
   const box=$('toasts'); if(!box) return;
-  while(_toastOn<2 && _toastQ.length){
-    const item=_toastQ.shift(); _toastOn++;
-    const d=document.createElement('div'); d.className='toast'+(item.kind?' '+item.kind:''); d.innerHTML=item.msg;
-    box.appendChild(d);
-    setTimeout(()=>{ d.remove(); _toastOn--; pumpToasts(); },3800);
-  }
+  const d=document.createElement('div'); d.className='toast'+(kind?' '+kind:''); d.innerHTML=msg;
+  box.appendChild(d);
+  while(box.children.length>3) box.removeChild(box.firstChild);
+  setTimeout(()=>{ if(d.parentNode) d.remove(); },2600);
 }
 function feed(msg){
   S.feed.unshift({d:S.day,m:msg}); if(S.feed.length>40)S.feed.pop();
@@ -745,6 +739,11 @@ function talkCustomer(npc){
       greet(npc)+' You look like you\u2019re up to something. Come back when you\u2019ve got something to offer.',[{label:'Soon.'}]);
     return;
   }
+  if(alreadyCustomer(npc)){
+    showDialog(npc.name,'Customer','#5FA86B',
+      greet(npc)+' I\u2019m already a customer. Find someone who hasn\u2019t said yes yet.',[{label:'On it.'}]);
+    return;
+  }
   if(S.pitched[npc.id]===S.day){
     showDialog(npc.name,'Neighbor','#8FA98B','You already came by today. Persistence is good, pestering isn\u2019t.',[{label:'Fair.'}]);
     return;
@@ -766,13 +765,26 @@ function pitchTaste(npc){
   let h=0; for(let i=0;i<id.length;i++) h=(h*33+id.charCodeAt(i))>>>0;
   return h%3;
 }
+function alreadyCustomer(npc){
+  if(!npc) return false;
+  if(!S.customersOf) S.customersOf={};
+  if(S.customersOf[npc.id]) return true;
+  const mem=S.npcMem&&S.npcMem[npc.id];
+  return !!(mem&&mem.some(t=>String(t).indexOf('signed up')>=0));
+}
 function pitchResult(npc,style){
   S.pitched[npc.id]=S.day;
   dailyProgress('pitch');
+  if(alreadyCustomer(npc)){
+    toast(npc.name+' is already on the books. That\u2019s not a new customer.','bad');
+    return;
+  }
   const right=style===pitchTaste(npc);
   let odds=(right?0.64:0.28)+Math.min(0.1,S.stats.hustle*0.0015)+rel(npc.id)*0.04;
   odds=clamp(odds,0.12,right?0.78:0.4);
   if(Math.random()<odds){
+    if(!S.customersOf) S.customersOf={};
+    S.customersOf[npc.id]=S.day;
     S.customers++; S.stats.hustle=clamp(S.stats.hustle+2,0,100);
     S.stats.reputation=clamp(S.stats.reputation+1,0,100);
     bumpRel(npc.id,2); remember(npc.id,'I signed up as your customer.');
@@ -1269,6 +1281,30 @@ function maybeChaos(){
 /* =========================================================
    ECONOMY
    ========================================================= */
+function projectBooks(){
+  if(!S||!S.biz) return null;
+  const ss=sweetSpot();
+  let demand=1-clamp((S.biz.price-ss)/Math.max(1,ss),-0.25,0.6)*0.8;
+  demand=clamp(demand,0.3,1.25);
+  let mult=1;
+  if(S.event==='festival')mult*=(S.biz.industry==='food'?4:3);
+  if(S.event==='boom')mult*=1.4;
+  if(S.event==='recession')mult*=0.55;
+  if(S.communityInvested)mult*=(S.biz.industry==='infra'?1.35:1.25);
+  if(S.townPlot!=null)mult*=1+(typeof townTalentBonus==='number'?townTalentBonus:0);
+  const staff=S.employees||[];
+  if(staff.length>0)mult*=staff.some(e=>!e.good)?1.15:1.35;
+  if(S.automated)mult*=1.3;
+  if(S.manager)mult*=1.15;
+  const revenue=Math.round((S.customers||0)*S.biz.price*0.16*demand*mult);
+  let exp=20;
+  if(S.hq)exp+=50;
+  exp+=staff.length*120;
+  if(S.manager)exp+=250;
+  if(S.automated)exp=Math.round(exp*0.6+60);
+  if(S.event==='heatwave')exp=Math.round(exp*1.25);
+  return {revenue, exp, profit:revenue-exp};
+}
 function dailySettle(){
   if(!S.biz) return;
   const ss=sweetSpot();
@@ -1305,24 +1341,8 @@ function dailySettle(){
     const got=ri(1,3); S.customers+=got;
     feed('+'+got+' customers by referral. Reputation compounds.');
   }
-  let demand=1-clamp((S.biz.price-ss)/ss,-0.25,0.6)*0.8;
-  demand=clamp(demand,0.3,1.25);
-  let mult=1;
-  if(S.event==='festival')mult*=(S.biz.industry==='food'?4:3);
-  if(S.event==='boom')mult*=1.4;
-  if(S.event==='recession')mult*=0.55;
-  if(S.communityInvested)mult*=(S.biz.industry==='infra'?1.35:1.25);
-  if(S.townPlot!=null)mult*=1+townTalentBonus;
-  if(S.employees.length>0)mult*=S.employees.some(e=>!e.good)?1.15:1.35;
-  if(S.automated)mult*=1.3;
-  if(S.manager)mult*=1.15;
-  const revenue=Math.round(S.customers*S.biz.price*0.16*demand*mult);
-  let exp=20;
-  if(S.hq)exp+=50;
-  exp+=S.employees.length*120;
-  if(S.manager)exp+=250;
-  if(S.automated)exp=Math.round(exp*0.6+60);
-  if(S.event==='heatwave')exp=Math.round(exp*1.25);
+  const books=projectBooks();
+  const revenue=books.revenue, exp=books.exp;
   let profit=revenue-exp;
   if(profit>0&&S.debt>0){
     const pay=Math.min(S.debt,profit);
@@ -5044,21 +5064,13 @@ function updateHUDChips(){
   $('stageChip').textContent='Stage '+S.stage+' \u00B7 '+stages[S.stage]+(S.streak>0?' \u00B7 \uD83D\uDD25'+S.streak:'');
   const h12=S.hour%12===0?12:S.hour%12, ap=S.hour<12?'AM':'PM';
   $('clockTime').textContent='Day '+S.day+' \u00B7 '+h12+':'+String(S.min).padStart(2,'0')+' '+ap;
-  const books=estimateBooks();
+  const books=projectBooks();
   const profit=books?books.profit:0;
-  $('clockCash').textContent=fmt(S.cash)+(books&&S.customers>0?' · '+(profit>=0?'+':'')+fmt(profit)+' profit/day':'')+(S.debt>0?' (-'+fmt(S.debt)+')':'');
+  const profitTxt=books&&S.customers>0?((profit>0?'+':'')+fmt(profit)+' profit/day'):'';
+  $('clockCash').textContent=fmt(S.cash)+(profitTxt?' · '+profitTxt:'')+(S.debt>0?' ('+fmt(-S.debt)+')':'');
   const q=QUESTS[S.quest];
   $('questBar').innerHTML=(q?q.hint:'')+(q&&q.prog?' <b>'+q.prog()+'</b>':'')
-    +(books&&S.customers>0?'<br><span style="color:#5AAE2A;font-size:11px">'+S.customers+' customers → ~'+fmt(profit)+' profit at 9 AM <span style="color:#9A917F">(revenue '+fmt(books.revenue)+')</span></span>':'');
-}
-function estimateBooks(){
-  if(!S||!S.biz) return null;
-  const revenue=Math.round(S.customers*S.biz.price*0.16);
-  let exp=20;
-  if(S.hq) exp+=50;
-  exp+=(S.employees?S.employees.length:0)*120;
-  if(S.manager) exp+=250;
-  return {revenue, exp, profit:revenue-exp};
+    +(books&&S.customers>0?'<br><span style="color:#5AAE2A;font-size:11px">'+S.customers+' customers → '+fmt(profit)+' profit at 9 AM <span style="color:#9A917F">(revenue '+fmt(books.revenue)+')</span></span>':'');
 }
 setInterval(()=>{ if(S&&$('hud').style.display==='block')updateHUDChips(); },500);
 
@@ -5181,6 +5193,7 @@ function startWorld(){
   if(S.daily===undefined)S.daily=null;
   if(S.townPlot===undefined)S.townPlot=null;
   if(S.muted===undefined)S.muted=false;
+  if(!S.customersOf)S.customersOf={};
   if(!S.insights)S.insights=[];
   if(!S.insightSeen)S.insightSeen={};
   if(S.biz&&!S.biz.industry)S.biz.industry='services';
