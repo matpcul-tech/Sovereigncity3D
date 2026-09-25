@@ -30,12 +30,17 @@ jobs:
         run: |
           sed -i "s|%%SUPABASE_URL%%|${SUPABASE_URL}|g" index.html facilitator.html
           sed -i "s|%%SUPABASE_ANON_KEY%%|${SUPABASE_ANON_KEY}|g" index.html facilitator.html
+      - name: Stage the playable site
+        run: |
+          mkdir -p _site
+          cp index.html facilitator.html og.jpg sw.js _site/
+          cp -r icons assets public _site/
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

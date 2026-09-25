@@ -3,7 +3,7 @@
 
 A third-person founder simulation game built for the next generation of builders. Walk the city, find a real problem, name your business, pitch your neighbors face to face, hire a team, raise funding, and build a tower with your name on it.
 
-**Play the demo:** [sovereigncity.netlify.app](https://sovereigncity.netlify.app) *(update this link after deploy)*
+**Play the demo:** [matpcul-tech.github.io/Sovereigncity3D](https://matpcul-tech.github.io/Sovereigncity3D/)
 
 ---
 
