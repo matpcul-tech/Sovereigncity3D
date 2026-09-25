@@ -2260,7 +2260,8 @@ function initThree(){
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
   renderer.setSize(window.innerWidth,window.innerHeight);
   renderer.shadowMap.enabled=true;
-  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.shadowMap.type=THREE.PCFShadowMap;
+  renderer.shadowMap.autoUpdate=false;
   renderer.toneMapping=THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure=1.05;
   renderer.outputEncoding=THREE.sRGBEncoding;
@@ -2291,11 +2292,11 @@ function initThree(){
   sunLight=new THREE.DirectionalLight(0xFFF2DC,1.35);
   sunLight.position.set(400,600,300);
   sunLight.castShadow=true;
-  sunLight.shadow.mapSize.set(2048,2048);
-  sunLight.shadow.camera.left=-420; sunLight.shadow.camera.right=420;
-  sunLight.shadow.camera.top=420; sunLight.shadow.camera.bottom=-420;
-  sunLight.shadow.camera.near=50; sunLight.shadow.camera.far=1600;
-  sunLight.shadow.bias=-0.0008;
+  sunLight.shadow.mapSize.set(512,512);
+  sunLight.shadow.camera.left=-32; sunLight.shadow.camera.right=32;
+  sunLight.shadow.camera.top=32; sunLight.shadow.camera.bottom=-32;
+  sunLight.shadow.camera.near=20; sunLight.shadow.camera.far=1200;
+  sunLight.shadow.bias=-0.001;
   scene.add(sunLight); scene.add(sunLight.target);
   // sun + moon discs
   sunDisc=new THREE.Mesh(new THREE.CircleGeometry(46,24),
@@ -2778,7 +2779,7 @@ function addFence(x1,z1,x2,z2){
   // rails
   [6,16].forEach(ry=>{
     const r=new THREE.Mesh(new THREE.BoxGeometry(len,2.5,3),woodMat);
-    r.position.set(cx,ry,cz); r.rotation.y=-ang; r.castShadow=true;
+    r.position.set(cx,ry,cz); r.rotation.y=-ang; r.castShadow=false;
     scene.add(r);
   });
   // pickets
@@ -2787,7 +2788,7 @@ function addFence(x1,z1,x2,z2){
     const t=i/count;
     const px=x1+(x2-x1)*t, pz=z1+(z2-z1)*t;
     const p=new THREE.Mesh(new THREE.BoxGeometry(4,22,4),woodMat);
-    p.position.set(px,11,pz); p.castShadow=true; scene.add(p);
+    p.position.set(px,11,pz); p.castShadow=false; scene.add(p);
     // pointed cap
     const cap=new THREE.Mesh(new THREE.ConeGeometry(2.8,6,4),capMat);
     cap.position.set(px,24,pz); cap.rotation.y=Math.PI/4; scene.add(cap);
@@ -2881,7 +2882,7 @@ function buildCity(){
     });
     const mesh=new THREE.Mesh(new THREE.BoxGeometry(b.w,h,b.d),mat);
     mesh.position.set(b.x+b.w/2,h/2,b.y+b.d/2);
-    mesh.castShadow=true; mesh.receiveShadow=true;
+    mesh.castShadow=false; mesh.receiveShadow=true;
     scene.add(mesh);
     // roof accent
     const roof=new THREE.Mesh(new THREE.BoxGeometry(b.w+4,4,b.d+4),
@@ -2898,7 +2899,7 @@ function buildCity(){
       const awn=new THREE.Mesh(new THREE.BoxGeometry(Math.min(b.w*0.7,120),3,16),
         new THREE.MeshLambertMaterial({color:new THREE.Color(awnCols[(b.x+b.z)%4])}));
       awn.position.set(b.x+b.w/2,34,b.y+b.d+8);
-      awn.rotation.x=0.28; awn.castShadow=true;
+      awn.rotation.x=0.28; awn.castShadow=false;
       scene.add(awn);
     }
     // rooftop AC units (not on the small board or the tower)
@@ -2907,7 +2908,7 @@ function buildCity(){
         const acu=new THREE.Mesh(new THREE.BoxGeometry(rnd(14,24),8,rnd(12,18)),
           toon(0x8A8478));
         acu.position.set(b.x+rnd(20,b.w-20),h+8,b.y+rnd(16,b.d-16));
-        acu.castShadow=true;
+        acu.castShadow=false;
         scene.add(acu); b.acu=acu;
       }
     }
@@ -2916,7 +2917,7 @@ function buildCity(){
       const crownH=h*0.34;
       const crown=new THREE.Mesh(new THREE.BoxGeometry(b.w*0.62,crownH,b.d*0.62),mat);
       crown.position.set(b.x+b.w/2,h+crownH/2,b.y+b.d/2);
-      crown.castShadow=true;
+      crown.castShadow=false;
       scene.add(crown);
       roof.position.y=h+crownH+2;
     }
@@ -3023,7 +3024,7 @@ function buildCity(){
       g.add(w,h);
     });
     g.add(body,hood,trunk,cab,windF,windB,sideL,sideR,bumpF,bumpB);
-    g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+    g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
     scene.add(g);
     const horiz=i%2===0;
     cars.push({g,horiz,p:rnd(0,1),spd:rnd(0.015,0.025)*(Math.random()<.5?1:-1),
@@ -3086,7 +3087,7 @@ function buildGoose(){
     new THREE.MeshBasicMaterial({color:0x111111}));
   eye.position.set(6.8,16,1.6);
   g.add(body,neck,head,beak,eye);
-  g.traverse(o=>{if(o.isMesh)o.castShadow=true;});
+  g.traverse(o=>{if(o.isMesh)o.castShadow=false;});
   scene.add(g);
   goose={g,x:1050,z:1030,tx:1050,tz:1030,wait:1,spd:46,dash:0,honked:0};
 }
@@ -3198,7 +3199,7 @@ function renderTown(town){
       const m=new THREE.Mesh(new THREE.BoxGeometry(p.w-14,h,p.d-14),
         new THREE.MeshLambertMaterial({color:new THREE.Color(ind.col)}));
       m.position.set(p.x+p.w/2,h/2+2,p.z+p.d/2);
-      m.castShadow=true; scene.add(m); p.mesh=m; p.h=h;
+      m.castShadow=false; scene.add(m); p.mesh=m; p.h=h;
       const roof=new THREE.Mesh(new THREE.BoxGeometry(p.w-10,4,p.d-10),
         new THREE.MeshLambertMaterial({color:new THREE.Color(ind.col).multiplyScalar(0.8)}));
       roof.position.set(p.x+p.w/2,h+4,p.z+p.d/2); scene.add(roof); p.roof=roof;
@@ -3851,7 +3852,7 @@ function addLightPool(x,z,size){
 }
 function addLamp(x,z,poleMat){
   const pole=new THREE.Mesh(new THREE.CylinderGeometry(1.4,1.4,30,6),poleMat);
-  pole.position.set(x,15,z); pole.castShadow=true;
+  pole.position.set(x,15,z); pole.castShadow=false;
   const bulbMat=new THREE.MeshBasicMaterial({color:0x3A3E44});
   const bulb=new THREE.Mesh(new THREE.SphereGeometry(2.3,8,8),bulbMat);
   bulb.position.set(x,31,z);
@@ -3908,7 +3909,7 @@ function addTree(x,z){
     }
   }
   g.position.set(x,0,z);
-  g.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+  g.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
   scene.add(g);
   treeList.push({g,x,z});
 }
@@ -3921,7 +3922,7 @@ function addBush(x,z){
     const b=new THREE.Mesh(new THREE.IcosahedronGeometry(r,1),i%2?m1:m2);
     b.position.set(rnd(-2.5,2.5),r*0.55,rnd(-2.5,2.5));
     b.scale.y=0.72; b.rotation.y=rnd(0,Math.PI);
-    b.castShadow=true; g.add(b);
+    b.castShadow=false; g.add(b);
   }
   g.position.set(x,0,z);
   scene.add(g);
@@ -3936,7 +3937,7 @@ function buildProps(){
   // benches along the main horizontal road sidewalks
   [[300,745],[640,745],[1050,745],[1380,745],[300,856],[980,856],[1340,856],[1900,856]].forEach(([x,z])=>{
     const seat=new THREE.Mesh(new THREE.BoxGeometry(26,2.5,8),wood);
-    seat.position.set(x,8,z); seat.castShadow=true;
+    seat.position.set(x,8,z); seat.castShadow=false;
     const back=new THREE.Mesh(new THREE.BoxGeometry(26,8,2),wood);
     back.position.set(x,13,z+(z<800?-3:3));
     const l1=new THREE.Mesh(new THREE.BoxGeometry(2.5,8,7),dark); l1.position.set(x-10,4,z);
@@ -3990,7 +3991,7 @@ function buildProps(){
     }
     const canopy=new THREE.Mesh(new THREE.BoxGeometry(36,2.5,26),
       new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(cc)}));
-    canopy.position.set(x,19,z); canopy.rotation.x=0.08; canopy.castShadow=true;
+    canopy.position.set(x,19,z); canopy.rotation.x=0.08; canopy.castShadow=false;
     scene.add(canopy);
     // crates of goods
     const crate=new THREE.Mesh(new THREE.BoxGeometry(10,7,8),
@@ -4011,7 +4012,7 @@ function buildProps(){
   // FOUNTAIN PLAZA — Sovereign District centerpiece
   const basin=new THREE.Mesh(new THREE.CylinderGeometry(30,32,8,18),
     toon(0x9A9080));
-  basin.position.set(395,4,345); basin.castShadow=true;
+  basin.position.set(395,4,345); basin.castShadow=false;
   // rippled water surface (rotating)
   const wc=document.createElement('canvas'); wc.width=wc.height=128;
   const wx=wc.getContext('2d');
@@ -4262,7 +4263,8 @@ function makePerson(skinHex,fitHex,look){
     skirt.position.y=7.4;
     group.add(skirt);
   }
-  group.traverse(o=>{ if(o.isMesh&&o!==shadow&&!o.userData.noShadow) o.castShadow=true; });
+  shadow.userData.blob=true;
+  group.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
   return {group,lLeg,rLeg,lArm,rArm,fitMat:fit,skinMat:skin,faceTex,board,chain};
 }
 let portrait=null, portraitRAF=0;
@@ -4647,6 +4649,11 @@ function snapCameraClear(){
     playerPos.z+Math.cos(camYaw)*cd*Math.cos(camPitch));
   camera.lookAt(playerPos.x,16,playerPos.z);
 }
+function armPlayerShadow(group){
+  if(!group||!sunLight||!sunLight.castShadow) return;
+  group.traverse(o=>{ if(o.isMesh&&!o.userData.blob) o.castShadow=!!sunLight.castShadow; });
+}
+let _shadowSlot=-1;
 function tuneShadows(){
   const coarse=window.matchMedia&&window.matchMedia('(pointer: coarse)').matches;
   const cores=navigator.hardwareConcurrency||8;
@@ -4654,19 +4661,34 @@ function tuneShadows(){
   renderer.setPixelRatio(low?1:Math.min(window.devicePixelRatio||1,1.5));
   renderer.setSize(window.innerWidth,window.innerHeight);
   scene.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
-  if(low){
+  if(low||!sunLight){
     renderer.shadowMap.enabled=false;
     if(sunLight) sunLight.castShadow=false;
-  } else if(sunLight){
-    sunLight.shadow.mapSize.set(512,512);
-    BUILDINGS.forEach(b=>{ if(b.mesh) b.mesh.castShadow=true; });
-    if(playerGroup&&playerGroup.group) playerGroup.group.traverse(o=>{ if(o.isMesh) o.castShadow=true; });
+    return;
   }
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.autoUpdate=false;
+  renderer.shadowMap.type=THREE.PCFShadowMap;
+  sunLight.castShadow=!!1;
+  sunLight.shadow.mapSize.set(512,512);
+  const sh=sunLight.shadow.camera;
+  sh.left=-32; sh.right=32; sh.top=32; sh.bottom=-32;
+  sh.near=20; sh.far=1200; sh.updateProjectionMatrix();
+  if(playerGroup&&playerGroup.group) armPlayerShadow(playerGroup.group);
+  renderer.shadowMap.needsUpdate=true;
+}
+function touchShadow(now){
+  if(!renderer||!renderer.shadowMap.enabled) return;
+  const slot=(now/48)|0;
+  if(slot===_shadowSlot) return;
+  _shadowSlot=slot;
+  renderer.shadowMap.needsUpdate=true;
 }
 function loop(now){
   const DT=Math.min(Math.max((now-last)/1000,0),0.1); last=now;
   const uiOpen=dialogOpen||$('phone').style.display==='flex'||$('bigModal').style.display==='flex';
   if(S&&!shadowsTuned){ shadowsTuned=true; tuneShadows(); }
+  if(S) touchShadow(now);
   if(S&&Trailer.active){Trailer.update(DT,now);}
   const storyOn=!!(window.SCStory&&SCStory.active);
   if(window.SCStory&&SCStory.built){SCStory.update(DT,now);}
@@ -5150,6 +5172,7 @@ function applyFounderLook(){
   playerParts=playerGroup;
   if(pos){ playerGroup.group.position.copy(pos); playerGroup.group.rotation.y=rotY; }
   scene.add(playerGroup.group);
+  armPlayerShadow(playerGroup.group);
   if(playerParts.nameTag){ playerParts.group.remove(playerParts.nameTag); }
   playerParts.nameTag=null;
 }
@@ -5466,7 +5489,7 @@ function scBuildStoryChar(def){
   const B=(name,parent,x,y,z)=>{ const o=new THREE.Object3D(); o.position.set(x,y,z);
     parent.add(o); bones[name]=o; return o; };
   const mesh=(parent,geo,mat,x,y,z)=>{ const m=new THREE.Mesh(geo,mat);
-    m.position.set(x,y,z); m.castShadow=true; parent.add(m); return m; };
+    m.position.set(x,y,z); m.castShadow=false; parent.add(m); return m; };
 
   const hips=B('hips',root,0,9.6,0);
   mesh(hips,new THREE.BoxGeometry(6.4,2.2,3.6),pantsM,0,0.5,0);
