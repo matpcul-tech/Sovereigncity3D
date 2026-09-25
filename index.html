@@ -151,7 +151,12 @@ button{font-family:inherit;cursor:pointer;border:none}
 #dName{font-family:'Archivo';font-weight:900;font-size:17px}
 #dRole{font-size:11px;color:#88AACC;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-top:2px}
 #dText{font-size:14.5px;line-height:1.65;color:#D8E8F8;flex-shrink:0}
-#dOpts{display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:0;max-height:48vh;-webkit-overflow-scrolling:touch}
+#pitchTell{display:none;width:100%;background:#101820;border:2px solid #F2A33C;border-radius:14px;padding:10px 12px}
+#pitchTell b{display:block;font-size:15px;color:#F2A33C;margin-bottom:2px}
+#pitchTell span{font-size:12px;color:#D8E8F8}
+#pitchBar{height:8px;background:#243040;border-radius:99px;margin-top:8px;overflow:hidden}
+#pitchBar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#44CC44,#F2A33C 70%,#E23B2F);transform-origin:left center;transform:scaleX(1)}
+#dOpts{display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:0;max-height:42vh;-webkit-overflow-scrolling:touch}
 .dOpt{background:#243545;border:2px solid rgba(0,200,255,.25);border-radius:14px;padding:14px 16px;
   color:#FFFFFF;font-size:14px;font-weight:700;text-align:left;line-height:1.4;transition:border-color .1s}
 .dOpt:active{background:#2E4A62;border-color:var(--turq)}
@@ -300,7 +305,9 @@ body.scLetterbox #scBarTop{height:11vh} body.scLetterbox #scBarBot{height:16vh}
 <div id="dialog"><div id="dBox">
   <div id="dHead"><div id="dPortrait">M</div>
     <div><div id="dName"></div><div id="dRole"></div></div></div>
-  <div id="dText"></div><div id="dOpts"></div>
+  <div id="dText"></div>
+  <div id="pitchTell"><b id="pitchTellMain"></b><span id="pitchTellSub"></span><div id="pitchBar"><i id="pitchBarFill"></i></div></div>
+  <div id="dOpts"></div>
 </div></div>
 
 <div id="phone"><div id="pBody">
@@ -546,7 +553,7 @@ function freshState(){
 const QUESTS=[
  {hint:'Find <b>Marcus Webb</b> outside the Corner Store',target:()=>npcPos('marcus')},
  {hint:'Pick a problem at the <b>Community Board</b>',target:()=>bldPos('board')},
- {hint:'Pitch neighbors face to face. Land <b>8 customers</b>',target:null,prog:()=>S.customers+'/8'},
+ {hint:'Pitch <b>Nia</b> by the board, then land <b>8 customers</b>',target:()=>(S.customers<1?npcPos('nia'):null),prog:()=>S.customers+'/8'},
  {hint:'Buy the <b>Empty Lot</b> for your first HQ ($1,500)',target:()=>bldPos('lot')},
  {hint:'Run a street demo at <b>City Market</b>. Reach <b>20 customers</b>',target:()=>bldPos('market'),prog:()=>S.customers+'/20'},
  {hint:'Hire your first employee at your <b>HQ</b>',target:()=>bldPos('lot')},
@@ -580,6 +587,7 @@ function buildNPCData(){
   addNPC({id:'park',name:'David Park',role:'Angel Investor',key:true,skin:1,fit:'#5E7C99',hx:1365,hz:1440,pc:'#5E7C99'});
   addNPC({id:'chase',name:'Victoria Chase',role:'VC Partner',key:true,skin:0,fit:'#C9CFD9',hx:1015,hz:330,pc:'#9AA4B5'});
   addNPC({id:'rival',name:'Rival Founder',role:'Competing Founder',key:true,skin:2,fit:'#B6657F',hx:1100,hz:1160,pc:'#B6657F'});
+  addNPC({id:'nia',name:'Nia Brooks',role:'Waiting Customer',key:true,hold:true,skin:1,fit:'#E8461A',hx:400,hz:1210,pc:'#5AAE2A'});
   let f=0;
   const inBld=(x,z)=>BUILDINGS.some(b=>x>b.x-10&&x<b.x+b.w+10&&z>b.y-10&&z<b.y+b.d+10);
   ZONES.forEach(zo=>{
@@ -623,8 +631,11 @@ function learn(term,def){
 
 /* ---------------- DIALOG ENGINE ---------------- */
 let dialogOpen=false;
+let pitchTimer=0, pitchNpc=null, pitchLive=false;
 function showDialog(name,role,color,text,opts){
   dialogOpen=true;
+  pitchLive=false; clearTimeout(pitchTimer);
+  const tell=$('pitchTell'); if(tell) tell.style.display='none';
   $('dialog').style.display='flex';
   $('dPortrait').style.background=color||'#F2A33C';
   $('dPortrait').textContent=name.split(' ').map(w=>w[0]).join('').slice(0,2);
@@ -640,7 +651,11 @@ function showDialog(name,role,color,text,opts){
     box.appendChild(b);
   });
 }
-function closeDialog(){ dialogOpen=false; $('dialog').style.display='none'; }
+function closeDialog(){
+  dialogOpen=false; pitchLive=false; clearTimeout(pitchTimer);
+  const tell=$('pitchTell'); if(tell) tell.style.display='none';
+  $('dialog').style.display='none';
+}
 
 /* =========================================================
    CONVERSATIONS (full business sim)
@@ -666,13 +681,16 @@ function talkMarcus(){
   const c='#F2A33C';
   if(S.quest===0){
     showDialog('Marcus Webb','Retired Entrepreneur',c,
-     'So you\u2019re the kid with $5,000 and a dream. I failed three businesses before one worked. You know what I learned? '+
-     '<b>Nobody buys an idea. They buy a solution to their problem.</b> Go read the Community Board. Pick a real problem this neighborhood actually has.',
-     [{label:'Where\u2019s the board?',sub:'Center of The Grind, by the lamppost',fn:()=>{
-        S.quest=1; remember('marcus','I sent you to the Community Board.');bumpRel('marcus',1);saveGame();}},
-      {label:'I already know what I want to build',fn:()=>{
-        S.quest=1; remember('marcus','you tried to skip the homework.');
-        toast('Marcus: "That\u2019s how my first one died. Board. Now."');saveGame();}}]);
+     'You\u2019ve got $5,000 and a dream. <b>Nobody buys a dream.</b> They buy a fix for a problem they already have. '+
+     'The Community Board is right behind me. Pick a lane. Then talk to <b>Nia Brooks</b>. She\u2019s waiting, and she\u2019s already annoyed about something.',
+     [{label:'I see Nia',sub:'Board first, then pitch her',fn:()=>{
+        S.quest=1; remember('marcus','I sent you to the board, then Nia.');bumpRel('marcus',1);saveGame();}}]);
+    return;
+  }
+  if(S.biz&&S.customers<1){
+    showDialog('Marcus Webb','Retired Entrepreneur',c,
+     'Nia is still by the board. Watch her hands before you talk. Pitch the thing she\u2019s showing you, not the speech you rehearsed.',
+     [{label:'On my way.'}]);
     return;
   }
   if(S.bankrupt&&!S.comebackUsed){ return comebackScene(); }
@@ -733,7 +751,7 @@ function foundBusiness(ind,name){
   S.quest=2; S.stats.strategy+=4;
   learn('Value Proposition','The specific problem you solve and why it\u2019s worth paying for.');
   feed('You founded '+name+' ('+ind.name+'). The city barely notices. Yet.');
-  toast('<b>'+name+'</b> is born. Lane: '+ind.name+'. Now go get customers, face to face.','gold'); sBig();
+  toast('<b>'+name+'</b> is open. Nia is waiting by the board. Go get your first yes.','gold'); sBig();
   saveGame();
 }
 
@@ -753,17 +771,46 @@ function talkCustomer(npc){
     showDialog(npc.name,'Neighbor','#8FA98B','You already came by today. Persistence is good, pestering isn\u2019t.',[{label:'Fair.'}]);
     return;
   }
+  openPitch(npc);
+}
+const PITCH_TELLS=[
+  ['They grab their head.','Lead with the problem.'],
+  ['They tap their wallet.','Lead with the price.'],
+  ['They look you over.','Lead with who you are.']
+];
+function openPitch(npc){
   const taste=pitchTaste(npc);
-  const tells=[
-    'They rub their forehead. "I am tired of the problem. Talk about that."',
-    'They tap their wallet. "Skip the story. What does it cost?"',
-    'They look you over. "I buy from people I trust. Who are you?"'
-  ];
+  const guided=npc.id==='nia'&&!(S.customers>0);
+  const secs=guided?6.5:4.5;
   showDialog(npc.name,'Potential Customer','#8FA98B',
-    greet(npc)+' ... '+IND().line+' '+tells[taste],
+    (guided?'Marcus sent you. Read the tell, then pick.':'Watch them. Then pick.')+' '+IND().line,
     [{label:'Lead with their problem',sub:'Name the headache, then the fix.',fn:()=>pitchResult(npc,0)},
      {label:'Lead with the price',sub:'Put the number first.',fn:()=>pitchResult(npc,1)},
      {label:'Lead with yourself',sub:'Why you, not the cheapest option.',fn:()=>pitchResult(npc,2)}]);
+  const tell=$('pitchTell'); if(!tell) return;
+  tell.style.display='block';
+  $('pitchTellMain').textContent=PITCH_TELLS[taste][0];
+  $('pitchTellSub').textContent=PITCH_TELLS[taste][1];
+  const fill=$('pitchBarFill');
+  fill.style.transition='none';
+  fill.style.transform='scaleX(1)';
+  void fill.offsetWidth;
+  fill.style.transition='transform '+secs+'s linear';
+  fill.style.transform='scaleX(0)';
+  pitchNpc=npc; pitchLive=true;
+  clearTimeout(pitchTimer);
+  pitchTimer=setTimeout(()=>{
+    if(!pitchLive||pitchNpc!==npc) return;
+    pitchLive=false;
+    closeDialog();
+    pitchFreeze(npc);
+  }, secs*1000);
+}
+function pitchFreeze(npc){
+  reactNpc(npc,'no');
+  tone(160,.18,'square',.05); tone(120,.28,'sawtooth',.05,.1);
+  floatText(npc.x,28,npc.z,'TOO SLOW','#D4513B');
+  toast(npc.name+' waited, then shrugged. The tell is still up. Try again.','bad');
 }
 function pitchTaste(npc){
   const id=(npc&&npc.id)||'';
@@ -778,23 +825,34 @@ function alreadyCustomer(npc){
   return !!(mem&&mem.some(t=>String(t).indexOf('signed up')>=0));
 }
 function pitchResult(npc,style){
-  S.pitched[npc.id]=S.day;
-  dailyProgress('pitch');
+  pitchLive=false; clearTimeout(pitchTimer);
   if(alreadyCustomer(npc)){
     toast(npc.name+' is already on the books. That\u2019s not a new customer.','bad');
     return;
   }
+  const guided=npc.id==='nia'&&!(S.customers>0);
   const right=style===pitchTaste(npc);
-  let odds=(right?0.64:0.28)+Math.min(0.1,S.stats.hustle*0.0015)+rel(npc.id)*0.04;
-  odds=clamp(odds,0.12,right?0.78:0.4);
-  if(Math.random()<odds){
+  let won;
+  if(guided) won=right;
+  else {
+    S.pitched[npc.id]=S.day;
+    dailyProgress('pitch');
+    let odds=(right?0.64:0.28)+Math.min(0.1,S.stats.hustle*0.0015)+rel(npc.id)*0.04;
+    odds=clamp(odds,0.12,right?0.78:0.4);
+    won=Math.random()<odds;
+  }
+  if(won){
     if(!S.customersOf) S.customersOf={};
     S.customersOf[npc.id]=S.day;
     S.customers++; S.stats.hustle=clamp(S.stats.hustle+2,0,100);
     S.stats.reputation=clamp(S.stats.reputation+1,0,100);
     bumpRel(npc.id,2); remember(npc.id,'I signed up as your customer.');
-    sCash(); spawnBurst(playerPos.x,14,playerPos.z,0xE8C064);
-    toast('<b>'+npc.name+'</b> is in! Customer #'+S.customers,'good');
+    sCash(); if(S.customers===1) sBig();
+    spawnBurst(npc.x,16,npc.z,0xE8C064);
+    reactNpc(npc,'yes');
+    floatText(npc.x,30,npc.z,'YES!','#5FA86B');
+    parkCustomer(npc);
+    toast('<b>'+npc.name+'</b> cheers. Customer #'+S.customers+' is on your lot.','good');
     if(S.customers===1) learn('Customer Discovery','Talking to real people to find out what they\u2019ll actually pay for.');
     // milestone fireworks \u2014 landing customers should FEEL like winning
     if([1,5,10,25,50].includes(S.customers)){
@@ -807,8 +865,14 @@ function pitchResult(npc,style){
   } else {
     S.stats.hustle=clamp(S.stats.hustle+1,0,100);
     bumpRel(npc.id,-1); remember(npc.id,'you pitched me and I passed.');
-    sBad(); floatText(playerPos.x,28,playerPos.z,'NO DEAL','#D4513B');
-    toast(npc.name+' passed. Rejection is data. Adjust and keep moving.','bad');
+    sBad(); reactNpc(npc,'no');
+    floatText(npc.x,28,npc.z,'NOPE','#D4513B');
+    const jokes=[
+      npc.name+' shakes their head. "That was not it."',
+      npc.name+' snorts. "Read the room."',
+      '"Nope." '+npc.name+' folds their arms.'
+    ];
+    toast(jokes[ri(0,jokes.length-1)]+(guided?' The tell is still there.':' Come back tomorrow.'),'bad');
     learn('Rejection Handling','Every no teaches you something a yes never could.');
   }
   saveGame();
@@ -1760,6 +1824,35 @@ function drawMinimap(){
 }
 
 
+const lotLine=[];
+let lotLineN=-1;
+function parkCustomer(){
+  const b=BUILDINGS.find(x=>x.id==='lot'); if(!b) return;
+  floatText(b.x+b.w/2,22,b.y+b.d+18,'+1','#5FA86B');
+  spawnBurst(b.x+b.w/2,12,b.y+b.d+16,0x5FA86B);
+  syncCustomerLine();
+}
+function syncCustomerLine(){
+  if(!scene||!S||typeof makePerson!=='function') return;
+  const b=BUILDINGS.find(x=>x.id==='lot'); if(!b) return;
+  const want=Math.min(8,S.customers||0);
+  if(want===lotLineN) return;
+  while(lotLine.length>want){ const old=lotLine.pop(); scene.remove(old.group); }
+  while(lotLine.length<want){
+    const i=lotLine.length;
+    const person=makePerson(SKINS[i%SKINS.length], FITS[(i*3)%FITS.length], i%2?'girl':'guy');
+    const col=i%4, row=(i/4)|0;
+    person.group.position.set(b.x+36+col*18, 0, b.y+b.d+16+row*16);
+    person.group.rotation.y=Math.PI;
+    scene.add(person.group);
+    lotLine.push(person);
+  }
+  lotLineN=want;
+}
+function reactNpc(npc,kind){
+  if(!npc) return;
+  npc.react=kind; npc.reactUntil=performance.now()+1000;
+}
 /* =========================================================
    FLOATING REWARD TEXT
    ========================================================= */
@@ -4919,7 +5012,7 @@ function loop(now){
       const pm=npcMeshes[n.id]; if(!pm) continue;
       const d=dist2(n.x,n.z,n.tx,n.tz);
       let nmoving=false;
-      if(n.wander||n.key){
+      if((n.wander||n.key)&&!n.hold){
         if(d<3){ n.wait-=DT;
           if(n.wait<=0){ n.wait=rnd(2,6);
             const r=n.key?45:140;
@@ -4941,8 +5034,19 @@ function loop(now){
         const dd=Math.hypot(dpx,dpz);
         if(dd<160) pm.group.rotation.y=Math.atan2(dpx,dpz);
       }
-      const sw=nmoving?Math.sin(t*8+n.hx)*0.5:0;
-      pm.lLeg.rotation.x=sw; pm.rLeg.rotation.x=-sw;
+      const reacting=n.react&&performance.now()<n.reactUntil;
+      if(reacting&&n.react==='yes'){
+        pm.lArm.rotation.z=2.5; pm.rArm.rotation.z=-2.5;
+        pm.lArm.rotation.x=-0.5; pm.rArm.rotation.x=-0.5;
+        pm.group.position.y=Math.abs(Math.sin(performance.now()/70))*1.8;
+      } else if(reacting){
+        pm.group.rotation.z=Math.sin(performance.now()/40)*0.2;
+        pm.lArm.rotation.x=0.8; pm.rArm.rotation.x=0.8;
+      } else {
+        if(n.react){ n.react=null; pm.group.rotation.z=0; pm.lArm.rotation.set(0,0,0); pm.rArm.rotation.set(0,0,0); }
+        const sw=nmoving?Math.sin(t*8+n.hx)*0.5:0;
+        pm.lLeg.rotation.x=sw; pm.rLeg.rotation.x=-sw;
+      }
       if(pm.ring){
         const r=rel(n.id);
         pm.ring.material.color.setHex(r>=2?0x5FA86B:(r<0?0xD4513B:0xE8C064)).convertSRGBToLinear();
@@ -5135,6 +5239,7 @@ function updateHUDChips(){
   const q=QUESTS[S.quest];
   $('questBar').innerHTML=(q?q.hint:'')+(q&&q.prog?' <b>'+q.prog()+'</b>':'')
     +(books&&S.customers>0?'<br><span style="color:#5AAE2A;font-size:11px">'+S.customers+' customers → '+fmt(profit)+' profit at 9 AM <span style="color:#9A917F">(revenue '+fmt(books.revenue)+')</span></span>':'');
+  syncCustomerLine();
 }
 setInterval(()=>{ if(S&&$('hud').style.display==='block')updateHUDChips(); },500);
 
