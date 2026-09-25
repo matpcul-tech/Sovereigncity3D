@@ -49,8 +49,10 @@ button{font-family:inherit;cursor:pointer;border:none}
 
 /* ---------- CREATOR ---------- */
 #creator{position:absolute;inset:0;z-index:49;background:#14120F;display:none;
-  align-items:center;justify-content:center;padding:24px 16px;overflow-y:auto}
-.creator-stage{width:min(820px,100%);display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr);gap:28px;align-items:center}
+  flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:max(12px,env(safe-area-inset-top)) 12px max(20px,env(safe-area-inset-bottom));
+  overflow-y:auto;-webkit-overflow-scrolling:touch}
+.creator-stage{width:min(820px,100%);margin:auto;flex-shrink:0;display:grid;grid-template-columns:minmax(220px,280px) minmax(0,1fr);gap:28px;align-items:center}
 .creator-portrait{display:flex;flex-direction:column;align-items:center;gap:12px;background:#1C1813;border:1px solid #3A342A;border-radius:28px;padding:20px 16px 18px}
 .portrait-frame{width:240px;height:320px;border-radius:20px;background:#100E0B;border:1px solid #2A261E;overflow:hidden}
 #preview{width:100%;height:100%;display:block}
@@ -107,7 +109,7 @@ button{font-family:inherit;cursor:pointer;border:none}
   box-shadow:0 4px 0 #006688,0 0 14px rgba(0,200,255,.2)}
 #phoneBtn .dot{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;
   background:var(--danger);display:none;border:2px solid #1B2A3B;box-shadow:0 0 6px var(--danger)}
-#joy{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));left:18px;width:136px;height:136px;
+#joy{display:none;position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));left:18px;width:136px;height:136px;
   border-radius:50%;background:rgba(27,42,59,.6);border:3px solid rgba(0,200,255,.5);pointer-events:auto;
   box-shadow:0 0 20px rgba(0,200,255,.15)}
 #joyKnob{position:absolute;left:50%;top:50%;width:58px;height:58px;border-radius:50%;
@@ -130,24 +132,26 @@ button{font-family:inherit;cursor:pointer;border:none}
   width:60px;height:60px;border-radius:18px;
   background:radial-gradient(circle at 38% 38%,#44CC44,#228822);box-shadow:0 5px 0 #115511,0 0 14px rgba(68,204,68,.3);
   color:#fff;font-size:26px;pointer-events:auto;display:none;align-items:center;justify-content:center;font-weight:900}
-#lockHint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+#lockHint{position:absolute;top:auto;bottom:calc(96px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
   background:rgba(20,18,15,.8);color:#B9B0A0;font-size:12px;padding:8px 18px;border-radius:8px;
-  pointer-events:none;display:none;z-index:5;letter-spacing:.06em}
+  pointer-events:none;display:none;z-index:5;letter-spacing:.06em;white-space:nowrap}
+@media (pointer:coarse){ #joy{display:block} }
 
 /* ---------- DIALOG ---------- */
 #dialog{position:absolute;inset:0;z-index:20;background:rgba(15,25,40,.65);display:none;
   align-items:flex-end;justify-content:center;pointer-events:auto}
 #dBox{width:min(560px,100vw);background:#1B2A3B;border-top:2px solid rgba(0,200,255,.4);
   border-radius:24px 24px 0 0;padding:20px 20px calc(22px + env(safe-area-inset-bottom));
-  display:flex;flex-direction:column;gap:13px;animation:dUp .22s ease;max-height:78vh;overflow-y:auto}
+  display:flex;flex-direction:column;gap:13px;animation:dUp .22s ease;
+  max-height:min(86vh,calc(100dvh - env(safe-area-inset-top) - 8px));overflow:hidden}
 @keyframes dUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
 #dHead{display:flex;align-items:center;gap:12px}
 #dPortrait{width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;
   font-family:'Archivo';font-weight:900;font-size:22px;color:#FFFFFF;flex-shrink:0}
 #dName{font-family:'Archivo';font-weight:900;font-size:17px}
 #dRole{font-size:11px;color:#88AACC;letter-spacing:.08em;text-transform:uppercase;font-weight:600;margin-top:2px}
-#dText{font-size:14.5px;line-height:1.65;color:#D8E8F8;min-height:46px}
-#dOpts{display:flex;flex-direction:column;gap:9px}
+#dText{font-size:14.5px;line-height:1.65;color:#D8E8F8;flex-shrink:0}
+#dOpts{display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:0;max-height:48vh;-webkit-overflow-scrolling:touch}
 .dOpt{background:#243545;border:2px solid rgba(0,200,255,.25);border-radius:14px;padding:14px 16px;
   color:#FFFFFF;font-size:14px;font-weight:700;text-align:left;line-height:1.4;transition:border-color .1s}
 .dOpt:active{background:#2E4A62;border-color:var(--turq)}
@@ -192,9 +196,10 @@ button{font-family:inherit;cursor:pointer;border:none}
   border-radius:12px;padding:9px 20px;font-size:12px;font-weight:800;color:var(--gold);display:none;
   letter-spacing:.06em;text-transform:uppercase;box-shadow:0 0 16px rgba(255,215,0,.3)}
 
-#bigModal{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;
-  background:rgba(15,25,40,.85);padding:22px;pointer-events:auto}
-#bmCard{width:min(420px,100%);background:#1B2A3B;border:2px solid rgba(0,200,255,.35);border-radius:24px;
+#bigModal{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;
+  background:rgba(15,25,40,.85);padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));
+  pointer-events:auto;overflow-y:auto;-webkit-overflow-scrolling:touch}
+#bmCard{width:min(420px,100%);margin:auto;flex-shrink:0;background:#1B2A3B;border:2px solid rgba(0,200,255,.35);border-radius:24px;
   padding:28px 24px;display:flex;flex-direction:column;gap:14px;text-align:center;align-items:center;
   box-shadow:0 8px 40px rgba(0,0,0,.5)}
 #bmCard h2{font-family:'Archivo';font-weight:900;font-size:27px;line-height:1.1}
@@ -560,7 +565,7 @@ function npcPos(id){ const n=npcById(id); return n?{x:n.x,z:n.z}:null; }
 /* ---------------- NPCS ---------------- */
 const SKINS=['#F3D5B5','#E0AC7E','#C68B59','#9C6644','#7F4F24','#5C3A21'];
 const FITS=['#E8461A','#1AB8AE','#E83020','#1A6AB8','#5AAE2A','#C82870','#E8C030','#5840C8'];
-const FIRST=['Jaylen','Maya','Tommy','Rosa','Darius','Kim','Eli','Tasha','Ray','Lena','Hector','Nia','Owen','Pearl','Sam','Ida','Cole','Mona','Trey','Faye','Bo','June','Zeke','Ada','Gus','Vera'];
+const FIRST=['Jaylen','Maya','Tommy','Rosa','Darius','Kim','Ellis','Tasha','Ray','Lena','Hector','Nia','Owen','Pearl','Sam','Ida','Cole','Mona','Trey','Faye','Bo','June','Zeke','Ada','Gus','Vera'];
 const NPCS=[];
 function npcById(id){ return NPCS.find(n=>n.id===id); }
 function addNPC(o){
@@ -3547,6 +3552,7 @@ const Clip={
     const sub=(kind==='founded'?'{biz} is open for business':(kind==='debut'?th.debutSub:th.blowSub)).replace('{biz}',S.biz.name);
     this.showBars(cap,sub);
     this.build(th,kind,this.cx,this.cz);
+    this.clearStage();
     tone(392,.3,'triangle',.08); tone(523,.4,'triangle',.08,.12); tone(659,.55,'triangle',.09,.24);
   },
   build(th,kind,px,pz){
@@ -3644,9 +3650,27 @@ const Clip={
         this.theme.arch==='runway'?0xFFFFFF:this.theme.col);
     if(this.t>=this.dur) this.end();
   },
+  clearStage(){
+    this._tags=[];
+    NPCS.forEach(n=>{
+      const dx=n.x-this.cx, dz=n.z-this.cz;
+      if(dx*dx+dz*dz<36*36){
+        const ang=Math.atan2(dx,dz)||0.7;
+        n.x=this.cx+Math.sin(ang)*42;
+        n.z=this.cz+Math.cos(ang)*42;
+        if(npcMeshes[n.id]) npcMeshes[n.id].group.position.set(n.x,0,n.z);
+      }
+    });
+    Object.values(npcMeshes).forEach(p=>{
+      if(!p||!p.group) return;
+      p.group.traverse(o=>{ if(o.isSprite&&o.visible){ o.visible=false; this._tags.push(o); } });
+    });
+  },
   end(){
     if(!this.active) return;
     this.active=false;
+    (this._tags||[]).forEach(o=>{ o.visible=true; });
+    this._tags=[];
     this.parts.forEach(m=>scene.remove(m));
     this.parts.length=0; this.crowd.length=0; this.beams=null;
     this.hideBars();
@@ -4080,10 +4104,26 @@ function addMurals(){
 function setHQEmpty(){
   const b=BUILDINGS.find(b=>b.id==='lot');
   const bm=buildingMeshes['lot'];
-  bm.mesh.scale.y=0.06; bm.mesh.position.y=b.h3*0.03;
+  bm.mesh.visible=false;
   bm.roof.visible=false;
-  bm.sp.position.y=24;
-  updateLabelSprite(bm.sp,'Empty Lot \u00B7 $1,500','#9A917F');
+  if(!bm.pad){
+    const g=new THREE.Group();
+    const dirt=new THREE.Mesh(new THREE.BoxGeometry(b.w-10,1.4,b.d-10), toon(0x6E4B2A));
+    dirt.position.y=0.7;
+    const patch=new THREE.Mesh(new THREE.BoxGeometry(b.w*0.55,0.35,b.d*0.5), toon(0x8C7A58));
+    patch.position.y=1.5;
+    const post=new THREE.Mesh(new THREE.BoxGeometry(1.6,18,1.6), toon(0xC4A574));
+    post.position.set(-b.w*0.28,9,b.d*0.32);
+    const sign=new THREE.Mesh(new THREE.BoxGeometry(22,12,0.8), toon(0xF4E7C8));
+    sign.position.set(-b.w*0.28,18,b.d*0.32);
+    g.add(dirt,patch,post,sign);
+    g.position.set(b.x+b.w/2,0,b.y+b.d/2);
+    scene.add(g);
+    bm.pad=g;
+  }
+  bm.pad.visible=true;
+  bm.sp.position.y=30;
+  updateLabelSprite(bm.sp,'Empty Lot \u00B7 $1,500','#C4A574');
 }
 /* If the player is ever inside a solid building (e.g. they bought the
    HQ while standing on the lot, or loaded a stuck save), eject them
@@ -4113,8 +4153,10 @@ function setHQBuilt(){
   const b=BUILDINGS.find(b=>b.id==='lot');
   const bm=buildingMeshes['lot'];
   const sc=S.hqLevel>=2?1.5:1;
+  bm.mesh.visible=true;
   bm.mesh.scale.y=sc; bm.mesh.position.y=b.h3*sc/2;
   bm.roof.visible=true; bm.roof.position.y=b.h3*sc+2;
+  if(bm.pad) bm.pad.visible=false;
   bm.sp.position.y=b.h3*sc+22;
   b.label=(S.biz?S.biz.name:'Your')+' HQ';
   updateLabelSprite(bm.sp,b.label,'#F2A33C');
@@ -4554,6 +4596,25 @@ window.addEventListener('mouseup',()=>mouseDrag=null);
 
 /* ---------------- INTERACTION ---------------- */
 let nearTarget=null;
+function clearCameraHeads(){
+  if(!camera) return;
+  const heads=[];
+  for(const n of NPCS) heads.push(n.x,n.z);
+  for(const k in remotePlayers){
+    const rp=remotePlayers[k];
+    if(rp&&rp.group) heads.push(rp.group.position.x,rp.group.position.z);
+  }
+  for(let i=0;i<heads.length;i+=2){
+    const dx=camera.position.x-heads[i], dz=camera.position.z-heads[i+1];
+    const d=Math.hypot(dx,dz);
+    if(d>0.05&&d<12){
+      const s=(12-d)/d;
+      camera.position.x+=dx*s;
+      camera.position.z+=dz*s;
+      if(camera.position.y<24) camera.position.y=24;
+    }
+  }
+}
 function findNear(){
   let place=null, placeD=1e9;
   const PLACE_R=34;
@@ -4582,7 +4643,9 @@ function findNear(){
     }
   }
   if(place&&person){
-    if(personD<14&&personD+6<placeD) return person;
+    // The quest arrow stands you back from a door. A passerby only
+    // takes Talk if you are basically next to them.
+    if(personD<8&&personD+4<placeD) return person;
     return place;
   }
   return place||person;
@@ -5037,6 +5100,7 @@ function loop(now){
         playerGroup.group.visible=camDist>16;
       }
       camera.lookAt(playerPos.x,16+airY*0.45,playerPos.z);
+      clearCameraHeads();
       fitLabels();
     }
     // classroom presence: broadcast my position, animate classmates
