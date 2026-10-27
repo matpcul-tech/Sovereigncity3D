@@ -69,6 +69,7 @@ body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: 
 .code-form h2 { font-family: Archivo, sans-serif; font-size: 22px; margin-bottom: 8px; }
 .code-form p { color: var(--sub); margin-bottom: 18px; font-size: 14px; line-height: 1.45; text-align: center; }
 .fac-note { font-size: 13px; color: var(--sub); margin: 0 0 16px; max-width: 760px; line-height: 1.45; }
+.kit-link { color: #8a6414; font-weight: 700; }
 .week1 { display: grid; grid-template-columns: minmax(0,1fr) 180px; gap: 8px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
 .week1 h2 { font-family: Archivo, sans-serif; font-size: 16px; line-height: 1.25; }
 .week1 p { color: var(--sub); font-size: 13px; margin: 0; }
@@ -405,6 +406,7 @@ function renderShell() {
           '<h2>Class code ' + esc(urlCode) + '</h2>' +
           '<p>School session. This code is the shared town for the period. Home play uses a town code the same way. Same code, same town. Founder names only. No emails.</p>' +
           '<p style="margin-top:6px">Students tap School on the title screen and type ' + esc(urlCode) + '. Or send this link.</p>' +
+          '<p style="margin-top:8px"><a class="kit-link" href="print-kit.html">Founder Mode tabletop</a>. Print kit for the board next to the 3D game.</p>' +
           '<div class="link-row">' +
             '<input id="studentLink" readonly aria-label="Student game link">' +
             '<button type="button" class="btn btn-gold" id="copyLinkBtn">Copy link</button>' +
@@ -562,6 +564,7 @@ function renderCodeForm() {
       '<p>Type the class code for this school session. Home play uses a town code the same way. Same code, same town. Founder names only.</p>' +
       '<input id="codeInp" type="text" maxlength="6" placeholder="ABC123" autocomplete="off">' +
       '<button class="btn btn-gold" id="goCodeBtn" style="width:100%;padding:13px;font-size:15px">Open Dashboard</button>' +
+      '<p style="margin-top:16px;font-size:13px"><a class="kit-link" href="print-kit.html">Founder Mode tabletop print kit</a></p>' +
     '</div>';
 
   const inp = document.getElementById('codeInp');

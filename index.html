@@ -27,7 +27,7 @@ button{font-family:inherit;cursor:pointer;border:none}
   linear-gradient(180deg,#0A1828 0%,#0D2040 50%,#1B2A3B 100%);
   display:flex;flex-direction:column;align-items:center;overflow-y:auto;
   -webkit-overflow-scrolling:touch;touch-action:pan-y;
-  padding:12px 16px calc(48px + env(safe-area-inset-bottom));text-align:center}
+  padding:12px 16px calc(78px + env(safe-area-inset-bottom));text-align:center}
 #titleStack{width:min(420px,100%);margin:auto;display:flex;flex-direction:column;align-items:center;gap:12px}
 #title .skyline{width:min(380px,78vw);height:72px}
 #title h1{font-family:'Archivo',sans-serif;font-weight:900;font-size:clamp(34px,9vw,58px);
@@ -41,7 +41,9 @@ button{font-family:inherit;cursor:pointer;border:none}
   touch-action:manipulation}
 .btn:active{transform:translateY(5px);box-shadow:0 1px 0 #CC5500}
 .btn.ghost{background:rgba(27,42,59,.7);color:#FFFFFF;box-shadow:inset 0 0 0 2px rgba(0,200,255,.5);font-weight:700;font-size:14px;padding:12px 26px;border-radius:14px}
-#title .foot{position:absolute;bottom:max(10px,env(safe-area-inset-bottom));font-size:10px;letter-spacing:.12em;color:#6B6354;text-transform:uppercase}
+#title .foot{position:absolute;left:0;right:0;bottom:max(8px,env(safe-area-inset-bottom));font-size:10px;letter-spacing:.12em;color:#6B6354;text-transform:uppercase;display:flex;flex-direction:column;align-items:center;gap:2px}
+#title .foot a{color:#C4B396;font-size:12px;font-weight:700;letter-spacing:.14em;text-decoration:none;padding:8px 12px;touch-action:manipulation;pointer-events:auto}
+#title .foot a:hover,#title .foot a:focus-visible{color:var(--gold)}
 #joinBox{width:min(360px,92vw);display:flex;flex-direction:column;gap:7px;text-align:left}
 .joinPick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .joinOpt{appearance:none;-webkit-appearance:none;background:#162433;border:2px solid #2C4258;
@@ -347,7 +349,7 @@ body.scLetterbox #scBarTop{height:11vh} body.scLetterbox #scBarBot{height:16vh}
   <button class="btn" id="newGameBtn">New Founder</button>
   <button class="btn ghost" id="continueBtn" style="display:none">Continue</button>
   </div>
-  <div class="foot">Sovereign Shield Technologies LLC &middot; Ada, Oklahoma &middot; V2 Real World Update</div>
+  <div class="foot"><span>Sovereign Shield Technologies LLC &middot; Ada, Oklahoma &middot; V2 Real World Update</span><a href="print-kit.html">Founder Mode tabletop</a></div>
 </div>
 
 <div id="creator">
@@ -917,6 +919,22 @@ let playArmed=false, playBypass=false;
 function isCoarse(){
   return !!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches);
 }
+/* Walk-to-pin is hidden on coarse pointers, so those players use the joystick.
+   Desktop keeps Hold F. */
+function pinWalkCopy(){
+  if(isCoarse()){
+    return {
+      marcus:'Follow the gold pin. Use the joystick and walk toward it.',
+      toast:'Use the joystick and walk toward the Community Board.',
+      stuck:'Step sideways, then walk toward the pin with the joystick. The pin is just around the building.'
+    };
+  }
+  return {
+    marcus:'Follow the gold pin. Hold F and I will walk you there.',
+    toast:'Hold F to walk to the Community Board.',
+    stuck:'Step sideways, then hold F again. The pin is just around the building.'
+  };
+}
 function uiBlocking(){
   if(dialogOpen) return true;
   if($('phone')&&$('phone').style.display==='flex') return true;
@@ -1063,12 +1081,13 @@ function talkMarcus(){
     const pin=bldPos('board');
     const here=npcById('marcus');
     const way=pin&&here?compassPhrase(pin.x,pin.z,here.x,here.z):{dir:'east',meters:70};
+    const walk=pinWalkCopy();
     showDialog('Marcus Webb','Retired Entrepreneur',c,
      'You\u2019ve got $5,000 and a dream. <b>Nobody buys a dream.</b> They buy a fix for a problem they already have. '+
-     'The Community Board is '+way.dir+' of me, about '+way.meters+'m. Follow the gold pin. Hold F and I will walk you there. Then talk to <b>Nia Brooks</b>. She\u2019s waiting, and she\u2019s already annoyed about something.',
+     'The Community Board is '+way.dir+' of me, about '+way.meters+'m. '+walk.marcus+' Then talk to <b>Nia Brooks</b>. She\u2019s waiting, and she\u2019s already annoyed about something.',
      [{label:'I see Nia',sub:'Board first, then pitch her',fn:()=>{
         S.quest=1; remember('marcus','I sent you to the board, then Nia.');bumpRel('marcus',1);saveGame();
-        toast('Hold F to walk to the Community Board.','gold');}}]);
+        toast(pinWalkCopy().toast,'gold');}}]);
     return;
   }
   if(S.biz&&S.customers<1){
@@ -5833,7 +5852,7 @@ function loop(now){
         const nowT=performance.now();
         if(nowT-questWalkStuck>4000){
           questWalkStuck=nowT;
-          toast('Step sideways, then hold F again. The pin is just around the building.','gold');
+          toast(pinWalkCopy().stuck,'gold');
         }
       }
     } else if(tank){

@@ -33,8 +33,8 @@ jobs:
       - name: Stage the playable site
         run: |
           mkdir -p _site
-          cp index.html facilitator.html og.jpg sw.js _site/
-          cp -r icons assets public _site/
+          cp index.html facilitator.html print-kit.html og.jpg sw.js _site/
+          cp -r icons assets public print-kit _site/
       - name: Setup Pages
         uses: actions/configure-pages@v4
       - name: Upload artifact
