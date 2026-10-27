@@ -41,26 +41,39 @@ Sovereign City is a 3D open-world business simulation designed for kids, teens, 
 
 ---
 
-## Classroom / Group Play
+## Class codes and town codes
 
-Sovereign City is built for classrooms: a whole class plays in one shared town, sees each other live in the city, builds Founders Commons together, and the teacher watches progress in real time.
+One code is one shared town. A **class code** is that code at school. A **town code** is the same kind of code at home with friends, including friends who go to a different school. The same letters join the same town. A different code is a different town.
 
-### For teachers
+Founder names only. No accounts, no emails, no passwords. Leave the code blank to play alone on this device.
 
-1. **Pick a Class Code** — any 6 letters/numbers (e.g. `ROOM12`). That code IS the class town; no accounts, no emails, no passwords.
+### School: class code
+
+1. **Pick a class code.** Any 6 letters or numbers, for example `ROOM12`.
 2. **Share the game link** with the class:
    `https://matpcul-tech.github.io/Sovereigncity3D/?session=true&code=ROOM12&duration=40`
-   — this pre-fills the class code, locks it, and runs a countdown session timer (`duration` is minutes). Or just share the plain game link and have students type the code on the title screen.
+   This fills in the class code, locks it to School, and runs a countdown (`duration` is minutes). Or share the plain game link and have students tap **School** and type the code.
 3. **Open the Facilitator Dashboard** while they play:
    `https://matpcul-tech.github.io/Sovereigncity3D/facilitator.html?code=ROOM12`
-   Live for every student: business, stage, customers, daily profit/loss, vocabulary terms earned, insights, last-active. Set a custom **"Today's Hustle"** challenge that pops up in every student's game, and export a session report as CSV for grading.
+   Live for every founder on that code: business, stage, customers, daily profit/loss, vocabulary terms earned, insights, last-active. Set a custom **"Today's Hustle"** challenge that pops up in every game, and export a session report as CSV for grading.
 
-### What students see
+### Home: town code
 
-- Classmates walking the same city live, with name tags (and as dots on the minimap)
-- Founders Commons plots claimed by classmates appear in everyone's world instantly
+Pick a town code and share it with friends. On the title screen, tap **Home** and type that code. Friends do not need to be in the same school.
+
+Use a different code from the class code if home play should stay separate. Anyone who types the class code joins the class town, at school or at home.
+
+Optional home link (fills the code and locks Home):
+`https://matpcul-tech.github.io/Sovereigncity3D/?code=HOME12&use=town`
+
+`facilitator.html?code=HOME12` opens that same town. Class codes and town codes share one `town_code`. `?code=` is the key.
+
+### What players see
+
+- Other founders with the same code walking the city live, with name tags (and as dots on the minimap)
+- Founders Commons plots claimed by anyone on that code appear in everyone's world instantly
 - The Hall of Fame ranks the fastest founders to reach Sovereignty
-- Progress saves to the cloud under Class Code + founder name, so any device can resume
+- Progress saves to the cloud under the code plus founder name, so any device can resume
 
 ### One-time backend setup (repo owner)
 
@@ -69,17 +82,17 @@ Group play runs on a free [Supabase](https://supabase.com) project:
 1. Create a Supabase project, open **SQL Editor**, and run `supabase-migration.sql`, then `supabase-patch-classroom.sql` (both in this repo).
 2. In **Database → Replication**, enable Realtime on the `plots` and `saves` tables.
 3. In this repo's **Settings → Secrets and variables → Actions**, add:
-   - `VITE_SUPABASE_URL` — the project URL (Supabase Dashboard → Settings → API)
-   - `VITE_SUPABASE_ANON_KEY` — the anon public key
+   - `VITE_SUPABASE_URL`: the project URL (Supabase Dashboard → Settings → API)
+   - `VITE_SUPABASE_ANON_KEY`: the anon public key
 4. Re-run the deploy (push to `main` or Actions → Deploy to GitHub Pages → Run workflow).
 
-Without the secrets the game still works perfectly in solo mode — the class-code field simply plays locally.
+Without the secrets the game still works in solo mode. A class code or town code simply plays locally.
 
 ---
 
 ## Trailer Mode
 
-A five-act, 30-second cinematic commercial the game films by itself — letterbox bars, on-screen captions, music shifts, fireworks, and a title card. Load a game with a named business first (the business name appears on the tower in the final act).
+A five-act, 30-second cinematic commercial the game films by itself: letterbox bars, on-screen captions, music shifts, fireworks, and a title card. Load a game with a named business first (the business name appears on the tower in the final act).
 
 **Desktop:** open the browser console (F12) and run:
 ```javascript
@@ -95,10 +108,10 @@ Continue your save, then start your phone's screen recorder during the 5-second 
 
 ## Tech Stack
 
-- **Three.js r128** — 3D rendering, procedural textures, shadows
-- **Web Audio API** — Generative per-zone soundtrack, zero audio files
-- **HTML5 Canvas** — Minimap, facade textures, floating reward text, tutorial arrows
-- **Vanilla JS** — No framework, no build step, one file
+- **Three.js r128**: 3D rendering, procedural textures, shadows
+- **Web Audio API**: Generative per-zone soundtrack, zero audio files
+- **HTML5 Canvas**: Minimap, facade textures, floating reward text, tutorial arrows
+- **Vanilla JS**: No framework, no build step, one file
 
 ---
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Facilitator Dashboard — Sovereign City</title>
+  <title>Facilitator Dashboard | Sovereign City</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
@@ -67,7 +67,8 @@ body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: 
 
 .code-form { max-width: 400px; margin: 80px auto; padding: 32px; background: var(--surface); border-radius: 16px; box-shadow: 0 2px 12px rgba(0,0,0,.09); text-align: center; }
 .code-form h2 { font-family: Archivo, sans-serif; font-size: 22px; margin-bottom: 8px; }
-.code-form p { color: var(--sub); margin-bottom: 24px; font-size: 14px; }
+.code-form p { color: var(--sub); margin-bottom: 18px; font-size: 14px; line-height: 1.45; text-align: center; }
+.fac-note { font-size: 13px; color: var(--sub); margin: 0 0 16px; max-width: 760px; line-height: 1.45; }
 .code-form input { width: 100%; border: 2px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 22px; font-weight: 700; text-align: center; letter-spacing: .2em; text-transform: uppercase; font-family: Archivo, sans-serif; margin-bottom: 16px; }
 .code-form input:focus { outline: none; border-color: var(--gold); }
 
@@ -107,9 +108,11 @@ window.SC_SUPABASE_ANON_KEY='%%SUPABASE_ANON_KEY%%';
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
 /* =========================================================
-   SOVEREIGN CITY — FACILITATOR DASHBOARD
-   Access: facilitator.html?code=TOWN_CODE
-   No auth required — the class code IS the access credential.
+   SOVEREIGN CITY FACILITATOR DASHBOARD
+   Access: facilitator.html?code=CODE
+   Class codes (school) and town codes (home with friends) are
+   the same code. That code is the access credential.
+   Founder names only. No emails.
    ========================================================= */
 const VOCAB_TERMS = [
   'Value Proposition','Customer Discovery','Rejection Handling',
@@ -127,7 +130,7 @@ function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 function timeSince(ts) {
-  if (!ts) return '—';
+  if (!ts) return '-';
   const s = Math.floor((Date.now() - new Date(ts)) / 1000);
   if (s < 60) return s + 's ago';
   if (s < 3600) return Math.floor(s / 60) + 'm ago';
@@ -182,8 +185,8 @@ function renderTable() {
       '<td><div class="fn">' + esc(row.founder_name) +
         (tabletop ? '<span class="tag-tabletop" title="Board game founder">🎲</span>' +
           ' <a href="#" style="font-size:11px" onclick="prefillTableForm(founders[' + idx + ']);return false">edit</a>' : '') +
-        '</div><div class="bn">' + esc(biz.name||'—') + '</div></td>' +
-      '<td>' + esc(biz.industry||'—') + '</td>' +
+        '</div><div class="bn">' + esc(biz.name||'-') + '</div></td>' +
+      '<td>' + esc(biz.industry||'-') + '</td>' +
       '<td><span class="stage-pill s' + st + '">' + esc(STAGE_NAMES[st]||'Ideator') + '</span></td>' +
       '<td>' + (d.customers||0) + '</td>' +
       '<td class="' + (p>0?'pos':p<0?'neg':'') + '">' + fmt(p) + '/day</td>' +
@@ -284,9 +287,10 @@ function renderShell() {
       '<button class="btn btn-outline" onclick="window.print()">🖨 Print</button>' +
     '</div>' +
     '<div class="fac-main">' +
+      '<p class="fac-note">School uses a class code. Home with friends uses a town code. Same code, same town. Founder names only.</p>' +
       '<div class="tm-panel" id="tmPanel" style="display:none">' +
-        '<h3>🎲 Table Mode — log Founder Mode board-game founders</h3>' +
-        '<div class="tm-sub">Board-game founders join the same class town: they appear in this roster AND in every student\'s in-game Class Ranks, and board-game Sovereignty goes on the shared Hall of Fame. Update a founder any time — same name overwrites their entry.</div>' +
+        '<h3>🎲 Table Mode. Log Founder Mode board-game founders</h3>' +
+        '<div class="tm-sub">Board-game founders join this same town. They show up here and on in-game ranks. The same founder name overwrites their entry.</div>' +
         '<div class="tm-grid">' +
           '<div><label for="tmName">Founder name</label><input id="tmName" maxlength="16" placeholder="Jordan C."></div>' +
           '<div><label for="tmBiz">Business name</label><input id="tmBiz" maxlength="24" placeholder="Fresh Fade Studio"></div>' +
@@ -308,7 +312,7 @@ function renderShell() {
           '<button class="btn btn-outline" id="tmFameBtn" title="Only for a founder who just won at the table">🏆 Record Sovereignty</button>' +
         '</div>' +
       '</div>' +
-      '<div class="fac-section-title">Founders — Town ' + esc(urlCode) + '</div>' +
+      '<div class="fac-section-title">Founders · Town ' + esc(urlCode) + '</div>' +
       '<table class="founder-table">' +
         '<thead><tr>' +
           '<th>Founder / Business</th><th>Industry</th><th>Stage</th>' +
@@ -336,8 +340,8 @@ function renderShell() {
 }
 
 /* ---- Table Mode: board-game founders live in the same saves table,
-   so they show up in the roster AND in every student's in-game
-   Class Ranks under the same class code. ---- */
+   so they show up in the roster and on in-game ranks for this code.
+   Class codes and town codes share town_code. ---- */
 function readTableForm() {
   const name = (document.getElementById('tmName').value || '').trim().slice(0, 16);
   if (!name) { showToast('Enter a founder name.'); return null; }
@@ -367,13 +371,13 @@ async function saveTableFounder() {
     { onConflict: 'town_code,founder_name' });
   btn.disabled = false;
   showToast(error ? 'Error: ' + error.message
-    : '🎲 ' + f.name + ' saved — now on the class ranks (round ' + f.round + ').');
+    : '🎲 ' + f.name + ' saved. Now on the town ranks (round ' + f.round + ').');
   if (!error) loadData();
 }
 async function recordTableSovereignty() {
   if (!sb) { showToast('Backend not configured.'); return; }
   const f = readTableForm(); if (!f) return;
-  if (f.stage !== 5) { showToast('Set Stage to 5 · Sovereign first — this is for a founder who just won at the table.'); return; }
+  if (f.stage !== 5) { showToast('Set Stage to 5 · Sovereign first. This is for a founder who just won at the table.'); return; }
   // resolve (or create) the town id, same as the game does
   let tid = townId;
   if (!tid) {
@@ -392,7 +396,7 @@ async function recordTableSovereignty() {
     industry: f.industry, day_achieved: f.round });
   btn.disabled = false;
   showToast(error ? 'Error: ' + error.message
-    : '🏆 ' + f.name + ' is on the Hall of Fame — Sovereign at round ' + f.round + '!');
+    : '🏆 ' + f.name + ' is on the Hall of Fame. Sovereign at round ' + f.round + '!');
 }
 function prefillTableForm(row) {
   const d = row.data || {}, b = d.biz || {};
@@ -412,8 +416,8 @@ function renderCodeForm() {
     '<header class="fac-header"><div><h1>Facilitator Dashboard</h1></div></header>' +
     '<div class="code-form">' +
       '<div style="font-size:40px;margin-bottom:12px">🏫</div>' +
-      '<h2>Enter Class Code</h2>' +
-      '<p>Enter the 6-character code you shared with your class.</p>' +
+      '<h2>Class code or town code</h2>' +
+      '<p>School: a class code for this class. Home: a town code friends share, any school. Same code joins the same town. Founder names only.</p>' +
       '<input id="codeInp" type="text" maxlength="6" placeholder="ABC123" autocomplete="off">' +
       '<button class="btn btn-gold" id="goCodeBtn" style="width:100%;padding:13px;font-size:15px">Open Dashboard</button>' +
     '</div>';

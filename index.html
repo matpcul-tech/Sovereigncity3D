@@ -25,8 +25,11 @@ button{font-family:inherit;cursor:pointer;border:none}
 /* ---------- TITLE ---------- */
 #title{position:absolute;inset:0;z-index:50;background:
   linear-gradient(180deg,#0A1828 0%,#0D2040 50%,#1B2A3B 100%);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:24px;text-align:center}
-#title .skyline{width:min(420px,86vw);height:110px}
+  display:flex;flex-direction:column;align-items:center;overflow-y:auto;
+  -webkit-overflow-scrolling:touch;touch-action:pan-y;
+  padding:12px 16px calc(48px + env(safe-area-inset-bottom));text-align:center}
+#titleStack{width:min(420px,100%);margin:auto;display:flex;flex-direction:column;align-items:center;gap:12px}
+#title .skyline{width:min(380px,78vw);height:72px}
 #title h1{font-family:'Archivo',sans-serif;font-weight:900;font-size:clamp(34px,9vw,58px);
   letter-spacing:.02em;line-height:.95}
 #title h1 span{color:var(--amber)}
@@ -37,7 +40,34 @@ button{font-family:inherit;cursor:pointer;border:none}
   padding:15px 36px;border-radius:16px;box-shadow:0 6px 0 #CC5500,0 0 20px rgba(255,140,0,.35);transition:transform .08s,box-shadow .08s}
 .btn:active{transform:translateY(5px);box-shadow:0 1px 0 #CC5500}
 .btn.ghost{background:rgba(27,42,59,.7);color:#FFFFFF;box-shadow:inset 0 0 0 2px rgba(0,200,255,.5);font-weight:700;font-size:14px;padding:12px 26px;border-radius:14px}
-#title .foot{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));font-size:10px;letter-spacing:.12em;color:#6B6354;text-transform:uppercase}
+#title .foot{position:absolute;bottom:max(10px,env(safe-area-inset-bottom));font-size:10px;letter-spacing:.12em;color:#6B6354;text-transform:uppercase}
+#joinBox{width:min(360px,92vw);display:flex;flex-direction:column;gap:7px;text-align:left}
+.joinPick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.joinOpt{appearance:none;-webkit-appearance:none;background:#162433;border:2px solid #2C4258;
+  border-radius:12px;padding:8px 10px;text-align:left;color:#D5E4F2;min-height:62px}
+.joinOpt b{display:block;font-family:'Archivo',sans-serif;font-size:12px;letter-spacing:.08em;
+  text-transform:uppercase;color:#fff;margin-bottom:3px}
+.joinOpt span{display:block;font-size:12px;line-height:1.3;color:#A9BDD0;font-weight:500;letter-spacing:0}
+.joinOpt.sel{border-color:var(--amber);background:#1E3348;box-shadow:0 0 0 1px rgba(255,140,0,.25)}
+.joinOpt.sel b{color:var(--gold)}
+.joinOpt:focus-visible{outline:2px solid var(--turq);outline-offset:2px}
+.joinOpt:disabled{cursor:default;opacity:1}
+#joinFieldLabel{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#9A917F;font-weight:700}
+#townCodeInput{width:100%;background:#12202E;border:2px solid #2C4258;border-radius:10px;
+  padding:11px 12px;color:#fff;font-size:16px;font-family:inherit;text-align:center;
+  letter-spacing:.28em;text-transform:uppercase;font-weight:800}
+#townCodeInput::placeholder{text-transform:none;letter-spacing:0;font-weight:600;font-size:13px;color:#7E8FA3}
+#townCodeInput:focus{outline:none;border-color:var(--amber)}
+#townCodeInput:disabled{opacity:.85}
+.joinNote{font-size:12px;line-height:1.35;color:#D5E4F2;font-weight:600;text-align:center}
+@media (max-height:740px){
+  #titleStack{gap:8px}
+  #title .skyline{height:48px}
+  #title h1{font-size:clamp(28px,8vw,42px)}
+  #title .sub{font-size:12px;line-height:1.4}
+  .joinOpt{min-height:0;padding:6px 8px}
+  .joinOpt span{font-size:11px}
+}
 
 /* ---------- LOADING ---------- */
 #bootLoad{position:fixed;inset:0;z-index:80;background:#000;display:flex;align-items:center;justify-content:center}
@@ -255,18 +285,30 @@ body.scLetterbox #scBarTop{height:11vh} body.scLetterbox #scBarBot{height:16vh}
 </div>
 
 <div id="title">
+  <div id="titleStack">
   <canvas class="skyline" id="skylineCv" width="420" height="110"></canvas>
   <div><h1>SOVEREIGN<br><span>CITY</span></h1>
-    <div class="tag" style="margin-top:10px">Build What You Own</div></div>
-  <p class="sub">Third-person founder simulation. You have a dream and $5,000. Walk the city, solve a real problem, and raise a tower with your name on it.</p>
-  <div class="cRow" style="width:min(320px,88vw)">
-    <label for="townCodeInput" style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#9A917F;font-weight:600">Class Code <span style="color:#6B6354;text-transform:none;letter-spacing:0">— join your class town (optional)</span></label>
+    <div class="tag" style="margin-top:6px">Build What You Own</div></div>
+  <p class="sub">You have a dream and $5,000. Walk the city, solve a real problem, and raise a tower with your name on it.</p>
+  <div id="joinBox">
+    <div class="joinPick" role="radiogroup" aria-label="Class code or town code">
+      <button type="button" class="joinOpt" id="joinClass" role="radio" aria-checked="false">
+        <b>School</b>
+        <span>Class code. Ask your teacher.</span>
+      </button>
+      <button type="button" class="joinOpt" id="joinTown" role="radio" aria-checked="false">
+        <b>Home</b>
+        <span>Town code for friends. Any school.</span>
+      </button>
+    </div>
+    <label for="townCodeInput" id="joinFieldLabel">Class or town code</label>
     <input type="text" id="townCodeInput" maxlength="6" autocomplete="off" autocapitalize="characters"
-      placeholder="LEAVE BLANK FOR SOLO PLAY"
-      style="text-align:center;letter-spacing:.3em;text-transform:uppercase;font-weight:700">
+      placeholder="Leave blank to play alone" aria-describedby="joinNote">
+    <p class="joinNote" id="joinNote">Same code joins the same town. Founder names only.</p>
   </div>
   <button class="btn" id="newGameBtn">New Founder</button>
   <button class="btn ghost" id="continueBtn" style="display:none">Continue</button>
+  </div>
   <div class="foot">Sovereign Shield Technologies LLC &middot; Ada, Oklahoma &middot; V2 Real World Update</div>
 </div>
 
@@ -502,13 +544,15 @@ const SAVE_KEY='sovereign-city-save-v2';
 let S=null;
 
 /* =========================================================
-   CLASSROOM / GROUP PLAY — Supabase backend
-   A 6-character Class Code puts a whole class in one shared
-   town: everyone sees each other live in the city, Founders
-   Commons plots are shared, saves sync to the cloud, and the
-   teacher watches progress on facilitator.html?code=XXXXXX.
-   Without a code (or without Supabase configured) the game
-   runs exactly as before in solo mode.
+   SHARED TOWNS. Supabase backend
+   One 6-character code is one shared town, stored as town_code.
+   Class code: that code used at school for a class period.
+   Town code: the same kind of code, used at home with friends
+   (including friends at other schools).
+   Same letters join the same town. Founder names only. No emails.
+   facilitator.html?code=XXXXXX opens that town.
+   With no code, or no Supabase configured, play stays solo
+   on this device.
    ========================================================= */
 let _sb=null;
 function getSupabase(){
@@ -523,18 +567,57 @@ function normalizeTownCode(v){
   const code=(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
   return code||null;
 }
-/* Session mode — teachers share one URL with the whole class:
+/* Session mode, teachers share one URL with the whole class:
    ?session=true&code=ABC123&duration=40  (duration in minutes)
-   Sprint mode — a timed public challenge run with a shareable score:
+   Optional &use=class or &use=town labels the locked code.
+   Sprint mode, a timed public challenge with a shareable score:
    ?sprint=true&code=MOONSH&duration=10 */
 const _urlParams=new URLSearchParams(location.search);
 const _sprintMode=_urlParams.get('sprint')==='true';
 const _sessionMode=_urlParams.get('session')==='true'||_sprintMode;
-// ?trailer=true — film the cinematic trailer without a console (mobile:
+// ?trailer=true films the cinematic trailer without a console (mobile:
 // open the link, start your screen recording during the countdown)
 const _trailerMode=_urlParams.get('trailer')==='true';
 const _sessionDuration=Math.max(1,parseInt(_urlParams.get('duration')||(_sprintMode?'10':'40')))*60*1000;
 const _sessionCode=normalizeTownCode(_urlParams.get('code'));
+/* Title picker only. Both choices still save as town_code. */
+let _joinUse=null, _joinUseTouched=false;
+function joinUseFromParam(){
+  const u=(_urlParams.get('use')||'').toLowerCase();
+  if(u==='class'||u==='school') return 'class';
+  if(u==='town'||u==='home') return 'town';
+  return null;
+}
+function setJoinUse(use){
+  _joinUse=(use==='class'||use==='town')?use:null;
+  const c=$('joinClass'), t=$('joinTown'), lab=$('joinFieldLabel');
+  if(c){ c.classList.toggle('sel',_joinUse==='class'); c.setAttribute('aria-checked',_joinUse==='class'?'true':'false'); }
+  if(t){ t.classList.toggle('sel',_joinUse==='town'); t.setAttribute('aria-checked',_joinUse==='town'?'true':'false'); }
+  if(lab) lab.textContent=_joinUse==='class'?'Class code':_joinUse==='town'?'Town code':'Class or town code';
+}
+function lockJoinModes(locked){
+  ['joinClass','joinTown'].forEach(id=>{ const el=$(id); if(el) el.disabled=!!locked; });
+}
+function bindJoinPicker(){
+  const c=$('joinClass'), t=$('joinTown');
+  if(c) c.onclick=()=>{ if(!c.disabled){ _joinUseTouched=true; setJoinUse('class'); sTap(); } };
+  if(t) t.onclick=()=>{ if(!t.disabled){ _joinUseTouched=true; setJoinUse('town'); sTap(); } };
+}
+function applyJoinUseFromContext(save){
+  const picked=joinUseFromParam();
+  const sessionClass=_urlParams.get('session')==='true';
+  if(picked){ setJoinUse(picked); if(_sessionCode) lockJoinModes(true); return; }
+  if(sessionClass){ setJoinUse('class'); lockJoinModes(true); return; }
+  if(_sprintMode){ setJoinUse('town'); return; }
+  if(save&&(save.codeUse==='class'||save.codeUse==='town')) setJoinUse(save.codeUse);
+  else setJoinUse(null);
+}
+function sharedTownLine(){
+  if(!S||!S.townCode) return '';
+  if(S.codeUse==='class') return 'Class '+S.townCode+'. Your class shares this town.';
+  if(S.codeUse==='town') return 'Town '+S.townCode+'. Friends with this code share this town.';
+  return 'Shared town '+S.townCode+'. Same code, same town.';
+}
 function freshState(){
   return {
     founder:{name:'Founder',skin:2,fit:0,voice:'Warm'},
@@ -1781,9 +1864,9 @@ document.querySelectorAll('.pTab').forEach(t=>t.onclick=()=>{
 });
 $('phoneBtn').onclick=()=>{ $('phone').style.display='flex'; $('phoneDot').style.display='none'; renderPhone(); sTap(); ac(); };
 $('pClose').onclick=()=>{ $('phone').style.display='none'; sTap(); };
-/* ---- CLASS RANKS — friendly competition on real founder metrics ----
-   Score rewards building (stage), customers, and PROFIT — not raw cash.
-   Kids learn fast that the leaderboard moves on business fundamentals. */
+/* ---- TOWN RANKS. Friendly competition on real founder metrics.
+   Score rewards building (stage), customers, and profit, not raw cash.
+   Class code and town code share this list when they share a code. */
 function founderScore(d){
   return (d.stage||1)*100+(d.customers||0)*10+Math.max(0,Math.round(d.lastProfit||0));
 }
@@ -1791,11 +1874,11 @@ function esc2(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 async function renderRanks(c){
   const sb=getSupabase();
   const explain='<div class="feedItem" style="font-size:11.5px;color:#9A917F">Score = Stage&times;100 + Customers&times;10 + daily Profit. '+
-    'Cash alone doesn’t rank you &mdash; a real business does. 🎲 = playing the Founder Mode board game.</div>';
+    'Cash alone does not rank you. A real business does. 🎲 = playing the Founder Mode board game.</div>';
   if(!sb||!S.townCode){
-    let html='<div class="feedItem"><b>🏆 Class Ranks</b><br>Join with a Class Code on the title screen to compete with your class in one shared town.</div>';
+    let html='<div class="feedItem"><b>🏆 Town ranks</b><br>School: add a class code. Home with friends: add a town code. Leave it blank to play alone.</div>';
     if(fameCache.length){
-      html+='<div class="feedItem" style="border-left:3px solid var(--gold)"><b>Hall of Fame — fastest to Sovereignty</b></div>';
+      html+='<div class="feedItem" style="border-left:3px solid var(--gold)"><b>Hall of Fame. Fastest to Sovereignty</b></div>';
       fameCache.slice(0,10).forEach((f,i)=>{
         html+='<div class="feedItem">'+(i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'.')+' <b>'+esc2(f.name)+'</b> · '+esc2(f.biz)+' · Day '+f.day+'</div>';
       });
@@ -1803,7 +1886,7 @@ async function renderRanks(c){
     c.innerHTML=html+explain;
     return;
   }
-  c.innerHTML='<div class="feedItem">Loading class ranks…</div>';
+  c.innerHTML='<div class="feedItem">Loading town ranks…</div>';
   let rows=[];
   try{
     const {data}=await sb.from('saves').select('founder_name,data,updated_at').eq('town_code',S.townCode);
@@ -1814,7 +1897,8 @@ async function renderRanks(c){
   rows.forEach(r=>{ if(S.founder&&r.name===S.founder.name) r.d=S; r.score=founderScore(r.d); });
   rows.sort((a,b)=>b.score-a.score);
   if(pTab!=='ranks') return; // user switched tabs while loading
-  let html='<div class="feedItem"><b>🏆 Class Ranks — Town '+esc2(S.townCode)+'</b></div>';
+  const rankHead=S.codeUse==='class'?'Class ranks':'Town ranks';
+  let html='<div class="feedItem"><b>🏆 '+rankHead+' · '+esc2(S.townCode)+'</b><br><span style="font-size:12px;color:#9A917F">'+esc2(sharedTownLine())+'</span></div>';
   const stages=['','Ideator','Hustler','Builder','Scaler','Sovereign'];
   rows.slice(0,15).forEach((r,i)=>{
     const me=S.founder&&r.name===S.founder.name;
@@ -1828,7 +1912,7 @@ async function renderRanks(c){
   if(myIdx>0){
     const gap=rows[myIdx-1].score-rows[myIdx].score;
     html+='<div class="feedItem" style="border-left:3px solid var(--turq)">📈 You’re '+gap+' points behind <b>'+esc2(rows[myIdx-1].name)+'</b>. '+
-      Math.ceil(gap/10)+' more customers — or more daily profit — takes their spot.</div>';
+      Math.ceil(gap/10)+' more customers, or more daily profit, takes their spot.</div>';
   } else if(myIdx===0&&rows.length>1){
     html+='<div class="feedItem" style="border-left:3px solid var(--gold)">👑 You’re #1. Defend it: profit per day counts every time ranks refresh.</div>';
   }
@@ -3782,12 +3866,14 @@ async function recordFame(){
 }
 
 /* =========================================================
-   LIVE PRESENCE — classmates in the city
-   One Supabase Realtime channel per Class Code. Broadcasts
-   carry {founderName,x,z,yaw,skating,skin,fit} at 10Hz while
+   LIVE PRESENCE. Classmates and friends in the city
+   One Supabase Realtime channel per shared code. Class codes
+   and town codes use the same channel because they are the
+   same town_code. Broadcasts carry
+   {founderName,x,z,yaw,skating,skin,fit} at 10Hz while
    moving (3s heartbeat while idle). Remote players are
    ghosts: no collision, no interaction. No-ops entirely in
-   solo play (no class code or no Supabase configured).
+   solo play (no code, or no Supabase configured).
    ========================================================= */
 const REMOTE_CAP=24;      // full avatars; beyond this, minimap dots only
 const BROADCAST_MS=100;   // 10Hz while moving
@@ -4277,7 +4363,7 @@ function showPayday(canExit){
     '<p style="font-family:Archivo,sans-serif;font-weight:900;font-size:36px;color:'+(profit>=0?'#5FA86B':'#E23B2F')+'">'+(profit>=0?'✓ ':'✗ ')+fmt(profit)+'</p>'+
     '<p>'+whyBooks()+'</p>'+
     '<p style="color:var(--gold)"><b>'+nextHook()+'</b></p>'+
-    (S.townCode?'<p style="font-size:13px;color:#9A917F">Class town '+S.townCode+'. Open the phone, then Ranks.</p>':'')+
+    (S.townCode?'<p style="font-size:13px;color:#9A917F">'+sharedTownLine()+' Open the phone, then Ranks.</p>':'')+
     '<button class="btn" id="paydayOk">'+(canExit?'Save & come back':'Back to the street')+'</button>';
   $('bigModal').style.display='flex';
   saveGame();
@@ -4313,7 +4399,7 @@ function showSprintComplete(){
     '<div style="font-size:11px;letter-spacing:.24em;color:#9A917F;text-transform:uppercase;margin-bottom:8px">Founder Points</div>'+
     '<p><b>'+(S&&S.founder?S.founder.name:'Founder')+'</b>'+(S&&S.biz?' founded <b>'+biz+'</b>':'')+'</p>'+
     (S&&S.biz?'<p style="color:var(--turq)">'+(S.customers||0)+' customer'+(S.customers===1?'':'s')+' &middot; '+fmt(S.cash)+' &middot; Stage '+S.stage+'</p>':'')+
-    (S&&S.townCode?'<p style="font-size:12px;color:#9A917F;margin-top:6px">Everyone in town '+S.townCode+' is playing the same sprint. Check Phone &rarr; Ranks.</p>':'')+
+    (S&&S.townCode?'<p style="font-size:12px;color:#9A917F;margin-top:6px">'+sharedTownLine()+' Check Phone, then Ranks.</p>':'')+
     '<button class="btn" id="sprintShareBtn">Share My Score</button>'+
     '<button class="btn ghost" id="sprintCardBtn">Download Score Card</button>'+
     '<button class="btn ghost" id="sprintAgainBtn">Run It Again</button>';
@@ -5691,7 +5777,7 @@ async function loadGame(){
   }
   if(!local) return memSave?JSON.parse(memSave):null;
   // Then prefer the cloud copy if it's further along — lets a student
-  // continue on any device with the same class code + founder name.
+  // continue on any device with the same code + founder name.
   const sb=getSupabase();
   if(sb&&local.townCode&&local.founder){
     try{
@@ -5875,8 +5961,9 @@ $('startBtn').onclick=()=>{
   S=freshState();
   S.founder={name:creatorState.name,skin:creatorState.skin,fit:creatorState.fit,voice:creatorState.voice,look:creatorState.look};
   S.townCode=_sessionCode||normalizeTownCode($('townCodeInput').value);
+  S.codeUse=S.townCode?(_joinUse||null):null;
   startWorld();
-  if(S.townCode) toast('Joined class town <b>'+S.townCode+'</b>. Classmates appear in the city as they play.','good');
+  if(S.townCode) toast(sharedTownLine(),'good');
   sBig();
   toast('<b>Halito, '+S.founder.name+'.</b> Welcome to The Grind. Find Marcus Webb.','gold');
   feed('Day 1. A founder steps into Sovereign City with $5,000 and a dream.');
@@ -5887,6 +5974,9 @@ $('continueBtn').onclick=async()=>{
   const loaded=await loadGame();
   if(!loaded){ toast('No save found.','bad'); return; }
   S=loaded;
+  if(S&&!S.townCode) S.codeUse=null;
+  else if(S&&S.townCode&&_joinUseTouched) S.codeUse=_joinUse;
+  else if(S&&S.townCode&&!S.codeUse&&_sessionCode&&S.townCode===_sessionCode&&_joinUse) S.codeUse=_joinUse;
   startWorld();
   toast('Welcome back, '+S.founder.name+'. Day '+S.day+'.','gold');
 };
@@ -6901,13 +6991,16 @@ window.Trailer=Trailer;
   await new Promise(r=>setTimeout(r,60));
   const s=await loadGame();
   if(s) $('continueBtn').style.display='inline-block';
-  // class code field: normalize as you type; session URLs pre-fill and lock it
+  // One field for class code or town code. Blank stays solo.
+  // ?code= still fills and locks the value. ?session=true locks School.
+  bindJoinPicker();
   const tci=$('townCodeInput');
   if(tci){
     tci.addEventListener('input',()=>{ tci.value=normalizeTownCode(tci.value)||''; });
     if(_sessionCode){ tci.value=_sessionCode; tci.disabled=true; }
     else if(s&&s.townCode) tci.value=s.townCode;
   }
+  applyJoinUseFromContext(s);
   if(bar()) bar().style.width='100%';
   const hold=Math.max(420, 1400-(performance.now()-started));
   setTimeout(()=>{
