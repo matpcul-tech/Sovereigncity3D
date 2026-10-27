@@ -34,7 +34,8 @@ button{font-family:inherit;cursor:pointer;border:none}
   letter-spacing:.34em;color:var(--gold);text-transform:uppercase}
 #title .sub{max-width:340px;font-size:13px;line-height:1.55;color:#B9B0A0}
 .btn{background:var(--amber);color:#1B2A3B;font-weight:900;font-size:17px;
-  padding:15px 36px;border-radius:16px;box-shadow:0 6px 0 #CC5500,0 0 20px rgba(255,140,0,.35);transition:transform .08s,box-shadow .08s}
+  padding:15px 36px;border-radius:16px;box-shadow:0 6px 0 #CC5500,0 0 20px rgba(255,140,0,.35);transition:transform .08s,box-shadow .08s;
+  touch-action:manipulation}
 .btn:active{transform:translateY(5px);box-shadow:0 1px 0 #CC5500}
 .btn.ghost{background:rgba(27,42,59,.7);color:#FFFFFF;box-shadow:inset 0 0 0 2px rgba(0,200,255,.5);font-weight:700;font-size:14px;padding:12px 26px;border-radius:14px}
 #title .foot{position:absolute;bottom:max(14px,env(safe-area-inset-bottom));font-size:10px;letter-spacing:.12em;color:#6B6354;text-transform:uppercase}
@@ -87,8 +88,8 @@ button{font-family:inherit;cursor:pointer;border:none}
 #hud{position:absolute;inset:0;z-index:10;pointer-events:none;display:none}
 #questBar{position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 58px);left:10px;right:168px;
   background:rgba(27,42,59,.92);backdrop-filter:blur(8px);border:2px solid #00C8FF;border-radius:16px;
-  padding:8px 14px;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  text-align:center;line-height:1.2;max-height:46px;
+  padding:8px 14px;font-size:13px;font-weight:700;white-space:normal;overflow:hidden;
+  text-align:center;line-height:1.35;max-height:78px;
   color:var(--gold);box-shadow:0 2px 12px rgba(0,200,255,0.25)}
 #questBar b{color:#FFFFFF}
 #clockChip{position:absolute;top:max(10px,env(safe-area-inset-top));right:10px;
@@ -138,16 +139,29 @@ button{font-family:inherit;cursor:pointer;border:none}
 #lockHint{position:absolute;top:auto;bottom:calc(96px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
   background:rgba(20,18,15,.8);color:#B9B0A0;font-size:12px;padding:8px 18px;border-radius:8px;
   pointer-events:none;display:none;z-index:5;letter-spacing:.06em;white-space:nowrap}
+#whyLine{position:absolute;left:10px;right:168px;top:calc(max(8px,env(safe-area-inset-top)) + 146px);
+  z-index:12;display:none;pointer-events:none;background:rgba(27,42,59,.94);
+  border:2px solid rgba(255,215,0,.55);border-radius:12px;padding:8px 12px;
+  font-size:13px;font-weight:700;line-height:1.35;color:#F5EFE3}
+#playGate{position:absolute;inset:0;z-index:16;display:none;align-items:center;justify-content:center;
+  background:rgba(8,14,24,.62);pointer-events:auto}
+#playGateBtn{background:#1B2A3B;color:#fff;border:3px solid #FFD700;border-radius:22px;
+  padding:22px 28px;min-width:min(440px,90vw);box-shadow:0 12px 40px rgba(0,0,0,.45);
+  display:flex;flex-direction:column;gap:8px;align-items:center;touch-action:manipulation;cursor:pointer}
+#playGateBtn b{font-family:Archivo,sans-serif;font-weight:900;font-size:clamp(28px,5vw,40px);color:#FFD700}
+#playGateBtn span{font-size:15px;font-weight:700;color:#F5EFE3;line-height:1.4}
 @media (pointer:coarse){ #joy{display:block} }
 
 /* ---------- DIALOG ---------- */
-#dialog{position:absolute;inset:0;z-index:20;background:rgba(15,25,40,.65);display:none;
-  align-items:flex-end;justify-content:center;pointer-events:auto}
-#dBox{width:min(560px,100vw);background:#1B2A3B;border-top:2px solid rgba(0,200,255,.4);
+#dialog{position:absolute;inset:0;z-index:22;display:none;
+  align-items:flex-end;justify-content:center;pointer-events:none}
+#dScrim{position:absolute;inset:0;background:rgba(15,25,40,.65);pointer-events:auto;z-index:0}
+#dBox{position:relative;z-index:2;pointer-events:auto;touch-action:manipulation;
+  width:min(560px,100vw);background:#1B2A3B;border-top:2px solid rgba(0,200,255,.4);
   border-radius:24px 24px 0 0;padding:20px 20px calc(22px + env(safe-area-inset-bottom));
   display:flex;flex-direction:column;gap:13px;animation:dUp .22s ease;
   max-height:min(86vh,calc(100dvh - env(safe-area-inset-top) - 8px));overflow:hidden}
-@keyframes dUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+@keyframes dUp{from{opacity:0}to{opacity:1}}
 #dHead{display:flex;align-items:center;gap:12px}
 #dPortrait{width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;
   font-family:'Archivo';font-weight:900;font-size:22px;color:#FFFFFF;flex-shrink:0}
@@ -159,9 +173,12 @@ button{font-family:inherit;cursor:pointer;border:none}
 #pitchTell span{font-size:12px;color:#D8E8F8}
 #pitchBar{height:8px;background:#243040;border-radius:99px;margin-top:8px;overflow:hidden}
 #pitchBar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#44CC44,#F2A33C 70%,#E23B2F);transform-origin:left center;transform:scaleX(1)}
-#dOpts{display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:0;max-height:42vh;-webkit-overflow-scrolling:touch}
+#dOpts{display:flex;flex-direction:column;gap:9px;overflow-y:auto;min-height:0;max-height:42vh;-webkit-overflow-scrolling:touch;
+  position:relative;z-index:1;touch-action:manipulation;pointer-events:auto}
 .dOpt{background:#243545;border:2px solid rgba(0,200,255,.25);border-radius:14px;padding:14px 16px;
-  color:#FFFFFF;font-size:14px;font-weight:700;text-align:left;line-height:1.4;transition:border-color .1s}
+  color:#FFFFFF;font-size:14px;font-weight:700;text-align:left;line-height:1.4;transition:border-color .1s;
+  touch-action:manipulation;pointer-events:auto;position:relative;z-index:1}
+.dOpt:focus{outline:3px solid #00C8FF;outline-offset:2px}
 .dOpt:active{background:#2E4A62;border-color:var(--turq)}
 .dOpt small{display:block;color:#88AACC;font-weight:500;font-size:11.5px;margin-top:3px}
 body.txt-big #dText,body.txt-big #scLine{font-size:18px}
@@ -213,7 +230,8 @@ body.txt-big .dOpt small{font-size:14px}
 #bigModal{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;
   background:rgba(15,25,40,.85);padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));
   pointer-events:auto;overflow-y:auto;-webkit-overflow-scrolling:touch}
-#bmCard{width:min(420px,100%);margin:auto;flex-shrink:0;background:#1B2A3B;border:2px solid rgba(0,200,255,.35);border-radius:24px;
+#bmCard{position:relative;z-index:2;pointer-events:auto;touch-action:manipulation;
+  width:min(420px,100%);margin:auto;flex-shrink:0;background:#1B2A3B;border:2px solid rgba(0,200,255,.35);border-radius:24px;
   padding:28px 24px;display:flex;flex-direction:column;gap:14px;text-align:center;align-items:center;
   box-shadow:0 8px 40px rgba(0,0,0,.5)}
 #bmCard h2{font-family:'Archivo';font-weight:900;font-size:27px;line-height:1.1}
@@ -235,9 +253,11 @@ body.scLetterbox #scBarTop{height:11vh} body.scLetterbox #scBarBot{height:16vh}
 #scHint{margin-top:8px;font-size:10px;letter-spacing:.28em;color:#B9B0A0;opacity:0;
   transition:opacity .3s;text-transform:uppercase}
 #scChoices{position:absolute;left:50%;bottom:calc(16vh + 128px);transform:translateX(-50%);
-  width:min(480px,92vw);display:none;flex-direction:column;gap:8px}
+  width:min(480px,92vw);display:none;flex-direction:column;gap:8px;z-index:2;
+  pointer-events:auto;touch-action:manipulation}
 .scOpt{background:rgba(10,14,20,.92);border:2px solid rgba(0,200,255,.35);border-radius:13px;
-  padding:13px 16px;color:#FFF;font-size:14px;font-weight:700;text-align:left;line-height:1.35}
+  padding:13px 16px;color:#FFF;font-size:14px;font-weight:700;text-align:left;line-height:1.35;
+  pointer-events:auto;touch-action:manipulation}
 .scOpt:active{background:rgba(0,200,255,.22);border-color:var(--turq)}
 #scTimer{height:5px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden;margin-top:4px}
 #scTimerFill{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--gold),var(--terra));
@@ -299,6 +319,7 @@ body.scLetterbox #scBarTop{height:11vh} body.scLetterbox #scBarBot{height:16vh}
 <div id="hud">
   <div id="stageChip">Stage 1 &middot; Ideator</div>
   <div id="questBar"></div>
+  <div id="whyLine"></div>
   <div id="clockChip"><span id="clockTime">Day 1 &middot; 8:00 AM</span><br><span class="cash" id="clockCash">$5,000</span></div>
   <div id="eventBanner"></div>
   <div id="camPad"></div>
@@ -307,11 +328,15 @@ body.scLetterbox #scBarTop{height:11vh} body.scLetterbox #scBarBot{height:16vh}
   <div id="joy"><div id="joyKnob"></div></div>
   <button id="phoneBtn">&#128241;<span class="dot" id="phoneDot"></span></button>
   <button id="jumpBtn">&#8679;</button>
-  <div id="lockHint">Click to capture mouse &middot; Esc to release</div>
+  <div id="lockHint">Click the street to look around · Esc frees the mouse</div>
   <div id="hintKeys">WASD move &middot; Click to lock mouse &middot; Space jump &middot; E interact</div>
 </div>
 
-<div id="dialog"><div id="dBox">
+<div id="playGate">
+  <button type="button" id="playGateBtn"><b>Click to play</b><span>WASD walks. Mouse looks. Esc frees the mouse.</span></button>
+</div>
+
+<div id="dialog"><div id="dScrim"></div><div id="dBox">
   <div id="dHead"><div id="dPortrait">M</div>
     <div><div id="dName"></div><div id="dRole"></div></div></div>
   <div id="dText"></div>
@@ -385,6 +410,9 @@ const lerp=(a,b,t)=>a+(b-a)*t;
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const ri=(a,b)=>Math.floor(rnd(a,b+1));
 const fmt=n=>{ const v=Math.round(Number(n)||0); return (v<0?'-':'')+'$'+Math.abs(v).toLocaleString('en-US'); };
+function plainText(s){
+  return String(s==null?'':s).replace(/&(?:middot|MIDDOT);/gi,'\u00B7');
+}
 const dist2=(ax,az,bx,bz)=>Math.hypot(ax-bx,az-bz);
 
 /* ---------------- AUDIO ---------------- */
@@ -565,7 +593,7 @@ function freshState(){
 
 /* ---------------- QUESTS ---------------- */
 const QUESTS=[
- {hint:'Find <b>Marcus Webb</b> outside the Corner Store',target:()=>npcPos('marcus')},
+ {hint:'Find <b>Marcus Webb</b> outside the Corner Store. Follow the gold pin.',target:()=>npcPos('marcus')},
  {hint:'Pick a problem at the <b>Community Board</b>',target:()=>bldPos('board')},
  {hint:'Pitch <b>Nia</b> by the board, then land <b>8 customers</b>',target:()=>(S.customers<1?npcPos('nia'):null),prog:()=>S.customers+'/8'},
  {hint:'Buy the <b>Empty Lot</b> for your first HQ ($1,500)',target:()=>bldPos('lot')},
@@ -582,6 +610,28 @@ const QUESTS=[
 ];
 function bldPos(id){ const b=BUILDINGS.find(b=>b.id===id); return {x:b.x+b.w/2,z:b.y+b.d+30}; }
 function npcPos(id){ const n=npcById(id); return n?{x:n.x,z:n.z}:null; }
+function compassTo(x,z){
+  const dx=x-playerPos.x, dz=z-playerPos.z;
+  const dist=Math.hypot(dx,dz);
+  let ang=Math.atan2(dx,-dz);
+  if(ang<0) ang+=Math.PI*2;
+  const dirs=['N','NE','E','SE','S','SW','W','NW'];
+  return {dir:dirs[Math.round(ang/(Math.PI/4))%8], meters:Math.max(0,Math.round(dist)), dist};
+}
+function questGuide(t){
+  const c=compassTo(t.x,t.z);
+  const name=S.quest===0?'Marcus':(S.quest===1?'Board':(S.quest===2?'Nia':'Next'));
+  const where=c.meters<12?'right here':(c.dir+', '+c.meters+'m');
+  return {name, where, label:name+'  '+where};
+}
+function earlyDay(){
+  if(!S) return true;
+  return (S.stage||1)<=1 || (S.quest||0)<=2;
+}
+function dayMinuteRealSeconds(){
+  // First objectives stay slow so a class period does not burn through daylight.
+  return earlyDay()?2.5:0.1;
+}
 
 /* ---------------- NPCS ---------------- */
 const SKINS=['#F3D5B5','#E0AC7E','#C68B59','#9C6644','#7F4F24','#5C3A21'];
@@ -595,7 +645,7 @@ function addNPC(o){
 }
 function buildNPCData(){
   NPCS.length=0;
-  addNPC({id:'marcus',name:'Marcus Webb',role:'Retired Entrepreneur',key:true,skin:4,fit:'#8B7355',hx:255,hz:1160,pc:'#F2A33C'});
+  addNPC({id:'marcus',name:'Marcus Webb',role:'Retired Entrepreneur',key:true,skin:4,fit:'#8B7355',hx:240,hz:1136,pc:'#F2A33C'});
   addNPC({id:'redhawk',name:'Dr. Ayana Redhawk',role:'Chickasaw Elder & Businesswoman',key:true,skin:3,fit:'#3FB8AF',hx:300,hz:330,pc:'#3FB8AF'});
   addNPC({id:'rivera',name:'Coach Rivera',role:'Community Center Director',key:true,skin:2,fit:'#5FA86B',hx:530,hz:1120,pc:'#5FA86B'});
   addNPC({id:'park',name:'David Park',role:'Angel Investor',key:true,skin:1,fit:'#5E7C99',hx:1365,hz:1440,pc:'#5E7C99'});
@@ -633,6 +683,46 @@ function toast(msg,kind){
   while(box.children.length>3) box.removeChild(box.firstChild);
   setTimeout(()=>{ if(d.parentNode) d.remove(); },2600);
 }
+const pendingNotes=[];
+function whyLine(msg){
+  const el=$('whyLine'); if(!el) return;
+  el.innerHTML=msg;
+  el.style.display='block';
+  clearTimeout(whyLine.timer);
+  whyLine.timer=setTimeout(()=>{ el.style.display='none'; },4500);
+}
+function notesHeld(){
+  if(window.Clip&&Clip.active) return true;
+  if(window.Trailer&&Trailer.active) return true;
+  if(window.SCStory&&SCStory.active) return true;
+  if($('playGate')&&$('playGate').style.display==='flex') return true;
+  if(dialogOpen) return true;
+  if(S&&S.biz&&!S.clipFounded) return true;
+  return false;
+}
+function noteChange(msg, kind){
+  if(!msg) return;
+  if(notesHeld()){ pendingNotes.push({msg:msg, kind:kind||'gold'}); return; }
+  toast(msg, kind||'gold');
+  whyLine(msg);
+}
+function flushNotes(){
+  if(notesHeld()||!pendingNotes.length) return;
+  const batch=pendingNotes.splice(0,3);
+  batch.forEach(n=>{ toast(n.msg, n.kind||'gold'); whyLine(n.msg); });
+}
+function maybeExplainProfit(){
+  if(!S||!S.biz||!(S.customers>0)) return;
+  const books=projectBooks();
+  if(!books) return;
+  const p=books.profit;
+  const prev=maybeExplainProfit.prev;
+  if(prev===p) return;
+  const flip=prev==null || (prev<0)!==(p<0);
+  maybeExplainProfit.prev=p;
+  if(!flip) return;
+  noteChange('<b>Profit/day '+fmt(p)+'.</b> Sales about '+fmt(books.revenue)+', costs '+fmt(books.exp)+'. A guess for tomorrow. Cash changes at 9 AM.');
+}
 function feed(msg){
   S.feed.unshift({d:S.day,m:msg}); if(S.feed.length>40)S.feed.pop();
   $('phoneDot').style.display='block';
@@ -646,30 +736,128 @@ function learn(term,def){
 /* ---------------- DIALOG ENGINE ---------------- */
 let dialogOpen=false;
 let pitchTimer=0, pitchNpc=null, pitchLive=false;
+let playArmed=false, playBypass=false;
+function isCoarse(){
+  return !!(window.matchMedia&&window.matchMedia('(pointer:coarse)').matches);
+}
+function uiBlocking(){
+  if(dialogOpen) return true;
+  if($('phone')&&$('phone').style.display==='flex') return true;
+  if($('bigModal')&&$('bigModal').style.display==='flex') return true;
+  if(document.getElementById('insightCard')) return true;
+  if($('playGate')&&$('playGate').style.display==='flex') return true;
+  return false;
+}
+function releaseLook(){
+  if(document.pointerLockElement){
+    try{ document.exitPointerLock(); }catch(err){}
+  }
+}
+function syncPlayGate(){
+  const el=$('playGate');
+  const playing=!!(S&&$('hud')&&$('hud').style.display==='block');
+  const busy=dialogOpen
+    ||($('phone')&&$('phone').style.display==='flex')
+    ||($('bigModal')&&$('bigModal').style.display==='flex')
+    ||!!document.getElementById('insightCard')
+    ||(window.SCStory&&SCStory.active)
+    ||(window.Clip&&Clip.active)
+    ||(window.Trailer&&Trailer.active);
+  const locked=document.pointerLockElement===$('game');
+  const want=!isCoarse()&&!playBypass&&playing&&!busy&&!locked&&!playArmed;
+  if(el){
+    const was=el.style.display==='flex';
+    el.style.display=want?'flex':'none';
+    if(want&&!was){
+      const b=$('playGateBtn');
+      if(b) b.focus();
+    }
+  }
+  const hint=$('lockHint');
+  if(hint){
+    const showHint=!isCoarse()&&playing&&!busy&&!locked&&(playArmed||playBypass)&&!(el&&el.style.display==='flex');
+    hint.style.display=showHint?'block':'none';
+  }
+}
+function allowPlayWithoutLock(){
+  if(playBypass){ syncPlayGate(); return; }
+  playBypass=true; playArmed=true; syncPlayGate();
+  toast('Mouse lock is blocked here. WASD still moves. Drag the mouse to look.','gold');
+}
+function requestPlayLock(){
+  const g=$('game');
+  if(!g||!g.requestPointerLock){ allowPlayWithoutLock(); return; }
+  let ret;
+  try{ ret=g.requestPointerLock(); }
+  catch(err){ allowPlayWithoutLock(); return; }
+  if(ret&&typeof ret.then==='function'){
+    ret.then(()=>{ playArmed=true; syncPlayGate(); }).catch(()=>{ allowPlayWithoutLock(); });
+  }
+}
+function choiceAtPoint(x,y,sel){
+  const list=document.querySelectorAll(sel);
+  for(let i=list.length-1;i>=0;i--){
+    const el=list[i];
+    const r=el.getBoundingClientRect();
+    if(r.width<8||r.height<8) continue;
+    if(x>=r.left-6&&x<=r.right+6&&y>=r.top-6&&y<=r.bottom+6) return el;
+  }
+  return null;
+}
+function bindChoice(btn, fn){
+  btn.type='button';
+  btn._fire=()=>{
+    const now=performance.now();
+    if(btn._fired&&now-btn._fired<280) return;
+    btn._fired=now;
+    fn();
+  };
+  btn.addEventListener('pointerup', e=>{
+    if(e.button!=null&&e.button!==0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    btn._fire();
+  });
+  btn.addEventListener('click', e=>{
+    if(e.detail!==0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    btn._fire();
+  });
+}
 function showDialog(name,role,color,text,opts){
   dialogOpen=true;
+  releaseLook();
   pitchLive=false; clearTimeout(pitchTimer);
   const tell=$('pitchTell'); if(tell) tell.style.display='none';
   $('dialog').style.display='flex';
   $('dPortrait').style.background=color||'#F2A33C';
   $('dPortrait').style.fontSize='';
-  $('dPortrait').textContent=name.split(' ').map(w=>w[0]).join('').slice(0,2);
-  $('dName').textContent=name; $('dRole').textContent=role||'';
+  const cleanName=plainText(name);
+  $('dPortrait').textContent=cleanName.split(' ').map(w=>w[0]).join('').slice(0,2);
+  $('dName').textContent=cleanName; $('dRole').textContent=plainText(role||'');
   $('dText').innerHTML=text;
   const box=$('dOpts'); box.innerHTML='';
-  (opts||[{label:'Close'}]).forEach(o=>{
+  (opts||[{label:'Close'}]).forEach((o,i)=>{
     const b=document.createElement('button');
     b.className='dOpt'+(o.locked?' locked':'');
-    b.innerHTML=o.label+(o.sub?'<small>'+o.sub+'</small>':'');
-    b.onclick=()=>{ sTap(); if(o.locked){toast(o.lockMsg||'Not yet.','bad');return;}
-      if(o.stay){ o.fn&&o.fn(); } else { closeDialog(); o.fn&&o.fn(); } };
+    b.innerHTML=plainText(o.label)+(o.sub?'<small>'+o.sub+'</small>':'');
+    bindChoice(b, ()=>{
+      sTap();
+      if(o.locked){ toast(o.lockMsg||'Not yet.','bad'); return; }
+      if(o.stay){ o.fn&&o.fn(); }
+      else { closeDialog(); o.fn&&o.fn(); }
+    });
     box.appendChild(b);
+    if(i===0&&!isCoarse()) setTimeout(()=>{ if(dialogOpen&&b.isConnected) b.focus(); }, 40);
   });
+  syncPlayGate();
 }
 function closeDialog(){
   dialogOpen=false; pitchLive=false; clearTimeout(pitchTimer);
   const tell=$('pitchTell'); if(tell) tell.style.display='none';
   $('dialog').style.display='none';
+  syncPlayGate();
 }
 
 /* =========================================================
@@ -737,6 +925,12 @@ function openBoard(all){
       [{label:'Back to the street.'}]);
     return;
   }
+  if((S.quest||0)<1){
+    showDialog('Community Board','Find Marcus first','#8a6a38',
+      'Marcus Webb is outside the Corner Store. Talk to him and he will open this board. Follow the gold pin on the map. It shows the direction and how far.',
+      [{label:'I will find Marcus.'}]);
+    return;
+  }
   const featured=['food','music','sports','fashion','tech','services'];
   const short={
     food:'People already want this',
@@ -766,9 +960,9 @@ function nameBusiness(ind){
   const box=$('dOpts'); box.innerHTML='';
   const b=document.createElement('button'); b.className='dOpt';
   b.innerHTML='Found it';
-  b.onclick=()=>{ const v=($('bizNameInput').value||'').trim();
+  bindChoice(b, ()=>{ const v=($('bizNameInput').value||'').trim();
     if(!v){ toast('It needs a name.','bad'); return; }
-    closeDialog(); foundBusiness(ind,v.slice(0,24)); };
+    closeDialog(); foundBusiness(ind,v.slice(0,24)); });
   box.appendChild(b);
   setTimeout(()=>{ const i=$('bizNameInput'); if(i)i.focus(); },80);
 }
@@ -996,11 +1190,11 @@ function addCousin(npc){
 function openLot(){
   if(!S.hq){
     if(S.quest<3){
-      showDialog('Empty Lot','For Sale &middot; $1,500','#9A917F',
+      showDialog('Empty Lot','For Sale \u00B7 $1,500','#9A917F',
         'Cracked concrete, good bones, your name could be on this. Land your first 8 customers, then come claim it.',[{label:'I\u2019ll be back.'}]);
       return;
     }
-    showDialog('Empty Lot','For Sale &middot; $1,500','#9A917F',
+    showDialog('Empty Lot','For Sale \u00B7 $1,500','#9A917F',
       'This lot becomes your headquarters. Rent is $50/day after purchase. Every empire starts on a cracked slab.',
       [{label:'Buy the lot ($1,500)',locked:S.cash<1500,lockMsg:'Not enough cash.',fn:()=>{
         S.cash-=1500; S.hq=true; S.hqLevel=1;
@@ -1060,7 +1254,7 @@ function hireManager(){
 function openMarket(){
   if(!S.biz){ showDialog('City Market','Main Street','#7FB2D9','Stalls, noise, money changing hands. Get a business first.',[{label:'OK'}]); return; }
   if(S.quest<4){ showDialog('City Market','Main Street','#7FB2D9','The market\u2019s where you scale, but you need an HQ to fulfill demand first.',[{label:'Right.'}]); return; }
-  showDialog('City Market','Street Demo &middot; $100 table fee','#7FB2D9',
+  showDialog('City Market','Street Demo \u00B7 $100 table fee','#7FB2D9',
     'Set up a table, demo '+S.biz.name+' to the crowd. High traffic, real stakes. How do you run it?',
     [(S.biz.industry==='music'?{label:'\uD83C\uDFB8 Busk for the crowd',sub:'Free. Play live, earn cash and fans on the spot.',fn:busk}:null),
      {label:'Free samples / free first service',sub:'Costs extra $80, converts best',
@@ -1332,7 +1526,7 @@ function runPitch(name,role,color,qs,done){
     if(i>=qs.length){ done(score); return; }
     const q=qs[i];
     const shuffled=q.a.map((a,idx)=>({...a,idx})).sort(()=>Math.random()-0.5);
-    showDialog(name,role+' &middot; Question '+(i+1)+'/'+qs.length,color,q.q,
+    showDialog(name,role+' \u00B7 Question '+(i+1)+'/'+qs.length,color,q.q,
       shuffled.map(a=>({label:a.t,fn:()=>{
         if(a.good){score++; S.stats.charisma+=1; tone(660,.1,'triangle',.08);}
         else tone(220,.15,'sawtooth',.05);
@@ -1553,6 +1747,7 @@ function dailySettle(){
   if(S.customers>0&&Math.random()<S.stats.reputation*0.008){
     const got=ri(1,3); S.customers+=got;
     feed('+'+got+' customers by referral. Reputation compounds.');
+    noteChange('<b>+'+got+' customers.</b> A referral joined because people trust you. You are at '+S.customers+'.');
   }
   const books=projectBooks();
   const revenue=books.revenue, exp=books.exp;
@@ -1779,8 +1974,8 @@ document.querySelectorAll('.pTab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.pTab').forEach(x=>x.classList.remove('sel'));
   t.classList.add('sel'); pTab=t.dataset.tab; renderPhone(); sTap();
 });
-$('phoneBtn').onclick=()=>{ $('phone').style.display='flex'; $('phoneDot').style.display='none'; renderPhone(); sTap(); ac(); };
-$('pClose').onclick=()=>{ $('phone').style.display='none'; sTap(); };
+$('phoneBtn').onclick=()=>{ releaseLook(); $('phone').style.display='flex'; $('phoneDot').style.display='none'; renderPhone(); sTap(); ac(); syncPlayGate(); };
+$('pClose').onclick=()=>{ $('phone').style.display='none'; sTap(); syncPlayGate(); };
 /* ---- CLASS RANKS — friendly competition on real founder metrics ----
    Score rewards building (stage), customers, and PROFIT — not raw cash.
    Kids learn fast that the leaderboard moves on business fundamentals. */
@@ -1978,15 +2173,28 @@ function drawMinimap(){
     x.fillStyle=c; x.beginPath();
     x.arc(n.x*MM_SCALE_X*2,n.z*MM_SCALE_Y*2,5,0,Math.PI*2); x.fill();
   });
-  // quest target pulsing ring
+  // quest target pulsing ring + name while the first objectives are active
   const q=QUESTS[S?S.quest:0];
   if(q&&q.target){
     const t=q.target();
     if(t){
       const pulse=0.5+0.5*Math.sin(Date.now()/260);
+      const px=t.x*MM_SCALE_X*2, py=t.z*MM_SCALE_Y*2;
       x.strokeStyle='rgba(232,192,100,'+clamp(0.5+pulse*0.5,0,1)+')';
-      x.lineWidth=3; x.beginPath();
-      x.arc(t.x*MM_SCALE_X*2,t.z*MM_SCALE_Y*2,6+pulse*4,0,Math.PI*2); x.stroke();
+      x.lineWidth=4; x.beginPath();
+      x.arc(px,py,8+pulse*5,0,Math.PI*2); x.stroke();
+      x.fillStyle='#F2A33C'; x.beginPath();
+      x.arc(px,py,S.quest<=1?7:5,0,Math.PI*2); x.fill();
+      if(S.quest<=1){
+        const tag=S.quest===0?'MARCUS':'BOARD';
+        x.font='bold 28px Arial'; x.textAlign='center'; x.textBaseline='bottom';
+        x.lineWidth=5; x.strokeStyle='rgba(12,10,8,.85)';
+        x.strokeText(tag, px, py-12); x.fillText(tag, px, py-12);
+        const c=compassTo(t.x,t.z);
+        const line=c.meters<12?'HERE':(c.dir+' '+c.meters+'m');
+        x.font='bold 26px Arial'; x.textAlign='left'; x.textBaseline='top';
+        x.strokeText(line, 8, 8); x.fillStyle='#F5EFE3'; x.fillText(line, 8, 8);
+      }
     }
   }
   // classmates — light blue dots
@@ -2191,37 +2399,44 @@ function initTutorial(){
   tutCV.width=window.innerWidth; tutCV.height=window.innerHeight;
   window.addEventListener('resize',()=>{tutCV.width=window.innerWidth;tutCV.height=window.innerHeight;});
 }
+function drawGuideLabel(x,text,ax,ay){
+  x.font='bold 16px Arial'; x.textAlign='center'; x.textBaseline='middle';
+  const tw=x.measureText(text).width;
+  x.fillStyle='rgba(20,18,15,.86)';
+  x.fillRect(ax-tw/2-10, ay-14, tw+20, 28);
+  x.fillStyle='#F2A33C';
+  x.fillText(text, ax, ay);
+}
 function drawTutorial(){
-  if(!tutCV||!S||dialogOpen)return;
+  if(!tutCV||!S)return;
   const x=tutCTX=tutCTX||tutCV.getContext('2d');
   x.clearRect(0,0,tutCV.width,tutCV.height);
+  if(dialogOpen) return;
   const q=QUESTS[S.quest];
   if(!q||!q.target||S.quest>2)return; // only guide for quests 0-2
   const t=q.target(); if(!t)return;
-  // world→screen projection
+  const guide=questGuide(t);
+  // world to screen
   const v3=new THREE.Vector3(t.x,18,t.z);
   v3.project(camera);
   const sx=(v3.x*0.5+0.5)*tutCV.width, sy=(-v3.y*0.5+0.5)*tutCV.height;
-  const onScreen=v3.z<1&&sx>0&&sx<tutCV.width&&sy>0&&sy<tutCV.height;
+  const onScreen=v3.z<1&&sx>40&&sx<tutCV.width-40&&sy>40&&sy<tutCV.height-40;
   if(onScreen){
-    // pulsing ring on target
     const pulse=0.5+0.5*Math.sin(Date.now()/280);
     x.strokeStyle='rgba(232,192,100,'+(0.6+pulse*0.4)+')';
-    x.lineWidth=3; x.beginPath(); x.arc(sx,sy,18+pulse*8,0,Math.PI*2); x.stroke();
+    x.lineWidth=4; x.beginPath(); x.arc(sx,sy,22+pulse*10,0,Math.PI*2); x.stroke();
+    drawGuideLabel(x, guide.label, sx, sy+46);
   } else {
-    // off-screen: draw arrow at edge pointing toward target
     const cx=tutCV.width/2, cy=tutCV.height/2;
     const ang=Math.atan2(sy-cy,sx-cx);
-    const edge=70;
-    const ax=clamp(cx+Math.cos(ang)*cx*0.8,edge,tutCV.width-edge);
-    const ay=clamp(cy+Math.sin(ang)*cy*0.8,edge,tutCV.height-edge);
+    const edge=86;
+    const ax=clamp(cx+Math.cos(ang)*(cx-edge),edge,tutCV.width-edge);
+    const ay=clamp(cy+Math.sin(ang)*(cy-edge),edge,tutCV.height-edge);
     x.save(); x.translate(ax,ay); x.rotate(ang+Math.PI/2);
-    x.fillStyle='rgba(232,192,100,0.88)';
-    x.beginPath(); x.moveTo(0,-18); x.lineTo(11,8); x.lineTo(-11,8); x.closePath(); x.fill();
+    x.fillStyle='rgba(232,192,100,0.95)';
+    x.beginPath(); x.moveTo(0,-28); x.lineTo(16,14); x.lineTo(-16,14); x.closePath(); x.fill();
     x.restore();
-    // label
-    x.font='bold 13px Arial'; x.textAlign='center'; x.fillStyle='rgba(232,192,100,0.9)';
-    x.fillText('Follow the arrow',ax,ay+28);
+    drawGuideLabel(x, guide.label, ax, ay+46);
   }
 }
 
@@ -2437,14 +2652,14 @@ function grantStoryReward(v){
   }
   if(v==='rootfix'){
     S.customers+=2; S.cash+=40; S.stats.reputation=clamp(S.stats.reputation+3,0,100);
-    toast('<b>The bus is on time.</b> Two riders become customers. +'+fmt(40)+'.','gold');
-    feed('You fixed the route, not the clock. +2 customers.');
+    noteChange('<b>Customers '+S.customers+'/8.</b> Two riders from the clock story joined your business and paid you '+fmt(40)+'.');
+    feed('You fixed the route, not the clock. +2 customers and '+fmt(40)+'.');
     syncCustomerLine(); checkProgression();
   } else if(v==='covered'){
-    toast('The clock looks honest. The riders still miss the stop. No new customers.','bad');
+    noteChange('The clock looks honest. The riders still miss the stop. No new customers.','bad');
   } else if(v==='audit'){
     S.customers+=1; S.stats.reputation=clamp(S.stats.reputation+1,0,100);
-    toast('You asked a better question. One rider takes a chance on you.','good');
+    noteChange('<b>Customers '+S.customers+'/8.</b> One rider from the clock story took a chance on you.');
     syncCustomerLine(); checkProgression();
   }
   saveGame();
@@ -2626,6 +2841,7 @@ function insight(key,title,body,opts){
   saveGame();
 }
 function showInsightCard(entry,cta){
+  releaseLook();
   if(document.getElementById('insightCard'))return; // don't stack
   const d=document.createElement('div');
   d.id='insightCard';
@@ -3041,7 +3257,7 @@ function fitLabels(){
 function drawLabel(c,text,color){
   const x=c.getContext('2d');
   x.clearRect(0,0,512,96);
-  const label=String(text||'');
+  const label=plainText(text);
   let size=40;
   x.font='700 '+size+'px Archivo, Inter, sans-serif';
   while(size>16 && x.measureText(label).width>460){ size-=2; x.font='700 '+size+'px Archivo, Inter, sans-serif'; }
@@ -3954,6 +4170,7 @@ function respawnCrumbs(){
 }
 function updateCrumbs(now){
   if(!S) return;
+  if(uiBlocking()||(window.SCStory&&SCStory.active)||(window.Clip&&Clip.active)||(window.Trailer&&Trailer.active)) return;
   const t=now/1000;
   for(const cr of crumbs){
     if(cr.taken) continue;
@@ -3967,6 +4184,7 @@ function updateCrumbs(now){
       S.crumbs=(S.crumbs||0)+1;
       sCash(); spawnBurst(cr.m.position.x,10,cr.m.position.z,0xE8C064);
       floatText(cr.m.position.x,16,cr.m.position.z,'+'+fmt(amt)+' crumb','#E8C064');
+      noteChange('<b>+'+fmt(amt)+' cash.</b> You picked up a gold crumb.');
       crumbMilestone(S.crumbs);
       updateHUDChips();
     }
@@ -4263,6 +4481,7 @@ function startSessionTimer(){
   },500);
 }
 function showPayday(canExit){
+  releaseLook();
   if(!S) return;
   if(!S.biz){ if(canExit) showPlayedCard(); return; }
   if(!canExit && (S.customers||0)<1) return;
@@ -4284,10 +4503,11 @@ function showPayday(canExit){
   document.getElementById('paydayOk').onclick=async()=>{
     await saveGame();
     if(canExit) location.reload();
-    else $('bigModal').style.display='none';
+    else { $('bigModal').style.display='none'; syncPlayGate(); }
   };
 }
 function showPlayedCard(){
+  releaseLook();
   $('bmCard').innerHTML=
     '<h2 class="gold">SEE YOU NEXT TIME</h2>'+
     '<p><b>'+(S&&S.founder?S.founder.name:'Founder')+'</b> is in the city.</p>'+
@@ -4304,6 +4524,7 @@ function showSessionComplete(){
 
 /* ---- FOUNDER SPRINT — timed public challenge with a shareable score ---- */
 function showSprintComplete(){
+  releaseLook();
   const score=S?founderScore(S):0;
   const biz=S&&S.biz?S.biz.name:'a business';
   $('bmCard').innerHTML=
@@ -5035,9 +5256,15 @@ function updateSky(){
 /* ---------------- INPUT ---------------- */
 const keys={};
 window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;
-  if(e.key.toLowerCase()==='b'&&S&&!dialogOpen&&e.target.tagName!=='INPUT') toggleBoard();
-  if((e.key==='e'||e.key==='Enter')&&$('interactBtn').style.display==='block') doInteract();
-  if(e.code==='Space'&&!jumpActive&&!dialogOpen&&e.target.tagName!=='INPUT'&&e.target.tagName!=='TEXTAREA'){e.preventDefault();startJump();}
+  const tag=e.target&&e.target.tagName;
+  if(dialogOpen&&(e.key==='Enter'||e.key===' ')&&tag!=='INPUT'&&tag!=='TEXTAREA'){
+    const btn=(e.target.classList&&e.target.classList.contains('dOpt'))?e.target:document.querySelector('#dOpts .dOpt');
+    if(btn&&btn._fire){ e.preventDefault(); btn._fire(); }
+    return;
+  }
+  if(e.key.toLowerCase()==='b'&&S&&!dialogOpen&&tag!=='INPUT') toggleBoard();
+  if((e.key==='e'||e.key==='Enter')&&$('interactBtn').style.display==='block'&&!uiBlocking()) doInteract();
+  if(e.code==='Space'&&!jumpActive&&!uiBlocking()&&tag!=='INPUT'&&tag!=='TEXTAREA'&&tag!=='BUTTON'){e.preventDefault();startJump();}
   if(e.key==='Escape'&&document.pointerLockElement) document.exitPointerLock();
 });
 window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
@@ -5073,16 +5300,31 @@ camPad.addEventListener('touchmove',e=>{
 camPad.addEventListener('touchend',e=>{
   if(camDrag&&[...e.changedTouches].some(t=>t.identifier===camDrag.id)) camDrag=null;
 },{passive:true});
-// Minecraft-style pointer lock: click canvas to capture mouse
+// Desktop: click the street to lock the mouse. Dialogs release it so buttons receive clicks.
 $('game').addEventListener('click',()=>{
-  if(!dialogOpen&&$('phone').style.display!=='flex'&&$('bigModal').style.display!=='flex'&&!document.pointerLockElement){
-    $('game').requestPointerLock();
-  }
+  if(document.pointerLockElement||uiBlocking()) return;
+  if(window.SCStory&&SCStory.active) return;
+  if((window.Clip&&Clip.active)||(window.Trailer&&Trailer.active)) return;
+  if(!isCoarse()) requestPlayLock();
+});
+if($('playGateBtn')) $('playGateBtn').addEventListener('click', e=>{
+  e.preventDefault();
+  e.stopPropagation();
+  requestPlayLock();
 });
 document.addEventListener('pointerlockchange',()=>{
-  const locked=document.pointerLockElement===$('game');
-  const hint=$('lockHint'); if(hint) hint.style.display=locked?'none':'block';
+  if(document.pointerLockElement===$('game')) playArmed=true;
+  syncPlayGate();
 });
+document.addEventListener('pointerlockerror',()=>{ allowPlayWithoutLock(); });
+document.addEventListener('pointerup', e=>{
+  if(!dialogOpen||document.pointerLockElement) return;
+  const btn=choiceAtPoint(e.clientX, e.clientY, '#dOpts .dOpt');
+  if(!btn||!btn._fire) return;
+  if(e.target===btn||(btn.contains&&btn.contains(e.target))) return;
+  e.preventDefault();
+  btn._fire();
+}, true);
 let mouseDrag=null;
 $('game').addEventListener('mousedown',e=>{if(!document.pointerLockElement)mouseDrag={x:e.clientX,y:e.clientY};});
 window.addEventListener('mousemove',e=>{
@@ -5177,8 +5419,13 @@ function doInteract(){
   }
 }
 $('interactBtn').onclick=doInteract;
-$('dialog').addEventListener('click',e=>{ if(e.target.id==='dialog') closeDialog(); });
-$('phone').addEventListener('click',e=>{ if(e.target.id==='phone') $('phone').style.display='none'; });
+$('dScrim').addEventListener('click', e=>{
+  if(e.target.id!=='dScrim') return;
+  const btn=choiceAtPoint(e.clientX, e.clientY, '#dOpts .dOpt');
+  if(btn&&btn._fire){ btn._fire(); return; }
+  closeDialog();
+});
+$('phone').addEventListener('click',e=>{ if(e.target.id==='phone'){ $('phone').style.display='none'; syncPlayGate(); } });
 
 /* ---------------- COLLISION ---------------- */
 function collide(nx,nz){
@@ -5274,7 +5521,8 @@ function touchShadow(now){
 }
 function loop(now){
   const DT=Math.min(Math.max((now-last)/1000,0),0.1); last=now;
-  const uiOpen=dialogOpen||$('phone').style.display==='flex'||$('bigModal').style.display==='flex';
+  syncPlayGate();
+  const uiOpen=uiBlocking();
   if(S&&S.paydayDue&&!dialogOpen&&!(window.Clip&&Clip.active)&&!(window.SCStory&&SCStory.active)&&!(window.Trailer&&Trailer.active)&&$('bigModal').style.display!=='flex'){
     const mode=S.paydayDue; S.paydayDue=null; showPayday(mode==='exit');
   }
@@ -5290,6 +5538,7 @@ function loop(now){
     else if(S.customers>=25&&!S.clipBlowup){ S.clipBlowup=1; Clip.play('blowup'); saveGame(); }
   }
   if(S&&Clip.active) Clip.update(DT,now);
+  if(S) flushNotes();
   if(S&&!uiOpen&&!Trailer.active&&!Clip.active&&!storyOn){
     // camera-relative movement
     let mx=joyVec.x,my=joyVec.y;
@@ -5414,8 +5663,9 @@ function loop(now){
     }
     // time
     minAcc+=DT;
-    while(minAcc>=0.1){
-      minAcc-=0.1; S.min++;
+    const minuteStep=dayMinuteRealSeconds();
+    while(minAcc>=minuteStep){
+      minAcc-=minuteStep; S.min++;
       if(S.min>=60){ S.min=0; S.hour++;
         if(S.hour===8) assignDaily();
         if(S.hour===9&&S.biz){ dailySettle(); showPayday(false); }
@@ -5429,7 +5679,9 @@ function loop(now){
       const pm=npcMeshes[n.id]; if(!pm) continue;
       const d=dist2(n.x,n.z,n.tx,n.tz);
       let nmoving=false;
-      if((n.wander||n.key)&&!n.hold){
+      const pinMentor=n.id==='marcus'&&S.quest<1;
+      if(pinMentor){ n.x=n.hx; n.z=n.hz; n.tx=n.hx; n.tz=n.hz; }
+      else if((n.wander||n.key)&&!n.hold){
         if(d<3){ n.wait-=DT;
           if(n.wait<=0){ n.wait=rnd(2,6);
             const r=n.key?45:140;
@@ -5552,7 +5804,9 @@ function loop(now){
     if(q&&q.target){
       const tg=q.target();
       if(tg){ questMarker.visible=true;
-        questMarker.position.set(tg.x,46+Math.sin(now/240)*5,tg.z);
+        const big=S.quest<=1?1.8:1;
+        questMarker.scale.set(big,big,big);
+        questMarker.position.set(tg.x,(S.quest<=1?62:46)+Math.sin(now/240)*5,tg.z);
         questMarker.rotation.y=now/600; }
       else questMarker.visible=false;
     } else questMarker.visible=false;
@@ -5654,7 +5908,17 @@ function updateHUDChips(){
   const profitTxt=books&&S.customers>0?((profit>0?'+':'')+fmt(profit)+' profit/day'):'';
   $('clockCash').textContent=fmt(S.cash)+(profitTxt?' · '+profitTxt:'')+(S.debt>0?' ('+fmt(-S.debt)+')':'');
   const q=QUESTS[S.quest];
-  $('questBar').innerHTML=(q?q.hint:'')+(q&&q.prog?' <b>'+q.prog()+'</b>':'');
+  let extra='';
+  if(q&&q.target&&S.quest<=1){
+    const tg=q.target();
+    if(tg){
+      const g=questGuide(tg);
+      const who=S.quest===0?'Marcus':'The Board';
+      extra='<br><span style="color:#F2A33C">'+who+' is '+g.where+'</span>';
+    }
+  }
+  $('questBar').innerHTML=(q?q.hint:'')+(q&&q.prog?' <b>'+q.prog()+'</b>':'')+extra;
+  maybeExplainProfit();
   syncCustomerLine();
 }
 setInterval(()=>{ if(S&&$('hud').style.display==='block')updateHUDChips(); },500);
@@ -5854,8 +6118,10 @@ function startWorld(){
   const touch='ontouchstart' in window;
   if(!touch){
     $('hintKeys').style.display='block';
-    $('lockHint').style.display='block';
   }
+  maybeExplainProfit.prev=null;
+  pendingNotes.length=0;
+  syncPlayGate();
   if(touch){
     const jb=$('jumpBtn'); if(jb){jb.style.display='flex';
       jb.addEventListener('touchstart',e=>{e.preventDefault();startJump();},{passive:false});
@@ -6381,6 +6647,7 @@ const SCStory={
 
   start(sceneId){
     const sc=SC_SCENES[sceneId]; if(!sc) return;
+    releaseLook();
     this.scene=sc; this.beat=-1; this.active=true; this.phase='beat';
     // freeze the founder into a calm stance on a mark, facing the pair
     playerGroup.lLeg.rotation.x=0; playerGroup.rLeg.rotation.x=0;
@@ -6493,8 +6760,12 @@ const SCStory={
     const list=$('scOpts'); list.innerHTML='';
     c.options.forEach(o=>{
       const b=document.createElement('button');
-      b.className='scOpt'; b.textContent=o.t;
-      b.onclick=(ev)=>{ ev.stopPropagation(); sTap();
+      b.className='scOpt'; b.type='button'; b.textContent=o.t;
+      b._fire=()=>{
+        const now=performance.now();
+        if(b._fired&&now-b._fired<280) return;
+        b._fired=now;
+        sTap();
         if(o.set){ for(const k in o.set){ this.data.flags[k]=o.set[k]; } this.save(); }
         if(o.remember){
           const nm=(SC_STORY_NPCS.find(n=>n.id===o.remember)||{name:'Someone'}).name;
@@ -6502,6 +6773,17 @@ const SCStory={
         }
         this.closeChoice(); this.nextBeat();
       };
+      b.addEventListener('pointerup', ev=>{
+        ev.preventDefault();
+        ev.stopPropagation();
+        b._fire();
+      });
+      b.addEventListener('click', ev=>{
+        if(ev.detail!==0) return;
+        ev.preventDefault();
+        ev.stopPropagation();
+        b._fire();
+      });
       list.appendChild(b);
     });
   },
@@ -6609,7 +6891,7 @@ const SCStory={
     // re-approach cooldown, and require walking away before the next trigger
     this.cooldownUntil=performance.now()+6000;
     this.armed=false;
-    // follow camera resumes by itself; give it a sane fov to blend from
+    if(typeof syncPlayGate==='function') syncPlayGate();
   }
 };
 window.SCStory=SCStory;
@@ -6618,7 +6900,14 @@ window.SCStory=SCStory;
 document.addEventListener('DOMContentLoaded',()=>{});
 (function(){
   const ui=document.getElementById('scStoryUI');
-  if(ui){ ui.addEventListener('click',e=>{
+  if(ui){ ui.addEventListener('pointerup',e=>{
+    const btn=choiceAtPoint(e.clientX, e.clientY, '.scOpt');
+    if(btn&&btn._fire){
+      e.preventDefault();
+      e.stopPropagation();
+      btn._fire();
+      return;
+    }
     if(e.target.classList&&e.target.classList.contains('scOpt')) return;
     SCStory.tap();
   }); }
