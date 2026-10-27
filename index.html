@@ -146,19 +146,20 @@ button{font-family:inherit;cursor:pointer;border:none}
   padding:14px 18px;min-height:56px;box-shadow:0 5px 0 #CC5500,0 0 20px rgba(255,140,0,.4);
   pointer-events:auto;display:none;max-width:calc(100vw - 168px)}
 #interactBtn:active{transform:translateY(4px);box-shadow:0 1px 0 #CC5500}
-#phoneBtn{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));right:18px;
+#phoneBtn{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));right:18px;z-index:14;
   width:68px;height:68px;border-radius:20px;background:rgba(27,42,59,.92);border:2px solid var(--turq);
   color:var(--paper);font-size:28px;pointer-events:auto;display:flex;align-items:center;justify-content:center;
   box-shadow:0 4px 0 #006688,0 0 14px rgba(0,200,255,.2)}
 #phoneBtn .dot{position:absolute;top:-5px;right:-5px;width:18px;height:18px;border-radius:50%;
   background:var(--danger);display:none;border:2px solid #1B2A3B;box-shadow:0 0 6px var(--danger)}
-#joy{display:none;position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));left:18px;width:136px;height:136px;
+#joy{display:none;position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));left:18px;width:136px;height:136px;z-index:14;
   border-radius:50%;background:rgba(27,42,59,.6);border:3px solid rgba(0,200,255,.5);pointer-events:auto;
   box-shadow:0 0 20px rgba(0,200,255,.15)}
 #joyKnob{position:absolute;left:50%;top:50%;width:58px;height:58px;border-radius:50%;
   background:radial-gradient(circle at 38% 38%,#FF8C00,#CC5500);box-shadow:0 3px 0 #882200,0 0 12px rgba(255,140,0,.5);
   transform:translate(-50%,-50%)}
-#camPad{position:absolute;right:0;top:0;width:55%;height:100%;pointer-events:auto}
+/* Look zone only. It must not sit in the hit list above Talk, Enter, or the joystick. */
+#camPad{position:absolute;right:0;top:0;width:55%;height:100%;z-index:1;pointer-events:none}
 #toasts{position:absolute;bottom:calc(172px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);
   display:flex;flex-direction:column;gap:8px;align-items:center;width:88vw;pointer-events:none}
 .toast{background:rgba(27,42,59,.95);border:1px solid rgba(0,200,255,.3);border-left:4px solid var(--amber);
@@ -5184,26 +5185,47 @@ joyEl.addEventListener('touchend',e=>{
   if([...e.changedTouches].some(t=>t.identifier===joyId)){
     joyId=null;joyVec={x:0,y:0};knob.style.transform='translate(-50%,-50%)';}
 },{passive:false});
-// camera orbit: drag on right pad (touch) or mouse drag anywhere on canvas
+// camera orbit: drag the right half (touch) or mouse drag anywhere on canvas.
+// camPad itself does not receive hits, so Talk, Enter, and the joystick stay clickable.
 let camDrag=null;
-const camPad=$('camPad');
-camPad.addEventListener('touchstart',e=>{ const t=e.changedTouches[0];
-  camDrag={id:t.identifier,x:t.clientX,y:t.clientY}; },{passive:true});
-camPad.addEventListener('touchmove',e=>{
+function camTouchBlocked(target){
+  if(!target||!target.closest) return true;
+  return !!target.closest('button,a,input,textarea,select,label,#joy,#dialog,#phone,#bigModal');
+}
+window.addEventListener('touchstart',e=>{
+  const t=e.changedTouches[0];
+  if(!t||t.clientX<window.innerWidth*0.45||camTouchBlocked(e.target)) return;
+  camDrag={id:t.identifier,x:t.clientX,y:t.clientY};
+},{passive:true,capture:true});
+window.addEventListener('touchmove',e=>{
   if(!camDrag)return;
   const t=[...e.touches].find(t=>t.identifier===camDrag.id); if(!t)return;
   camYaw-=(t.clientX-camDrag.x)*0.0062;
   camPitch=clamp(camPitch+(t.clientY-camDrag.y)*0.0035,0.18,0.9);
   camDrag.x=t.clientX; camDrag.y=t.clientY;
-},{passive:true});
-camPad.addEventListener('touchend',e=>{
+},{passive:true,capture:true});
+window.addEventListener('touchend',e=>{
   if(camDrag&&[...e.changedTouches].some(t=>t.identifier===camDrag.id)) camDrag=null;
-},{passive:true});
-// Minecraft-style pointer lock: click canvas to capture mouse
-$('game').addEventListener('click',()=>{
-  if(!dialogOpen&&$('phone').style.display!=='flex'&&$('bigModal').style.display!=='flex'&&!document.pointerLockElement){
-    $('game').requestPointerLock();
+},{passive:true,capture:true});
+window.addEventListener('touchcancel',e=>{
+  if(camDrag&&[...e.changedTouches].some(t=>t.identifier===camDrag.id)) camDrag=null;
+},{passive:true,capture:true});
+function interactButtonOpen(){
+  const el=$('interactBtn');
+  return !!(el&&el.style.display==='block');
+}
+function releaseLockForInteract(){
+  if(!interactButtonOpen()) return;
+  if(document.pointerLockElement===$('game')){
+    try{ document.exitPointerLock(); }catch(err){}
   }
+}
+// Pointer lock parks the cursor over the right-hand look zone, so a click
+// meant for Talk or Enter is reported on camPad. Leave the cursor free
+// while that button is showing.
+$('game').addEventListener('click',()=>{
+  if(interactButtonOpen()||dialogOpen||$('phone').style.display==='flex'||$('bigModal').style.display==='flex'||document.pointerLockElement) return;
+  $('game').requestPointerLock();
 });
 document.addEventListener('pointerlockchange',()=>{
   const locked=document.pointerLockElement===$('game');
@@ -5702,6 +5724,7 @@ function loop(now){
           ? (nearTarget.o.data?'Visit \u00B7 '+nearTarget.o.data.name:'Claim Plot')
           : 'Enter \u00B7 '+nearTarget.o.label);
     } else ib.style.display='none';
+    releaseLockForInteract();
   }
   perfSample(DT);
   updateFloats(DT);
