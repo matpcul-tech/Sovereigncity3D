@@ -53,9 +53,10 @@ Founder names only. No accounts, no emails, no passwords. Leave the code blank t
 2. **Share the game link** with the class:
    `https://matpcul-tech.github.io/Sovereigncity3D/?session=true&code=ROOM12&duration=40`
    This fills in the class code, locks it to School, and runs a countdown (`duration` is minutes). Or share the plain game link and have students tap **School** and type the code.
-3. **Open the Facilitator Dashboard** while they play:
+3. **Open the Facilitator Dashboard** on your laptop before anyone joins:
    `https://matpcul-tech.github.io/Sovereigncity3D/facilitator.html?code=ROOM12`
-   Live for every founder on that code: business, stage, customers, daily profit/loss, vocabulary terms earned, insights, last-active. Set a custom **"Today's Hustle"** challenge that pops up in every game, and export a session report as CSV for grading.
+   The page explains the class code, stores founder names only, and has a student link to copy. An empty class says no students yet. Set **Today's Hustle** even before the first founder joins. That one line stays on screen in the game. The roster then shows business, stage, customers, daily profit/loss, vocabulary, insights, and last activity.
+   Each student on the session link gets a countdown (`duration` is minutes) that starts when they enter the city. The dashboard has a separate period clock. Press Start when class begins. That clock stays on the laptop.
 
 ### Home: town code
 

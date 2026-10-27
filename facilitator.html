@@ -69,6 +69,28 @@ body { font-family: Inter, system-ui, sans-serif; background: var(--bg); color: 
 .code-form h2 { font-family: Archivo, sans-serif; font-size: 22px; margin-bottom: 8px; }
 .code-form p { color: var(--sub); margin-bottom: 18px; font-size: 14px; line-height: 1.45; text-align: center; }
 .fac-note { font-size: 13px; color: var(--sub); margin: 0 0 16px; max-width: 760px; line-height: 1.45; }
+.week1 { display: grid; grid-template-columns: minmax(0,1fr) 180px; gap: 8px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 16px; }
+.week1 h2 { font-family: Archivo, sans-serif; font-size: 16px; line-height: 1.25; }
+.week1 p { color: var(--sub); font-size: 13px; margin: 0; }
+.mins-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: var(--sub); }
+.mins-row input { width: 72px; border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 8px; font-size: 14px; font-family: inherit; }
+.mins-row input:focus { outline: none; border-color: var(--gold); }
+.link-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; }
+.link-row input { flex: 1; min-width: 0; border: 1.5px solid var(--border); border-radius: 8px; padding: 7px 10px; font-size: 12px; font-family: inherit; background: #fff; }
+.period-clock { text-align: right; }
+.period-clock .pc-k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sub); }
+.period-clock b { display: block; font-family: Archivo, sans-serif; font-size: 32px; line-height: 1.05; letter-spacing: .03em; }
+.period-clock .pc-n { display: block; margin-top: 4px; font-size: 11px; line-height: 1.35; color: var(--sub); font-weight: 500; }
+.roster-warn { color: var(--danger); font-size: 13px; margin: 0 0 10px; }
+.table-scroll { overflow-x: auto; margin-bottom: 28px; }
+.table-scroll .founder-table { margin-bottom: 0; }
+.empty-room { text-align: center; padding: 22px 12px; }
+.empty-room b { display: block; font-size: 16px; color: var(--text); margin-bottom: 6px; }
+.empty-room span { display: block; max-width: 520px; margin: 0 auto; color: var(--sub); font-size: 13px; line-height: 1.45; }
+@media (max-width: 860px) {
+  .week1 { grid-template-columns: 1fr; }
+  .period-clock { text-align: left; }
+}
 .code-form input { width: 100%; border: 2px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 22px; font-weight: 700; text-align: center; letter-spacing: .2em; text-transform: uppercase; font-family: Archivo, sans-serif; margin-bottom: 16px; }
 .code-form input:focus { outline: none; border-color: var(--gold); }
 
@@ -138,7 +160,8 @@ function timeSince(ts) {
   return Math.floor(s / 86400) + 'd ago';
 }
 
-let sb = null, townId = null, founders = [], urlCode = '';
+let sb = null, townId = null, founders = [], urlCode = '', rosterState = 'loading';
+let periodDeadline = 0, periodTimer = null;
 
 function getUrlCode() {
   return (new URLSearchParams(location.search).get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
@@ -146,32 +169,51 @@ function getUrlCode() {
 
 async function loadData() {
   if (!sb || !urlCode) return;
+  let warning = '';
   try {
-    const { data: town } = await sb.from('towns').select('id,daily_challenge').eq('code', urlCode).maybeSingle();
+    const { data: town, error: townErr } = await sb.from('towns').select('id,daily_challenge').eq('code', urlCode).maybeSingle();
+    if (townErr) throw townErr;
     if (town) {
       townId = town.id;
       const inp = document.getElementById('challengeInput');
       if (inp && !inp._dirty) inp.value = town.daily_challenge || '';
     }
-    const { data: saves } = await sb.from('saves')
+    const { data: saves, error: saveErr } = await sb.from('saves')
       .select('founder_name,data,updated_at')
       .eq('town_code', urlCode)
       .order('updated_at', { ascending: false });
+    if (saveErr) throw saveErr;
     founders = saves || [];
-  } catch (e) { console.warn('[fac] load error', e); }
-  renderTable();
+    rosterState = founders.length ? 'ready' : 'empty';
+  } catch (e) {
+    console.warn('[fac] load error', e);
+    warning = 'Could not refresh the roster. Check the connection and refresh.';
+    if (!founders.length) rosterState = 'error';
+  }
+  renderTable(warning);
   const ts = document.getElementById('lastRefresh');
   if (ts) ts.textContent = 'Updated ' + new Date().toLocaleTimeString();
 }
 
-function renderTable() {
+function renderTable(warning) {
   const tbody = document.getElementById('founderTbody');
   const vwrap = document.getElementById('vocabWrap');
+  const warnEl = document.getElementById('rosterWarn');
+  if (warnEl) warnEl.textContent = warning || '';
   if (!tbody) return;
 
   if (!founders.length) {
-    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:32px;color:#9A917F">No founders have joined this town yet.</td></tr>';
-    if (vwrap) vwrap.innerHTML = '<p style="color:var(--sub);font-size:13px">No founders yet.</p>';
+    let msg;
+    if (rosterState === 'offline') {
+      msg = '<b>Live roster is not connected on this page.</b><span>Copy the student link above and run the class. Founder names only. No emails.</span>';
+    } else if (rosterState === 'error') {
+      msg = '<b>Could not load this class yet.</b><span>Refresh the page to see who has joined. Founder names only. No emails.</span>';
+    } else {
+      msg = '<b>No students yet.</b><span>When they join with class code ' + esc(urlCode) + ', founder name, stage, customers, and last activity show up here.</span>';
+    }
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-room">' + msg + '</div></td></tr>';
+    if (vwrap) vwrap.innerHTML = '<p style="color:var(--sub);font-size:13px">' +
+      (rosterState === 'empty' ? 'Vocabulary shows up after someone learns a term.' : 'Vocabulary loads with the roster.') + '</p>';
     return;
   }
 
@@ -222,21 +264,33 @@ function renderVocabGrid(container) {
   container.innerHTML = '<div class="vocab-wrap"><table class="vocab-table"><thead>' + hdr + '</thead><tbody>' + rows + '</tbody></table></div>';
 }
 
+async function ensureTown() {
+  if (townId) return townId;
+  const { data: t, error: selErr } = await sb.from('towns').select('id').eq('code', urlCode).maybeSingle();
+  if (selErr) throw selErr;
+  if (t && t.id) { townId = t.id; return townId; }
+  const { data: created, error: insErr } = await sb.from('towns').insert({ code: urlCode, name: urlCode }).select('id').single();
+  if (created && created.id) { townId = created.id; return townId; }
+  const { data: again } = await sb.from('towns').select('id').eq('code', urlCode).maybeSingle();
+  if (again && again.id) { townId = again.id; return townId; }
+  throw insErr || new Error('Could not open this class town.');
+}
 async function setChallenge() {
-  if (!sb) { showToast('Backend not configured.'); return; }
-  if (!townId) {
-    const { data: t } = await sb.from('towns').select('id').eq('code', urlCode).maybeSingle();
-    if (t) townId = t.id;
-    if (!townId) { showToast('Town not found. Have a player join first.'); return; }
-  }
+  if (!sb) { showToast('Live roster is not connected, so Today\'s Hustle cannot be sent yet.'); return; }
   const inp = document.getElementById('challengeInput');
-  const val = ((inp && inp.value) || '').trim();
+  const val = ((inp && inp.value) || '').trim().slice(0, 160);
   const btn = document.getElementById('setChallengeBtn');
   if (btn) btn.disabled = true;
-  const { error } = await sb.from('towns').update({ daily_challenge: val || null }).eq('id', townId);
+  try {
+    await ensureTown();
+    const { error } = await sb.from('towns').update({ daily_challenge: val || null }).eq('id', townId);
+    if (error) throw error;
+    if (inp) { inp.value = val; inp._dirty = false; }
+    showToast(val ? 'Today\'s Hustle is set. The class sees that line in the game within a minute.' : 'Today\'s Hustle is cleared.');
+  } catch (e) {
+    showToast('Could not save Today\'s Hustle. ' + ((e && e.message) ? e.message : 'Try again.'));
+  }
   if (btn) btn.disabled = false;
-  if (inp) inp._dirty = false;
-  showToast(error ? 'Error: ' + error.message : val ? 'Challenge set! Players see it within a minute.' : 'Challenge cleared.');
 }
 
 function exportCSV() {
@@ -271,7 +325,66 @@ function subscribeRealtime() {
     .subscribe();
 }
 
+function initialMinutes() {
+  const n = parseInt(new URLSearchParams(location.search).get('duration') || '40', 10);
+  if (!isFinite(n) || n < 1) return 40;
+  return Math.min(n, 480);
+}
+function sessionMinutes() {
+  const el = document.getElementById('sessionMins');
+  const n = parseInt(el && el.value, 10);
+  if (!isFinite(n) || n < 1) return 40;
+  return Math.min(n, 480);
+}
+function studentGameUrl(minutes) {
+  const path = location.pathname.replace(/facilitator\.html$/i, '');
+  return location.origin + path + '?session=true&code=' + encodeURIComponent(urlCode) + '&duration=' + minutes;
+}
+function refreshStudentLink() {
+  const el = document.getElementById('studentLink');
+  if (el) el.value = studentGameUrl(sessionMinutes());
+}
+let periodRunning = false;
+function paintIdleClock() {
+  const el = document.getElementById('periodClock');
+  if (!el || periodRunning) return;
+  el.textContent = sessionMinutes() + ':00';
+  el.style.color = 'var(--text)';
+}
+function paintPeriodClock() {
+  const el = document.getElementById('periodClock');
+  if (!el) return;
+  const rem = Math.max(0, periodDeadline - Date.now());
+  const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);
+  el.textContent = m + ':' + String(s).padStart(2, '0');
+  el.style.color = rem > 0 && rem <= 60000 ? 'var(--danger)' : 'var(--text)';
+  if (rem <= 0) clearInterval(periodTimer);
+}
+function startPeriodClock() {
+  periodRunning = true;
+  periodDeadline = Date.now() + sessionMinutes() * 60000;
+  paintPeriodClock();
+  clearInterval(periodTimer);
+  periodTimer = setInterval(paintPeriodClock, 500);
+  const btn = document.getElementById('startPeriodBtn');
+  if (btn) btn.textContent = 'Restart period';
+}
+function copyStudentLink() {
+  const inp = document.getElementById('studentLink');
+  const url = inp ? inp.value : studentGameUrl(sessionMinutes());
+  const done = () => showToast('Student link copied.');
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(done, () => {
+      if (inp) { inp.focus(); inp.select(); }
+      showToast('Select the link and copy it.');
+    });
+    return;
+  }
+  if (inp) { inp.focus(); inp.select(); }
+  showToast('Select the link and copy it.');
+}
 function renderShell() {
+  const mins = initialMinutes();
   document.getElementById('fac-root').innerHTML =
     '<header class="fac-header">' +
       '<div><div class="eyebrow">SOVEREIGN CITY</div><h1>Facilitator Dashboard</h1></div>' +
@@ -280,14 +393,36 @@ function renderShell() {
     '</header>' +
     '<div class="fac-controls">' +
       '<label for="challengeInput">Today\'s Hustle</label>' +
-      '<input id="challengeInput" class="hustle-input" type="text" maxlength="160" placeholder="Set a custom challenge visible to all founders in this town…">' +
+      '<input id="challengeInput" class="hustle-input" type="text" maxlength="160" placeholder="One line the class will see. Example: Talk to 3 neighbors.">' +
       '<button id="setChallengeBtn" class="btn btn-gold">Set Challenge</button>' +
       '<button class="btn btn-outline" id="tableModeBtn">🎲 Table Mode</button>' +
       '<button class="btn btn-outline" id="exportBtn">⬇ Export Session Report (CSV)</button>' +
       '<button class="btn btn-outline" onclick="window.print()">🖨 Print</button>' +
     '</div>' +
     '<div class="fac-main">' +
-      '<p class="fac-note">School uses a class code. Home with friends uses a town code. Same code, same town. Founder names only.</p>' +
+      '<section class="week1">' +
+        '<div>' +
+          '<h2>Class code ' + esc(urlCode) + '</h2>' +
+          '<p>School session. This code is the shared town for the period. Home play uses a town code the same way. Same code, same town. Founder names only. No emails.</p>' +
+          '<p style="margin-top:6px">Students tap School on the title screen and type ' + esc(urlCode) + '. Or send this link.</p>' +
+          '<div class="link-row">' +
+            '<input id="studentLink" readonly aria-label="Student game link">' +
+            '<button type="button" class="btn btn-gold" id="copyLinkBtn">Copy link</button>' +
+          '</div>' +
+          '<div class="mins-row">' +
+            '<label for="sessionMins">Session minutes</label>' +
+            '<input id="sessionMins" type="number" min="1" max="480" value="' + mins + '">' +
+            '<span>Each student\'s countdown starts when they enter the city.</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="period-clock">' +
+          '<div class="pc-k">Period clock</div>' +
+          '<b id="periodClock">' + mins + ':00</b>' +
+          '<span class="pc-n">On this laptop. Press Start when class begins.</span>' +
+          '<button type="button" class="btn btn-outline" id="startPeriodBtn" style="margin-top:8px">Start period</button>' +
+        '</div>' +
+      '</section>' +
+      '<p class="roster-warn" id="rosterWarn"></p>' +
       '<div class="tm-panel" id="tmPanel" style="display:none">' +
         '<h3>🎲 Table Mode. Log Founder Mode board-game founders</h3>' +
         '<div class="tm-sub">Board-game founders join this same town. They show up here and on in-game ranks. The same founder name overwrites their entry.</div>' +
@@ -312,21 +447,28 @@ function renderShell() {
           '<button class="btn btn-outline" id="tmFameBtn" title="Only for a founder who just won at the table">🏆 Record Sovereignty</button>' +
         '</div>' +
       '</div>' +
-      '<div class="fac-section-title">Founders · Town ' + esc(urlCode) + '</div>' +
-      '<table class="founder-table">' +
+      '<div class="fac-section-title">Class roster · ' + esc(urlCode) + '</div>' +
+      '<div class="table-scroll"><table class="founder-table">' +
         '<thead><tr>' +
           '<th>Founder / Business</th><th>Industry</th><th>Stage</th>' +
           '<th>Customers</th><th>Daily P&amp;L</th><th>Days</th>' +
           '<th>Terms</th><th>Insights</th><th>Last Active</th>' +
         '</tr></thead>' +
-        '<tbody id="founderTbody"><tr><td colspan="9" style="text-align:center;padding:32px;color:#9A917F">Loading…</td></tr></tbody>' +
-      '</table>' +
+        '        <tbody id="founderTbody"><tr><td colspan="9" style="text-align:center;padding:32px;color:#9A917F">Loading…</td></tr></tbody>' +
+      '</table></div>' +
       '<div class="fac-section-title">Vocabulary Progress</div>' +
       '<div id="vocabWrap">Loading…</div>' +
     '</div>';
 
   document.getElementById('setChallengeBtn').addEventListener('click', setChallenge);
   document.getElementById('exportBtn').addEventListener('click', exportCSV);
+  document.getElementById('copyLinkBtn').addEventListener('click', copyStudentLink);
+  const minsInp = document.getElementById('sessionMins');
+  minsInp.addEventListener('input', () => { refreshStudentLink(); paintIdleClock(); });
+  minsInp.addEventListener('change', () => { refreshStudentLink(); if (periodRunning) startPeriodClock(); else paintIdleClock(); });
+  document.getElementById('startPeriodBtn').addEventListener('click', startPeriodClock);
+  refreshStudentLink();
+  paintIdleClock();
   document.getElementById('tableModeBtn').addEventListener('click', () => {
     const p = document.getElementById('tmPanel');
     p.style.display = p.style.display === 'none' ? 'block' : 'none';
@@ -356,7 +498,7 @@ function readTableForm() {
   };
 }
 async function saveTableFounder() {
-  if (!sb) { showToast('Backend not configured.'); return; }
+  if (!sb) { showToast('Live roster is not connected, so this cannot be saved yet.'); return; }
   const f = readTableForm(); if (!f) return;
   const data = {
     source: 'tabletop',
@@ -375,7 +517,7 @@ async function saveTableFounder() {
   if (!error) loadData();
 }
 async function recordTableSovereignty() {
-  if (!sb) { showToast('Backend not configured.'); return; }
+  if (!sb) { showToast('Live roster is not connected, so this cannot be saved yet.'); return; }
   const f = readTableForm(); if (!f) return;
   if (f.stage !== 5) { showToast('Set Stage to 5 · Sovereign first. This is for a founder who just won at the table.'); return; }
   // resolve (or create) the town id, same as the game does
@@ -416,8 +558,8 @@ function renderCodeForm() {
     '<header class="fac-header"><div><h1>Facilitator Dashboard</h1></div></header>' +
     '<div class="code-form">' +
       '<div style="font-size:40px;margin-bottom:12px">🏫</div>' +
-      '<h2>Class code or town code</h2>' +
-      '<p>School: a class code for this class. Home: a town code friends share, any school. Same code joins the same town. Founder names only.</p>' +
+      '<h2>Open your class</h2>' +
+      '<p>Type the class code for this school session. Home play uses a town code the same way. Same code, same town. Founder names only.</p>' +
       '<input id="codeInp" type="text" maxlength="6" placeholder="ABC123" autocomplete="off">' +
       '<button class="btn btn-gold" id="goCodeBtn" style="width:100%;padding:13px;font-size:15px">Open Dashboard</button>' +
     '</div>';
@@ -445,8 +587,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderShell();
 
   if (!sb) {
-    document.getElementById('founderTbody').innerHTML =
-      '<tr><td colspan="9" style="text-align:center;padding:32px;color:#b83030">Backend not configured. Add the VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY repository secrets, then redeploy.</td></tr>';
+    rosterState = 'offline';
+    const ts = document.getElementById('lastRefresh');
+    if (ts) ts.textContent = 'Roster offline';
+    renderTable();
     return;
   }
 

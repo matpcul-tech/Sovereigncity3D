@@ -125,6 +125,18 @@ button{font-family:inherit;cursor:pointer;border:none}
   background:rgba(27,42,59,.92);border:2px solid rgba(255,215,0,.4);border-radius:14px;padding:7px 12px;
   font-size:11px;font-weight:700;text-align:right;line-height:1.5;color:#D0E8FF;box-shadow:0 2px 8px rgba(0,0,0,.3)}
 #clockChip .cash{color:var(--gold);font-size:14px;font-weight:800}
+#sessionTimer{position:absolute;top:calc(max(10px,env(safe-area-inset-top)) + 64px);right:10px;
+  z-index:13;display:none;align-items:center;gap:6px;background:rgba(20,18,15,.92);
+  border:2px solid #E8C064;border-radius:12px;padding:6px 10px;font-weight:800;
+  font-family:Archivo,Inter,sans-serif;font-size:15px;color:#E8C064;pointer-events:none;
+  box-shadow:0 2px 8px rgba(0,0,0,.35)}
+#sessionTimer.warn{border-color:#FF5533;color:#FF8866}
+#hustleBar{position:absolute;top:calc(max(8px,env(safe-area-inset-top)) + 112px);left:10px;
+  max-width:min(560px,calc(100vw - 20px));z-index:11;display:none;
+  background:rgba(27,42,59,.94);border:2px solid var(--gold);border-radius:12px;
+  padding:7px 12px;font-size:13px;font-weight:700;color:var(--gold);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  box-shadow:0 2px 10px rgba(0,0,0,.28)}
 #stageChip{position:absolute;top:max(10px,env(safe-area-inset-top));left:10px;
   background:rgba(27,42,59,.92);border:2px solid var(--turq);border-radius:14px;padding:7px 12px;
   font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--turq);
@@ -578,7 +590,15 @@ const _sessionMode=_urlParams.get('session')==='true'||_sprintMode;
 // ?trailer=true films the cinematic trailer without a console (mobile:
 // open the link, start your screen recording during the countdown)
 const _trailerMode=_urlParams.get('trailer')==='true';
-const _sessionDuration=Math.max(1,parseInt(_urlParams.get('duration')||(_sprintMode?'10':'40')))*60*1000;
+function readSessionMinutes(){
+  const fallback=_sprintMode?10:40;
+  const raw=_urlParams.get('duration');
+  if(raw==null||String(raw).trim()==='') return fallback;
+  const n=parseInt(raw,10);
+  if(!isFinite(n)||n<1) return fallback;
+  return n;
+}
+const _sessionDuration=readSessionMinutes()*60*1000;
 const _sessionCode=normalizeTownCode(_urlParams.get('code'));
 /* Title picker only. Both choices still save as town_code. */
 let _joinUse=null, _joinUseTouched=false;
@@ -3729,15 +3749,10 @@ async function loadTown(){
         (data||[]).forEach(row=>{
           town.plots[row.plot_index]={name:row.founder_name,biz:row.biz_name,industry:row.industry,talent:row.talent};
         });
-        // teacher's "Today's Hustle" override, set from the facilitator dashboard
+        // Today's Hustle, the one-line challenge from the facilitator dashboard
         try{
           const {data:tr}=await sb.from('towns').select('daily_challenge').eq('id',townId).maybeSingle();
-          townDailyChallenge=(tr&&tr.daily_challenge)?tr.daily_challenge:null;
-          if(townDailyChallenge&&townDailyChallenge!==_lastHustleShown){
-            _lastHustleShown=townDailyChallenge;
-            toast('<b>📌 Today’s Hustle from your teacher:</b> '+townDailyChallenge,'gold');
-            feed('Teacher’s challenge: '+townDailyChallenge);
-          }
+          applyTownHustle(tr&&tr.daily_challenge);
         }catch(e){}
       }
     }catch(e){}
@@ -3772,6 +3787,32 @@ function subscribeTownPlots(){
 function unsubscribeTownPlots(){
   const sb=getSupabase();
   if(plotsChannel&&sb){ try{ sb.removeChannel(plotsChannel); }catch(e){} plotsChannel=null; }
+}
+function applyTownHustle(text){
+  const clean=String(text||'').replace(/\s+/g,' ').trim().slice(0,160);
+  townDailyChallenge=clean||null;
+  let bar=document.getElementById('hustleBar');
+  if(!bar){
+    const hud=document.getElementById('hud');
+    if(!hud) return;
+    bar=document.createElement('div');
+    bar.id='hustleBar';
+    hud.appendChild(bar);
+  }
+  if(!clean){
+    bar.style.display='none';
+    _lastHustleShown=null;
+    return;
+  }
+  bar.textContent="Today's Hustle: "+clean;
+  bar.style.display='block';
+  if(clean===_lastHustleShown) return;
+  _lastHustleShown=clean;
+  toast("<b>Today's Hustle:</b> "+esc2(clean),'gold');
+  if(S){
+    if(!S.feed) S.feed=[];
+    feed("Today's Hustle: "+esc2(clean));
+  }
 }
 function renderTown(town){
   const talents=new Set();
@@ -4319,34 +4360,33 @@ function updateGuests(now){
   }
 }
 
-/* ---- classroom session timer (?session=true&code=XXXXXX&duration=40) ---- */
+/* ---- classroom session timer (?session=true&code=XXXXXX&duration=40) ----
+   duration is minutes. The clock starts when this student enters the city. */
 let _sessionTimer=null;
 function startSessionTimer(){
   let timerEl=document.getElementById('sessionTimer');
   if(!timerEl){
     timerEl=document.createElement('div');
     timerEl.id='sessionTimer';
-    timerEl.style.cssText='position:absolute;top:calc(56px + env(safe-area-inset-top));right:14px;'+
-      'z-index:12;display:flex;align-items:center;gap:7px;background:rgba(20,18,15,.88);'+
-      'border:2px solid #E8C064;border-radius:12px;padding:7px 13px;font-weight:800;'+
-      'font-family:Archivo,Inter,sans-serif;font-size:16px;color:#E8C064;pointer-events:none';
-    timerEl.innerHTML='⏱ <span id="sessionTimerDisplay">--:--</span>';
+    const label=_urlParams.get('session')==='true'?'Class':'Time';
+    timerEl.innerHTML='⏱ <span>'+label+'</span> <span id="sessionTimerDisplay">--:--</span>';
     document.getElementById('hud').appendChild(timerEl);
   }
   timerEl.style.display='flex';
   const displayEl=document.getElementById('sessionTimerDisplay');
   const deadline=Date.now()+_sessionDuration;
-  // Hide mute button — sound is part of the classroom experience
   const mb=document.getElementById('muteBtn');
   if(mb) mb.style.display='none';
-  clearInterval(_sessionTimer);
-  _sessionTimer=setInterval(()=>{
+  const paint=()=>{
     const rem=Math.max(0,deadline-Date.now());
-    const m=Math.floor(rem/60000),s=Math.floor((rem%60000)/1000);
+    const m=Math.floor(rem/60000), s=Math.floor((rem%60000)/1000);
     displayEl.textContent=m+':'+String(s).padStart(2,'0');
-    if(rem<=60000){ timerEl.style.borderColor='#FF5533'; timerEl.style.color='#FF8866'; }
+    timerEl.classList.toggle('warn', rem<=60000);
     if(rem<=0){ clearInterval(_sessionTimer); showSessionComplete(); }
-  },500);
+  };
+  clearInterval(_sessionTimer);
+  paint();
+  _sessionTimer=setInterval(paint,500);
 }
 function showPayday(canExit){
   if(!S) return;
