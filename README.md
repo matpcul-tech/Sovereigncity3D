@@ -69,6 +69,14 @@ Optional home link (fills the code and locks Home):
 
 `facilitator.html?code=HOME12` opens that same town. Class codes and town codes share one `town_code`. `?code=` is the key.
 
+### Founder Mode tabletop
+
+Founder Mode is the paper companion to the 3D browser game and the youth pilot. The print kit page hosts the board, rulebook, player mat, print cards, tokens, cheat sheet, facilitator card, and junior rules, plus one zip of those PDFs.
+
+**Print kit:** [print-kit.html](https://matpcul-tech.github.io/Sovereigncity3D/print-kit.html)
+
+The game title screen and the facilitator dashboard both link there. Founder names and codes only. The browser game does not require the paper kit.
+
 ### What players see
 
 - Other founders with the same code walking the city live, with name tags (and as dots on the minimap)
